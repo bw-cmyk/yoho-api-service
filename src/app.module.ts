@@ -1,0 +1,54 @@
+import { MiddlewareConsumer, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { RavenModule, RavenInterceptor } from 'nest-raven';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuthModule } from './common-modules/auth/auth.module';
+import { HttpLoggerMiddleware } from './middleware/httplogger.middleware';
+import { AuthMiddleware } from './middleware/auth.middleware';
+import { UserModule } from './api-modules/user/user.module';
+import { AssetsModule } from './api-modules/assets/assets.module';
+
+const ENV = process.env.NODE_ENV || 'development';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      envFilePath: [`.env.${ENV}`, '.env'],
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        type: 'postgres',
+        url: configService.get('DATABASE_URL'),
+        ssl: { rejectUnauthorized: false },
+        autoLoadEntities: true,
+        synchronize: true,
+        migrations: ['dist/migrations/**/*{.ts,.js}'],
+      }),
+      inject: [ConfigService],
+    }),
+    RavenModule,
+    AuthModule,
+    UserModule,
+    AssetsModule,
+  ],
+  controllers: [],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useValue: new RavenInterceptor(),
+    },
+  ],
+})
+export class AppModule {
+  constructor() {
+    //
+  }
+
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+    consumer.apply(AuthMiddleware).forRoutes('api/v1/inner');
+  }
+}

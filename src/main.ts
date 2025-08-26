@@ -1,0 +1,62 @@
+import { LogLevel, ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import * as Sentry from '@sentry/node';
+import { AppModule } from './app.module';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { config } from 'dotenv';
+import { SentryLogger } from './utils/sentry.logger';
+// import
+const SWAGGER_ENABLE = process.env.SWAGGER_ENABLE === '1';
+config();
+const ENV = process.env.NODE_ENV || 'development';
+const logLevels: LogLevel[] = ['error', 'warn', 'log', 'debug', 'verbose'];
+const logger = new SentryLogger();
+logger.setLogLevels(logLevels);
+
+console.log(`current env: ${ENV}`);
+
+async function bootstrap() {
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      debug: ENV !== 'production',
+      environment: ENV,
+      tracesSampleRate: 1.0,
+      beforeSend: (event) => {
+        event.exception.values = event.exception.values.filter((exception) => {
+          return !['UnauthorizedException', 'BadRequestException'].includes(
+            exception.type,
+          );
+        });
+        if (event.exception.values.length === 0) {
+          return null;
+        }
+        return event;
+      },
+    });
+  }
+  const app = await NestFactory.create(AppModule, {
+    logger,
+  });
+
+  if (SWAGGER_ENABLE) {
+    const config = new DocumentBuilder()
+      .setTitle('Terminus Inner API')
+      .setDescription('')
+      .addBearerAuth()
+      .setVersion('1.0')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+    SwaggerModule.setup('docs-json', app, document, {
+      swaggerOptions: {
+        url: 'http://localhost:3000/v2/swagger.json',
+      },
+    });
+  }
+
+  app.useGlobalPipes(new ValidationPipe());
+
+  await app.listen(process.env.PORT || 3000);
+}
+bootstrap();
