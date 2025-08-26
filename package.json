@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@casl/ability": "^6.7.3",
+    "@nestjs/cli": "^11.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^11.0.0",
@@ -68,7 +69,6 @@
     "typeorm": "^0.3.7"
   },
   "devDependencies": {
-    "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
     "@sentry/hub": "^7.120.4",
