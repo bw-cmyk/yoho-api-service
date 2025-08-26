@@ -8,6 +8,7 @@ import { HttpLoggerMiddleware } from './middleware/httplogger.middleware';
 import { AuthMiddleware } from './middleware/auth.middleware';
 import { UserModule } from './api-modules/user/user.module';
 import { AssetsModule } from './api-modules/assets/assets.module';
+import { JwkController } from './api-modules/jwk/jwk.controller';
 
 const ENV = process.env.NODE_ENV || 'development';
 
@@ -34,7 +35,7 @@ const ENV = process.env.NODE_ENV || 'development';
     UserModule,
     AssetsModule,
   ],
-  controllers: [],
+  controllers: [JwkController],
   providers: [
     {
       provide: APP_INTERCEPTOR,
