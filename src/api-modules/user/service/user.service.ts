@@ -43,6 +43,14 @@ const VISIBLE_FIELDS = [
   'referralChannel',
   'role',
   'parentAccount',
+  'evmEOAWallet',
+  'evmAAWallet',
+  'solanaEOAWalletName',
+  'solanaAAWalletAddress',
+  'botId',
+  'botimMobile',
+  'botimName',
+  'botimAvatar',
   'banned',
 ];
 
@@ -65,6 +73,7 @@ export class UserService {
   ) {}
 
   public async getUser(uid: string): Promise<Partial<User>> {
+    console.log('getUser', uid);
     const user = await this.userRepository.findOne({
       where: { id: uid },
     });

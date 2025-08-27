@@ -4,9 +4,9 @@ By signing this message, you agree to the terms and conditions stated in the dis
 Wallet Login information:
 address: $\{address\}
 nonce: $\{nonce\}`,
-  'game-wallet-bind': `Ultiverse Signer!
+  'aa-wallet-bind': `Ultiverse Signer!
 By signing this message, you agree to the terms and conditions stated in the disclaimer on the website.
-Bind your game wallet information:
+Bind your aa wallet information:
 address: $\{address\}
 chain id: $\{chainId\}
 nonce: $\{nonce\}`,

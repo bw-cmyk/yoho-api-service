@@ -15,7 +15,7 @@ import {
 import * as jwt from 'jsonwebtoken';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 import { Request as ExpressRequest } from 'express';
-import { WalletParams, WalletType } from '../dto/WalletDto';
+import { WalletParams } from '../dto/WalletDto';
 import { WalletService } from '../service/wallet.service';
 
 @ApiBearerAuth()
@@ -24,43 +24,46 @@ import { WalletService } from '../service/wallet.service';
 export class WalletController {
   constructor(private walletService: WalletService) {}
 
-
-  @ApiOperation({ summary: 'Bind Wallet' })
+  @ApiOperation({ summary: 'Bind EOA Wallet' })
   @ApiResponse({
     status: 200,
     description: 'Signature Message',
   })
   @UseGuards(JwtAuthGuard)
-  @Post('/bind')
+  @Post('/bind/eoa')
   async bindGameWallet(
     @Body() walletParams: WalletParams,
     @Request() req: ExpressRequest,
   ) {
     const { id: uid } = req.user as any;
-    const {
-      type,
+    const { address, particleAuthToken, particleUid } = walletParams;
+    await this.walletService.bindEOAWallet(
+      uid,
       address,
-      signature,
-      chainId,
-      particleAuthToken,
       particleUid,
-    } = walletParams;
-    if (type === WalletType.Game) {
-      await this.walletService.bindEOAWallet(
-        uid,
-        address,
-        particleUid,
-        particleAuthToken,
-      );
-    }
-    if (type === WalletType.Asset) {
-      // await this.walletService.bindAAWallet(
-      //   uid,
-      //   address,
-      //   signature,
-      //   chainId,
-      // );
-    }
+      particleAuthToken,
+    );
+
+    return {
+      success: true,
+    };
+  }
+
+  @ApiOperation({ summary: 'Bind EOA Wallet' })
+  @ApiResponse({
+    status: 200,
+    description: 'Signature Message',
+  })
+  @UseGuards(JwtAuthGuard)
+  @Post('/bind/aa')
+  async bindAAWallet(
+    @Body() walletParams: WalletParams,
+    @Request() req: ExpressRequest,
+  ) {
+    const { id: uid } = req.user as any;
+    const { address } = walletParams;
+
+    await this.walletService.bindAAWallet(uid, address);
 
     return {
       success: true,
@@ -71,31 +74,12 @@ export class WalletController {
   @UseGuards(JwtAuthGuard)
   async getGameWalletAuth(@Request() req: ExpressRequest) {
     const { id: uid, iat, exp } = req.user as any;
+    console.log(iat, exp);
     const access_token = jwt.sign(
       {
         sub: uid,
         iat,
         exp,
-      },
-      Buffer.from(process.env.GAME_WALLET_JWT_PRIVATE_KEY, 'base64').toString(
-        'ascii',
-      ),
-      { algorithm: 'RS256' },
-    );
-    return {
-      access_token,
-    };
-  }
-
-  @Get('/authorization/third-party')
-  @UseGuards(JwtAuthGuard)
-  async getThirdPartyAuth(@Request() req: ExpressRequest) {
-    const { id: uid } = req.user as any;
-    const access_token = jwt.sign(
-      {
-        sub: uid,
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 60 * 1,
       },
       Buffer.from(process.env.GAME_WALLET_JWT_PRIVATE_KEY, 'base64').toString(
         'ascii',

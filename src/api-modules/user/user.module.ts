@@ -18,6 +18,7 @@ import { FacebookStrategy } from 'src/api-modules/user/socialmedia/facebook/face
 import { EmailModule } from 'src/common-modules/email/email.module';
 import { CaslModule } from 'src/common-modules/casl/casl.module';
 import { WalletService } from './service/wallet.service';
+import { WalletController } from './controller/wallet.controller';
 
 @Module({
   imports: [
@@ -42,7 +43,7 @@ import { WalletService } from './service/wallet.service';
     AppleStrategy,
     FacebookStrategy,
   ],
-  exports: [UserService],
-  controllers: [UserController],
+  exports: [UserService, WalletService],
+  controllers: [UserController, WalletController],
 })
 export class UserModule {}

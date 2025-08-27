@@ -89,9 +89,12 @@ export class RedisQueueSimpleService {
   /**
    * 等待API请求结果
    */
-  async waitForResult(requestId: string, timeout = 30000): Promise<ApiResponse> {
+  async waitForResult(
+    requestId: string,
+    timeout = 30000,
+  ): Promise<ApiResponse> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       const result = await this.redisService.hget(this.RESULTS_KEY, requestId);
       if (result) {
@@ -100,11 +103,11 @@ export class RedisQueueSimpleService {
         await this.redisService.hdel(this.RESULTS_KEY, requestId);
         return response;
       }
-      
+
       // 等待100ms后重试
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    
+
     throw new Error(`Timeout waiting for result of request ${requestId}`);
   }
 
@@ -197,7 +200,10 @@ export class RedisQueueSimpleService {
 
       this.logger.log(`Successfully processed API request: ${requestData.id}`);
     } catch (error) {
-      this.logger.error(`Error processing API request ${requestData.id}:`, error);
+      this.logger.error(
+        `Error processing API request ${requestData.id}:`,
+        error,
+      );
 
       // 存储错误结果
       const errorResponse: ApiResponse = {
@@ -223,7 +229,9 @@ export class RedisQueueSimpleService {
   /**
    * 执行API请求
    */
-  private async executeApiRequest(requestData: ApiRequestData): Promise<ApiResponse> {
+  private async executeApiRequest(
+    requestData: ApiRequestData,
+  ): Promise<ApiResponse> {
     const { method, url, headers, body } = requestData;
 
     try {
@@ -257,7 +265,7 @@ export class RedisQueueSimpleService {
     body?: any,
   ): Promise<any> {
     // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // 模拟偶尔的失败
     if (Math.random() < 0.1) {
@@ -277,11 +285,12 @@ export class RedisQueueSimpleService {
   /**
    * 处理重试逻辑
    */
-  private async handleRetry(requestData: ApiRequestData, error: any): Promise<void> {
+  private async handleRetry(
+    requestData: ApiRequestData,
+    error: any,
+  ): Promise<void> {
     const retryKey = `${this.RETRY_COUNT_PREFIX}${requestData.id}`;
-    const retryCount = parseInt(
-      (await this.redisService.get(retryKey)) || '0',
-    );
+    const retryCount = parseInt((await this.redisService.get(retryKey)) || '0');
 
     if (retryCount < 3) {
       await this.redisService.set(retryKey, (retryCount + 1).toString(), 3600); // 1小时过期
@@ -297,9 +306,7 @@ export class RedisQueueSimpleService {
       }, 2000);
     } else {
       await this.redisService.del(retryKey);
-      this.logger.error(
-        `API request ${requestData.id} failed after 3 retries`,
-      );
+      this.logger.error(`API request ${requestData.id} failed after 3 retries`);
     }
   }
 
@@ -317,7 +324,7 @@ export class RedisQueueSimpleService {
     let hash = 0;
     for (let i = 0; i < apiPath.length; i++) {
       const char = apiPath.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // 转换为32位整数
     }
     return Math.abs(hash).toString(36);
@@ -354,7 +361,7 @@ export class RedisQueueSimpleService {
   async getQueueItems(): Promise<ApiRequestData[]> {
     const items = await this.redisService.lrange(this.QUEUE_KEY, 0, -1);
     return items
-      .map(item => {
+      .map((item) => {
         try {
           return JSON.parse(item) as ApiRequestData;
         } catch (error) {
@@ -362,6 +369,6 @@ export class RedisQueueSimpleService {
           return null;
         }
       })
-      .filter(item => item !== null) as ApiRequestData[];
+      .filter((item) => item !== null) as ApiRequestData[];
   }
-} 
+}

@@ -1,9 +1,5 @@
 import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
 
-export enum WalletType {
-  Game = 'game',
-  Asset = 'asset',
-}
 export class WalletParams {
   @IsOptional()
   @IsString()
@@ -23,9 +19,6 @@ export class WalletParams {
   @IsOptional()
   @IsNumber()
   readonly chainId: number;
-
-  @IsEnum(WalletType)
-  readonly type: string;
 }
 
 export interface ParticleUserInfoResponse {

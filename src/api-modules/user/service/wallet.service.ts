@@ -7,6 +7,12 @@ import { ParticleUserInfoResponse } from '../dto/WalletDto';
 import { ethers } from 'ethers';
 import { User } from '../entity/user.entity';
 import { SignService } from 'src/common-modules/sign/sign.service';
+import {
+  CHAIN_ID,
+  UA_TRANSACTION_STATUS,
+  UniversalAccount,
+  SUPPORTED_TOKEN_TYPE,
+} from '@particle-network/universal-account-sdk';
 
 @Injectable()
 export class WalletService {
@@ -68,6 +74,43 @@ export class WalletService {
       return ethers.getAddress(address);
     } catch (e) {
       throw new BadRequestException('Invalid address');
+    }
+  }
+
+  public async bindAAWallet(uid: string, address: string) {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: uid },
+      });
+      if (!user.evmEOAWallet) {
+        throw new BadRequestException('Please bind EOA wallet first');
+      }
+      if (user.evmAAWallet) {
+        throw new BadRequestException("You've already bind a wallet");
+      }
+
+      const universalAccount = new UniversalAccount({
+        projectId: process.env.PARTICLE_PROJECT_ID || '',
+        projectClientKey: process.env.PARTICLE_SERVER_KEY || '',
+        projectAppUuid: process.env.PARTICLE_APP_UUID || '',
+        ownerAddress: user.evmEOAWallet,
+      });
+      const smartAccountOptions =
+        await universalAccount.getSmartAccountOptions();
+      console.log('smartAccountOptions', smartAccountOptions);
+      if (smartAccountOptions.smartAccountAddress !== address) {
+        throw new BadRequestException('Invalid address');
+      }
+
+      user.evmAAWallet = this.formatAddress(
+        smartAccountOptions.smartAccountAddress,
+      );
+      await this.userRepository.save(user);
+    } catch (e) {
+      if (e instanceof BadRequestException) {
+        throw e;
+      }
+      throw new BadRequestException('Invalid signature');
     }
   }
 }

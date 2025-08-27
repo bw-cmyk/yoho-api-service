@@ -13,8 +13,8 @@ import { isValidUltiverseUrl } from '../utils';
 export class GoogleStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientID: process.env.GOOGLE_CLIENT_ID || '1',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '1',
       callbackURL: process.env.GOOGLE_CALLBACK_URL,
       scope: ['email', 'profile'],
       sessionKey: 'oauth:google',

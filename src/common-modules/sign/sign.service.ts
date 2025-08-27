@@ -46,7 +46,6 @@ export class SignService {
   }
 
   async verify(wallet: string, signature: string, type: string, chainId = 1) {
-    console.log('verify', wallet, signature, type);
     const address = this.formatAddress(wallet);
     const sign = await this.signRepository.findOne({
       where: {
