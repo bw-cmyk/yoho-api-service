@@ -9,6 +9,8 @@ import { AuthMiddleware } from './middleware/auth.middleware';
 import { UserModule } from './api-modules/user/user.module';
 import { AssetsModule } from './api-modules/assets/assets.module';
 import { JwkController } from './api-modules/jwk/jwk.controller';
+import { IdService } from './common-modules/id/id.service';
+import { IdModule } from './common-modules/id/id.module';
 
 const ENV = process.env.NODE_ENV || 'development';
 
@@ -34,6 +36,7 @@ const ENV = process.env.NODE_ENV || 'development';
     AuthModule,
     UserModule,
     AssetsModule,
+    IdModule,
   ],
   controllers: [JwkController],
   providers: [
@@ -44,11 +47,10 @@ const ENV = process.env.NODE_ENV || 'development';
   ],
 })
 export class AppModule {
-  constructor() {
-    //
-  }
+  constructor(private idService: IdService) {}
 
   configure(consumer: MiddlewareConsumer) {
+    this.idService.init();
     consumer.apply(HttpLoggerMiddleware).forRoutes('*');
     consumer.apply(AuthMiddleware).forRoutes('api/v1/inner');
   }

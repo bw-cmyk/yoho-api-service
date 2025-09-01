@@ -511,6 +511,7 @@ export class UserService {
       }
       throw new UnauthorizedException(data.message || 'Invalid BotIM token');
     } catch (error) {
+      this.logger.error('BotIM login error', error);
       throw new UnauthorizedException('Invalid BotIM token');
     }
   }

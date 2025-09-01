@@ -2,6 +2,7 @@ import { UniversalAccount } from '@particle-network/universal-account-sdk';
 import { Wallet } from 'ethers';
 import * as jwt from 'jsonwebtoken';
 
+const endpoint = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com';
 const token = jwt.sign(
   {
     sub: '271472926769848320',
@@ -17,19 +18,16 @@ const authHeader = {
 
 const bindEOAWallet = async (userProfile: any) => {
   if (!userProfile.evmEOAWallet) {
-    const data = await fetch(
-      'http://localhost:3000/api/v1/wallets/authorization',
-      {
-        method: 'GET',
-        headers: authHeader,
-      },
-    ).then((res) => res.json());
+    const data = await fetch(`${endpoint}/api/v1/wallets/authorization`, {
+      method: 'GET',
+      headers: authHeader,
+    }).then((res) => res.json());
     const particleWalletJWTToken = data.access_token;
     // TODO: 调用 particle sdk 创建 wallet
 
     // 获取完 particle wallet 后， 调用 bind eoa 接口, 绑定 particle wallet
     // await fetch(
-    //   'http://localhost:3000/api/v1/wallets/bind/eoa',
+    //   `${endpoint}/api/v1/wallets/bind/eoa`,
     //   {
     //     method: 'POST',
     //     headers: {
@@ -62,7 +60,7 @@ const bindAAWallet = async (userProfile: any) => {
   console.log(smartAccountOptions);
 
   if (!userProfile.evmAAWallet) {
-    await fetch('http://localhost:3000/api/v1/wallets/bind/aa', {
+    await fetch(`${endpoint}/api/v1/wallets/bind/aa`, {
       method: 'POST',
       headers: authHeader,
       body: JSON.stringify({
@@ -74,7 +72,7 @@ const bindAAWallet = async (userProfile: any) => {
 
 async function main() {
   // botim login
-  // const botimLogin = await fetch('http://localhost:3000/api/v1/user/botim/login', {
+  // const botimLogin = await fetch(`${endpoint}/api/v1/user/botim/login`, {
   //   method: 'POST',
   //   headers: authHeader,
   //   body: JSON.stringify({
@@ -85,7 +83,7 @@ async function main() {
   // const accessToken = botimLogin.access_token;
 
   // 获取 profile
-  const userProfile = await fetch('http://localhost:3000/api/v1/user/profile', {
+  const userProfile = await fetch(`${endpoint}/api/v1/user/profile`, {
     method: 'GET',
     headers: authHeader,
   }).then((res) => res.json());
