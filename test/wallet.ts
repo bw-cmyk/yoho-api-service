@@ -16,6 +16,8 @@ const authHeader = {
   'Content-Type': 'application/json',
 };
 
+console.log('authHeader', authHeader);
+
 const bindEOAWallet = async (userProfile: any) => {
   if (!userProfile.evmEOAWallet) {
     const data = await fetch(`${endpoint}/api/v1/wallets/authorization`, {

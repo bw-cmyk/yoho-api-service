@@ -11,6 +11,7 @@ import { AssetsModule } from './api-modules/assets/assets.module';
 import { JwkController } from './api-modules/jwk/jwk.controller';
 import { IdService } from './common-modules/id/id.service';
 import { IdModule } from './common-modules/id/id.module';
+import { PayModule } from './api-modules/pay/pay.module';
 
 const ENV = process.env.NODE_ENV || 'development';
 
@@ -37,6 +38,7 @@ const ENV = process.env.NODE_ENV || 'development';
     UserModule,
     AssetsModule,
     IdModule,
+    PayModule,
   ],
   controllers: [JwkController],
   providers: [

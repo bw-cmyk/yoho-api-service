@@ -7,12 +7,7 @@ import { ParticleUserInfoResponse } from '../dto/WalletDto';
 import { ethers } from 'ethers';
 import { User } from '../entity/user.entity';
 import { SignService } from 'src/common-modules/sign/sign.service';
-import {
-  CHAIN_ID,
-  UA_TRANSACTION_STATUS,
-  UniversalAccount,
-  SUPPORTED_TOKEN_TYPE,
-} from '@particle-network/universal-account-sdk';
+import { UniversalAccount } from '@particle-network/universal-account-sdk';
 
 @Injectable()
 export class WalletService {
@@ -97,7 +92,6 @@ export class WalletService {
       });
       const smartAccountOptions =
         await universalAccount.getSmartAccountOptions();
-      console.log('smartAccountOptions', smartAccountOptions);
       if (smartAccountOptions.smartAccountAddress !== address) {
         throw new BadRequestException('Invalid address');
       }
