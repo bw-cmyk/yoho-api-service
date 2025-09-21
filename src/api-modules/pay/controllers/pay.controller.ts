@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Query, UseGuards, Req, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+  Req,
+  Body,
+} from '@nestjs/common';
 import { PayService } from '../services/pay.service';
 import { PaymentMethodRequest, PaymentRequest } from '../onramp/PaymentManager';
 import { JwtAuthGuard } from '../../../common-modules/auth/jwt-auth.guard';

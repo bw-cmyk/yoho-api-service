@@ -22,7 +22,7 @@ const main = async () => {
     crypto: 'USDT',
     network: 'BSC',
     currency: 'USD',
-    amount: 1000,
+    amount: 10,
     payMethod: 'CREDIT_CARD' as any, // 添加必需的 payMethod 参数
   };
   // const queryString = new URLSearchParams(query).toString();

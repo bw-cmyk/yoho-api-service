@@ -333,7 +333,7 @@ export class AlchemyPayment extends BasePayment {
       queryParams.append('sign', signatureString);
 
       const endpoint =
-        process.env.ALCHEMY_BASE_URL || 'https://ramptest.alchemypay.org';
+        process.env.ALCHEMY_PAGE_BASE_URL || 'https://ramptest.alchemypay.org';
       const url = `${endpoint}?${queryParams.toString()}`;
 
       return {

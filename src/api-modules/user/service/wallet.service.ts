@@ -107,4 +107,17 @@ export class WalletService {
       throw new BadRequestException('Invalid signature');
     }
   }
+
+  public async getUniversalAccount(uid: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: uid },
+    });
+    const universalAccount = new UniversalAccount({
+      projectId: process.env.PARTICLE_PROJECT_ID || '',
+      projectClientKey: process.env.PARTICLE_SERVER_KEY || '',
+      projectAppUuid: process.env.PARTICLE_APP_UUID || '',
+      ownerAddress: user.evmAAWallet,
+    });
+    return universalAccount;
+  }
 }

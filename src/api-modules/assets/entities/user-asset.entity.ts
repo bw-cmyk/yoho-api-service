@@ -16,17 +16,16 @@ export enum AssetType {
 
 export enum Currency {
   USD = 'USD',
-  USDT = 'USDT',
-  BTC = 'BTC',
-  ETH = 'ETH',
   // 可以根据需要添加更多币种
 }
 
 @Entity('yoho_user_assets')
-@Index(['user_id', 'currency'], { unique: true })
+@Index(['userId', 'currency'], { unique: true })
 export class UserAsset {
-  @PrimaryColumn({ type: 'bigint' })
-  user_id: number;
+  @PrimaryColumn({
+    name: 'user_id',
+  })
+  userId: string;
 
   @PrimaryColumn({ type: 'varchar', length: 10 })
   currency: Currency;
@@ -40,8 +39,9 @@ export class UserAsset {
       to: (value: Decimal) => value.toString(),
       from: (value: string) => new Decimal(value || '0'),
     },
+    name: 'balance_real',
   })
-  balance_real: Decimal;
+  balanceReal: Decimal;
 
   @Column({
     type: 'decimal',
@@ -52,8 +52,9 @@ export class UserAsset {
       to: (value: Decimal) => value.toString(),
       from: (value: string) => new Decimal(value || '0'),
     },
+    name: 'balance_bonus',
   })
-  balance_bonus: Decimal;
+  balanceBonus: Decimal;
 
   @Column({
     type: 'decimal',
@@ -64,34 +65,39 @@ export class UserAsset {
       to: (value: Decimal) => value.toString(),
       from: (value: string) => new Decimal(value || '0'),
     },
+    name: 'balance_locked',
   })
-  balance_locked: Decimal;
+  balanceLocked: Decimal;
 
-  @CreateDateColumn()
-  created_at: Date;
+  @CreateDateColumn({
+    name: 'created_at',
+  })
+  createdAt: Date;
 
-  @UpdateDateColumn()
-  updated_at: Date;
+  @UpdateDateColumn({
+    name: 'updated_at',
+  })
+  updatedAt: Date;
 
   /**
    * 获取总可用余额（真实余额 + 赠金余额）
    */
   get totalBalance(): Decimal {
-    return this.balance_real.plus(this.balance_bonus);
+    return this.balanceReal.plus(this.balanceBonus);
   }
 
   /**
    * 获取可提现余额（仅真实余额）
    */
   get withdrawableBalance(): Decimal {
-    return this.balance_real;
+    return this.balanceReal;
   }
 
   /**
    * 获取可用余额（总余额 - 锁定余额）
    */
   get availableBalance(): Decimal {
-    return this.totalBalance.minus(this.balance_locked);
+    return this.totalBalance.minus(this.balanceLocked);
   }
 
   /**
@@ -113,9 +119,9 @@ export class UserAsset {
    */
   getBalanceDetails() {
     return {
-      real: this.balance_real,
-      bonus: this.balance_bonus,
-      locked: this.balance_locked,
+      real: this.balanceReal,
+      bonus: this.balanceBonus,
+      locked: this.balanceLocked,
       total: this.totalBalance,
       withdrawable: this.withdrawableBalance,
       available: this.availableBalance,

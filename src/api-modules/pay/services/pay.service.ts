@@ -32,6 +32,7 @@ export class PayService {
       ...request,
       address: user.evmAAWallet,
       uid: uid,
+      callbackUrl: 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com/api/v1/pay/webhook',
     });
     return payType;
   }
