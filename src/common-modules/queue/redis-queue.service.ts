@@ -2,14 +2,27 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RedisService } from '../redis/redis.service';
 
-export interface RedisQueueItem {
+export interface ApiRequestData {
   id: string;
-  apiPath: string; // API路径，用于去重
-  request: string; // 请求函数
-  callback?: string; // 回调函数
+  apiPath: string;
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  body?: any;
+  requestFunctionId: string; // 请求函数ID
+  callbackFunctionId: string; // 回调函数ID
   priority: number;
   timestamp: number;
-  instanceId: string; // 服务实例ID
+  instanceId: string;
+  queryParams?: Record<string, string>;
+}
+
+export interface ApiResponse {
+  id: string;
+  success: boolean;
+  data?: any;
+  error?: string;
+  statusCode?: number;
 }
 
 export interface RedisQueueConfig {
@@ -36,6 +49,9 @@ export class RedisQueueService {
   private readonly API_LOCK_PREFIX = 'api_lock:';
   private readonly RETRY_COUNT_PREFIX = 'retry_count:';
 
+  private callbackMap = new Map<string, (result: any, error?: any) => void>();
+  private requestFnMap = new Map<string, (params: any) => Promise<any>>();
+
   constructor(private readonly redisService: RedisService) {
     this.config = {
       maxConcurrent: 1,
@@ -51,16 +67,26 @@ export class RedisQueueService {
    */
   async addToQueue(
     apiPath: string,
-    request: () => Promise<any>,
-    callback?: (result: any, error?: any) => void,
+    method: string,
+    url: string,
+    requestFunctionId: string,
+    callbackFunctionId: string,
+    headers?: Record<string, string>,
+    body?: any,
+    queryParams?: any,
     priority = 0,
   ): Promise<string> {
     const id = this.generateId();
-    const queueItem: RedisQueueItem = {
+    const requestData: ApiRequestData = {
       id,
       apiPath,
-      request: request.toString(), // 序列化函数
-      callback: callback?.toString(), // 序列化回调
+      method,
+      url,
+      headers,
+      body,
+      queryParams,
+      requestFunctionId,
+      callbackFunctionId,
       priority,
       timestamp: Date.now(),
       instanceId: this.instanceId,
@@ -77,7 +103,7 @@ export class RedisQueueService {
     }
 
     // 将请求添加到Redis队列
-    const serializedItem = JSON.stringify(queueItem);
+    const serializedItem = JSON.stringify(requestData);
     await this.redisService.lpush(this.QUEUE_KEY, serializedItem);
 
     this.logger.log(
@@ -110,20 +136,22 @@ export class RedisQueueService {
     }
 
     this.processing = true;
-
     try {
       const queueLength = await this.redisService.llen(this.QUEUE_KEY);
       if (queueLength === 0) {
         return;
       }
 
+      // log
+      this.logger.debug(`teest`)
+
       // 获取要处理的请求
-      const itemsToProcess: RedisQueueItem[] = [];
+      const itemsToProcess: ApiRequestData[] = [];
       for (let i = 0; i < this.config.maxConcurrent && i < queueLength; i++) {
         const serializedItem = await this.redisService.rpop(this.QUEUE_KEY);
         if (serializedItem) {
           try {
-            const item = JSON.parse(serializedItem) as RedisQueueItem;
+            const item = JSON.parse(serializedItem) as ApiRequestData;
             itemsToProcess.push(item);
           } catch (error) {
             this.logger.error('Failed to parse queue item:', error);
@@ -147,7 +175,7 @@ export class RedisQueueService {
   /**
    * 处理队列中的单个请求
    */
-  private async processQueueItem(item: RedisQueueItem): Promise<void> {
+  private async processQueueItem(item: ApiRequestData): Promise<void> {
     const apiLockKey = `${this.API_LOCK_PREFIX}${this.hashApiPath(
       item.apiPath,
     )}`;
@@ -174,15 +202,29 @@ export class RedisQueueService {
         `Processing request: ${item.id}, API path: ${item.apiPath}`,
       );
 
-      // 反序列化并执行请求函数
-      const requestFn = this.deserializeFunction(item.request);
-      const result = await requestFn();
+      // 通过 requestFunctionId 获取请求函数并执行
+      const requestFn = this.requestFnMap.get(item.requestFunctionId);
+      if (!requestFn) {
+        throw new Error(
+          `Request function not found for ID: ${item.requestFunctionId}`,
+        );
+      }
 
-      // 执行回调
-      if (item.callback) {
+      const requestParams = {
+        method: item.method,
+        url: item.url,
+        headers: item.headers,
+        body: item.body,
+        queryParams: item.queryParams,
+      };
+
+      const result = await requestFn(requestParams);
+
+      // 通过 callbackFunctionId 执行回调
+      const callbackFn = this.callbackMap.get(item.callbackFunctionId);
+      if (callbackFn) {
         try {
-          const callbackFn = this.deserializeFunction(item.callback);
-          callbackFn(result);
+          callbackFn(result, requestParams);
         } catch (callbackError) {
           this.logger.error(
             `Callback error for request ${item.id}:`,
@@ -209,7 +251,7 @@ export class RedisQueueService {
   /**
    * 处理重试逻辑
    */
-  private async handleRetry(item: RedisQueueItem, error: any): Promise<void> {
+  private async handleRetry(item: ApiRequestData, error: any): Promise<void> {
     const retryKey = `${this.RETRY_COUNT_PREFIX}${item.id}`;
     const retryCount = parseInt((await this.redisService.get(retryKey)) || '0');
 
@@ -229,9 +271,9 @@ export class RedisQueueService {
       }, this.config.retryDelay);
     } else {
       // 达到最大重试次数，执行错误回调
-      if (item.callback) {
+      const callbackFn = this.callbackMap.get(item.callbackFunctionId);
+      if (callbackFn) {
         try {
-          const callbackFn = this.deserializeFunction(item.callback);
           callbackFn(null, error);
         } catch (callbackError) {
           this.logger.error(
@@ -270,18 +312,67 @@ export class RedisQueueService {
   }
 
   /**
-   * 反序列化函数（简化版本）
-   * 注意：这是一个简化的实现，实际项目中需要考虑安全性
+   * 注册请求函数
    */
-  private deserializeFunction(funcString: string): Function {
-    // 这里应该实现安全的函数反序列化
-    // 为了演示，我们使用eval（不推荐在生产环境中使用）
-    try {
-      return eval(`(${funcString})`);
-    } catch (error) {
-      this.logger.error('Failed to deserialize function:', error);
-      throw new Error('Invalid function serialization');
+  registerRequestFunction(
+    id: string,
+    requestFunction: (params: any) => Promise<any>,
+  ): void {
+    if (this.requestFnMap.has(id)) {
+      throw new Error(`Request function already registered for ID: ${id}`);
     }
+    this.requestFnMap.set(id, requestFunction);
+    this.logger.log(`Registered request function with ID: ${id}`);
+  }
+
+  /**
+   * 注册回调函数
+   */
+  registerCallbackFunction(
+    id: string,
+    callbackFunction: (result: any, error?: any) => void,
+  ): void {
+    if (this.callbackMap.has(id)) {
+      throw new Error(`Callback function already registered for ID: ${id}`);
+    }
+    this.callbackMap.set(id, callbackFunction);
+    this.logger.log(`Registered callback function with ID: ${id}`);
+  }
+
+  /**
+   * 获取已注册的请求函数ID列表
+   */
+  getRegisteredRequestFunctionIds(): string[] {
+    return Array.from(this.requestFnMap.keys());
+  }
+
+  /**
+   * 获取已注册的回调函数ID列表
+   */
+  getRegisteredCallbackFunctionIds(): string[] {
+    return Array.from(this.callbackMap.keys());
+  }
+
+  /**
+   * 注销请求函数
+   */
+  unregisterRequestFunction(id: string): boolean {
+    const removed = this.requestFnMap.delete(id);
+    if (removed) {
+      this.logger.log(`Unregistered request function with ID: ${id}`);
+    }
+    return removed;
+  }
+
+  /**
+   * 注销回调函数
+   */
+  unregisterCallbackFunction(id: string): boolean {
+    const removed = this.callbackMap.delete(id);
+    if (removed) {
+      this.logger.log(`Unregistered callback function with ID: ${id}`);
+    }
+    return removed;
   }
 
   /**
@@ -319,18 +410,18 @@ export class RedisQueueService {
   /**
    * 获取队列中的所有项目
    */
-  async getQueueItems(): Promise<RedisQueueItem[]> {
+  async getQueueItems(): Promise<ApiRequestData[]> {
     const items = await this.redisService.lrange(this.QUEUE_KEY, 0, -1);
     return items
       .map((item) => {
         try {
-          return JSON.parse(item) as RedisQueueItem;
+          return JSON.parse(item) as ApiRequestData;
         } catch (error) {
           this.logger.error('Failed to parse queue item:', error);
           return null;
         }
       })
-      .filter((item) => item !== null) as RedisQueueItem[];
+      .filter((item) => item !== null) as ApiRequestData[];
   }
 
   /**

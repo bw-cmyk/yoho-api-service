@@ -12,8 +12,11 @@ import { IdService } from './common-modules/id/id.service';
 import { IdModule } from './common-modules/id/id.module';
 import { PayModule } from './api-modules/pay/pay.module';
 import { AssetsModule } from './api-modules/assets/assets.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { QueueModule } from './common-modules/queue/queue.module';
 
 const ENV = process.env.NODE_ENV || 'development';
+const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
 
 @Module({
   imports: [
@@ -39,6 +42,8 @@ const ENV = process.env.NODE_ENV || 'development';
     AssetsModule,
     IdModule,
     PayModule,
+    QueueModule,
+    ...(isScheduling ? [ScheduleModule.forRoot()] : []),
   ],
   controllers: [JwkController],
   providers: [

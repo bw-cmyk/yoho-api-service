@@ -1,166 +1,154 @@
 import { Injectable } from '@nestjs/common';
-import { RedisQueueHelperService } from './redis-queue-helper.service';
+import { RedisQueueService } from './redis-queue.service';
 
 @Injectable()
 export class RedisQueueExampleService {
-  constructor(private readonly redisQueueHelper: RedisQueueHelperService) {}
-
-  /**
-   * 示例：添加GET请求到分布式队列
-   */
-  async exampleGetRequest() {
-    const apiPath = '/api/users/123';
-    const url = 'https://api.example.com/users/123';
-
-    // 添加GET请求到队列
-    const requestId = await this.redisQueueHelper.addGetRequest(
-      apiPath,
-      url,
-      { Authorization: 'Bearer token123' },
-      1, // 优先级
-    );
-
-    console.log('GET request added to Redis queue with ID:', requestId);
-
-    // 等待结果
-    try {
-      const result = await this.redisQueueHelper.waitForResult(
-        requestId,
-        30000,
-      );
-      if (result.success) {
-        console.log('GET request successful:', result.data);
-      } else {
-        console.error('GET request failed:', result.error);
-      }
-    } catch (error) {
-      console.error('Timeout waiting for result:', error);
-    }
+  constructor(private readonly redisQueueService: RedisQueueService) {
+    this.initializeFunctions();
   }
 
   /**
-   * 示例：添加POST请求到分布式队列
+   * 初始化请求函数和回调函数
    */
-  async examplePostRequest() {
-    const apiPath = '/api/users';
-    const url = 'https://api.example.com/users';
-    const body = {
-      name: 'John Doe',
-      email: 'john@example.com',
-    };
+  private initializeFunctions(): void {
+    // 注册请求函数
+    this.redisQueueService.registerRequestFunction(
+      'http-get-request',
+      async (params: any) => {
+        // 模拟 HTTP GET 请求
+        const { url, headers } = params;
+        console.log(`Making GET request to: ${url}`);
 
-    // 添加POST请求到队列
-    const requestId = await this.redisQueueHelper.addPostRequest(
+        // 这里应该使用实际的 HTTP 客户端
+        // 为了演示，我们返回模拟数据
+        return {
+          status: 200,
+          data: { message: 'GET request successful', url, headers },
+          timestamp: Date.now(),
+        };
+      },
+    );
+
+    this.redisQueueService.registerRequestFunction(
+      'http-post-request',
+      async (params: any) => {
+        // 模拟 HTTP POST 请求
+        const { url, body } = params;
+        console.log(`Making POST request to: ${url}`, body);
+
+        return {
+          status: 201,
+          data: { message: 'POST request successful', url, body },
+          timestamp: Date.now(),
+        };
+      },
+    );
+
+    // 注册回调函数
+    this.redisQueueService.registerCallbackFunction(
+      'success-callback',
+      (result: any, error?: any) => {
+        if (error) {
+          console.error('Request failed:', error);
+        } else {
+          console.log('Request successful:', result);
+        }
+      },
+    );
+
+    this.redisQueueService.registerCallbackFunction(
+      'error-callback',
+      (result: any, error?: any) => {
+        console.error('Error callback triggered:', error);
+        // 可以在这里实现错误处理逻辑，比如发送通知、记录日志等
+      },
+    );
+  }
+
+  /**
+   * 添加 GET 请求到队列
+   */
+  async addGetRequest(
+    apiPath: string,
+    url: string,
+    headers?: Record<string, string>,
+  ): Promise<string> {
+    return this.redisQueueService.addToQueue(
       apiPath,
+      'GET',
       url,
+      'http-get-request', // requestFunctionId
+      'success-callback', // callbackFunctionId
+      headers,
+      undefined, // body
+      0, // priority
+    );
+  }
+
+  /**
+   * 添加 POST 请求到队列
+   */
+  async addPostRequest(
+    apiPath: string,
+    url: string,
+    body: any,
+    headers?: Record<string, string>,
+  ): Promise<string> {
+    return this.redisQueueService.addToQueue(
+      apiPath,
+      'POST',
+      url,
+      'http-post-request', // requestFunctionId
+      'success-callback', // callbackFunctionId
+      headers,
       body,
-      { 'Content-Type': 'application/json' },
-      2, // 高优先级
+      0, // priority
     );
-
-    console.log('POST request added to Redis queue with ID:', requestId);
-
-    // 等待结果
-    try {
-      const result = await this.redisQueueHelper.waitForResult(requestId);
-      if (result.success) {
-        console.log('POST request successful:', result.data);
-      } else {
-        console.error('POST request failed:', result.error);
-      }
-    } catch (error) {
-      console.error('Timeout waiting for result:', error);
-    }
   }
 
   /**
-   * 示例：批量添加请求
+   * 添加高优先级请求
    */
-  async exampleBatchRequests() {
-    const requests = [
-      {
-        apiPath: '/api/users/1',
-        url: 'https://api.example.com/users/1',
-        method: 'GET' as const,
-      },
-      {
-        apiPath: '/api/users/2',
-        url: 'https://api.example.com/users/2',
-        method: 'GET' as const,
-      },
-      {
-        apiPath: '/api/users/3',
-        url: 'https://api.example.com/users/3',
-        method: 'GET' as const,
-      },
-    ];
-
-    const requestIds: string[] = [];
-
-    // 添加所有请求到队列
-    for (const request of requests) {
-      const requestId = await this.redisQueueHelper.addGetRequest(
-        request.apiPath,
-        request.url,
-      );
-      requestIds.push(requestId);
-    }
-
-    console.log('Batch requests added to Redis queue with IDs:', requestIds);
-
-    // 等待所有结果
-    const results = await Promise.allSettled(
-      requestIds.map((id) => this.redisQueueHelper.waitForResult(id)),
+  async addHighPriorityRequest(
+    apiPath: string,
+    url: string,
+    headers?: Record<string, string>,
+  ): Promise<string> {
+    return this.redisQueueService.addToQueue(
+      apiPath,
+      'GET',
+      url,
+      'http-get-request',
+      'success-callback',
+      headers,
+      undefined,
+      10, // 高优先级
     );
-
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`Request ${requestIds[index]} result:`, result.value);
-      } else {
-        console.error(`Request ${requestIds[index]} failed:`, result.reason);
-      }
-    });
   }
 
   /**
-   * 示例：检查队列状态
+   * 获取队列状态
    */
-  async exampleCheckQueueStatus() {
-    const status = await this.redisQueueHelper.getQueueStatus();
-    console.log('Queue status:', status);
-
-    const items = await this.redisQueueHelper.getQueueItems();
-    console.log('Queue items:', items);
+  async getQueueStatus() {
+    return this.redisQueueService.getQueueStatus();
   }
 
   /**
-   * 示例：模拟多个服务实例同时请求相同API
+   * 获取队列中的所有项目
    */
-  async exampleConcurrentApiRequests() {
-    const apiPath = '/api/rate-limited-endpoint';
-    const url = 'https://api.example.com/rate-limited-endpoint';
+  async getQueueItems() {
+    return this.redisQueueService.getQueueItems();
+  }
 
-    // 模拟多个服务实例同时请求
-    const promises = Array.from({ length: 5 }, (_, index) =>
-      this.redisQueueHelper.addGetRequest(apiPath, url, {
-        'Instance-ID': `service-${index + 1}`,
-      }),
-    );
-
-    const requestIds = await Promise.all(promises);
-    console.log('Concurrent requests added:', requestIds);
-
-    // 等待结果
-    const results = await Promise.allSettled(
-      requestIds.map((id) => this.redisQueueHelper.waitForResult(id)),
-    );
-
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`Instance ${index + 1} result:`, result.value);
-      } else {
-        console.error(`Instance ${index + 1} failed:`, result.reason);
-      }
-    });
+  /**
+   * 获取已注册的函数ID
+   */
+  getRegisteredFunctions() {
+    return {
+      requestFunctions:
+        this.redisQueueService.getRegisteredRequestFunctionIds(),
+      callbackFunctions:
+        this.redisQueueService.getRegisteredCallbackFunctionIds(),
+    };
   }
 }
