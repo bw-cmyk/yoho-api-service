@@ -243,6 +243,50 @@ export class OKXQueueService {
   }
 
   /**
+   * 队列化的获取交易历史
+   */
+  public async getTransactionHistory(
+    params: {
+      address: string;
+      chains: string;
+      tokenContractAddress?: string;
+      begin?: string;
+      end?: string;
+      cursor?: string;
+      limit?: string;
+    },
+    priority = 0,
+  ): Promise<string> {
+    const queryParams: Record<string, string> = {
+      address: params.address,
+      chains: params.chains,
+    };
+
+    // 添加可选参数
+    if (params.tokenContractAddress) {
+      queryParams.tokenContractAddress = params.tokenContractAddress;
+    }
+    if (params.begin) {
+      queryParams.begin = params.begin;
+    }
+    if (params.end) {
+      queryParams.end = params.end;
+    }
+    if (params.cursor) {
+      queryParams.cursor = params.cursor;
+    }
+    if (params.limit) {
+      queryParams.limit = params.limit;
+    }
+
+    return this.get(
+      '/api/v6/dex/post-transaction/transactions-by-address',
+      queryParams,
+      priority,
+    );
+  }
+
+  /**
    * 获取队列状态
    */
   async getQueueStatus() {

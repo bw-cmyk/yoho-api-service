@@ -162,28 +162,28 @@ export class UserController {
   //   return this.authService.login({ user });
   // }
 
-  // @UseGuards(GoogleAuthGuard)
-  // @Get('/login/google')
-  // async googleAuth(): Promise<any> {
-  //   return {};
-  // }
+  @UseGuards(GoogleAuthGuard)
+  @Get('/login/google')
+  async googleAuth(): Promise<any> {
+    return {};
+  }
 
-  // @UseGuards(GoogleAuthGuard)
-  // @Post('/login/google')
-  // async googleLogin(@Request() req: ExpressRequest): Promise<any> {
-  //   const { id, displayName, emails } = req.user as any;
-  //   const email = emails[0]?.value;
-  //   if (!id) {
-  //     throw new UnauthorizedException();
-  //   }
+  @UseGuards(GoogleAuthGuard)
+  @Post('/login/google')
+  async googleLogin(@Request() req: ExpressRequest): Promise<any> {
+    const { id, displayName, emails } = req.user as any;
+    const email = emails[0]?.value;
+    if (!id) {
+      throw new UnauthorizedException();
+    }
 
-  //   const user = await this.userService.findOrCreateUserWithGoogle(
-  //     id,
-  //     email,
-  //     displayName,
-  //   );
-  //   return this.authService.login({ user });
-  // }
+    const user = await this.userService.findOrCreateUserWithGoogle(
+      id,
+      email,
+      displayName,
+    );
+    return this.authService.login({ user });
+  }
 
   // @UseGuards(AppleAuthGuard)
   // @Get('/login/apple')

@@ -5,6 +5,9 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { config } from 'dotenv';
 import { SentryLogger } from './utils/sentry.logger';
+import * as session from 'express-session';
+import * as createRedisStore from 'connect-redis';
+import redis from './common-modules/redis/redis-client';
 // import
 const SWAGGER_ENABLE = process.env.SWAGGER_ENABLE === '1';
 config();
@@ -54,6 +57,16 @@ async function bootstrap() {
       },
     });
   }
+
+  const RedisStore = createRedisStore(session);
+  app.use(
+    session({
+      store: new RedisStore({ client: redis }),
+      secret: 'my-secret',
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
 
   app.useGlobalPipes(new ValidationPipe());
 
