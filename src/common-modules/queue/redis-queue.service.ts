@@ -219,9 +219,9 @@ export class RedisQueueService {
       };
 
       const result = await requestFn(requestParams);
-
       // 通过 callbackFunctionId 执行回调
       const callbackFn = this.callbackMap.get(item.callbackFunctionId);
+
       if (callbackFn) {
         try {
           callbackFn(result, requestParams);

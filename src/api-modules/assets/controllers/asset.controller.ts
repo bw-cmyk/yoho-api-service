@@ -5,12 +5,14 @@ import {
   Query,
   Request,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
 import { AssetService } from '../services/asset.service';
 import { Currency } from '../entities/user-asset.entity';
 import { TransactionType } from '../entities/transaction.entity';
+import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 
 @ApiTags('资产管理')
 @Controller('/api/v1/assets')
@@ -29,16 +31,23 @@ export class AssetController {
     };
   }
 
-  @Get(':userId')
+  @Get('/all')
   @ApiOperation({ summary: '获取用户资产' })
   @ApiResponse({ status: 200, description: '获取成功' })
-  async getUserAssets(@Param('userId', ParseIntPipe) userId: string) {
+  @UseGuards(JwtAuthGuard)
+  async getUserAssets(@Request() req: ExpressRequest) {
+    const { id: userId } = req.user as any;
     const assets = await this.assetService.getUserAssets(userId);
+    const onchainAssets = await this.assetService.getUserChainAssets(userId);
     return {
       user_id: userId,
       assets: assets.map((asset) => ({
         currency: asset.currency,
         ...asset.getBalanceDetails(),
+      })),
+      onchainAssets: onchainAssets.map((asset) => ({
+        tokenSymbol: asset.tokenSymbol,
+        ...asset.getAssetDetails(),
       })),
     };
   }

@@ -108,6 +108,20 @@ export class WalletService {
     }
   }
 
+  public async getEOAWallet(uid: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: uid },
+    });
+    return user.evmEOAWallet;
+  }
+
+  public async getAAWallet(uid: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: uid },
+    });
+    return user.evmAAWallet;
+  }
+
   public async getUniversalAccount(uid: string) {
     const user = await this.userRepository.findOne({
       where: { id: uid },
@@ -119,5 +133,13 @@ export class WalletService {
       ownerAddress: user.evmAAWallet,
     });
     return universalAccount;
+  }
+
+  public async getUserByAddress(address: string) {
+    const user = await this.userRepository.findOne({
+      where: { evmAAWallet: address },
+    });
+    console.log('user: ', user, address);
+    return user;
   }
 }

@@ -32,7 +32,7 @@ export interface GetTransactionHistoryFromDBQuery {
 }
 
 @Controller('transaction-history')
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 export class TransactionHistoryController {
   private readonly logger = new Logger(TransactionHistoryController.name);
 
@@ -53,9 +53,9 @@ export class TransactionHistoryController {
     message: string;
   }> {
     try {
-      this.logger.log(
-        `User ${req.user.id} requesting transaction history for address: ${params.address}`,
-      );
+      // this.logger.log(
+      //   `User ${req.user.id} requesting transaction history for address: ${params.address}`,
+      // );
 
       const requestId =
         await this.transactionHistoryService.getTransactionHistory(

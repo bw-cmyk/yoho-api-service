@@ -68,12 +68,18 @@ export class TransactionHistoryService {
     this.queueService.registerCallbackFunction(
       OKX_TRANSACTION_HISTORY_CALLBACK_FUNCTION_ID,
       async (result: any, requestParams: any) => {
+        console.log('result: ', result);
+        console.log('requestParams: ', requestParams);
         if (
           result &&
-          result.transactions &&
-          Array.isArray(result.transactions)
+          result[0] &&
+          result[0].transactions &&
+          Array.isArray(result[0].transactions)
         ) {
-          await this.processTransactionHistoryResult(result, requestParams);
+          await this.processTransactionHistoryResult(
+            result[0].transactions,
+            requestParams,
+          );
         }
       },
     );
@@ -90,26 +96,28 @@ export class TransactionHistoryService {
       `Queuing transaction history request for address: ${params.address}`,
     );
 
-    return this.okxQueueService.getTransactionHistory(params, priority);
+    return this.okxQueueService.getTransactionHistory(
+      params,
+      OKX_TRANSACTION_HISTORY_CALLBACK_FUNCTION_ID,
+      priority,
+    );
   }
 
   /**
    * 处理交易历史结果
    */
   private async processTransactionHistoryResult(
-    result: any,
+    transactions: any[],
     requestParams: any,
   ): Promise<void> {
     const { queryParams } = requestParams;
     const { address } = queryParams;
 
     this.logger.log(
-      `Processing ${result.transactions.length} transactions for address ${address}`,
+      `Processing ${transactions.length} transactions for address ${address}`,
     );
 
     try {
-      const transactions = result.transactions;
-
       for (const txData of transactions) {
         await this.saveOrUpdateTransaction(txData);
       }

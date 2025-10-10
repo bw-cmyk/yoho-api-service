@@ -110,7 +110,6 @@ export class OKXDEX {
    */
   public async request<T>(options: OKXRequestOptions): Promise<T> {
     const { method, path, data, queryParams, headers = {} } = options;
-    console.log(options)
     // 生成时间戳
     const timestamp = new Date().toISOString();
 

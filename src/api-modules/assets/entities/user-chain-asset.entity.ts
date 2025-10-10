@@ -43,13 +43,6 @@ export class UserChainAsset {
   tokenName: string;
 
   @Column({
-    name: 'token_decimals',
-    type: 'int',
-    default: 18,
-  })
-  tokenDecimals: number;
-
-  @Column({
     name: 'balance',
     type: 'decimal',
     precision: 36,
@@ -106,13 +99,6 @@ export class UserChainAsset {
   updatedAt: Date;
 
   /**
-   * 获取格式化的余额（考虑小数位数）
-   */
-  get formattedBalance(): Decimal {
-    return this.balance.div(new Decimal(10).pow(this.tokenDecimals));
-  }
-
-  /**
    * 获取总价值（USD）
    */
   get totalValueUsd(): Decimal {
@@ -135,9 +121,7 @@ export class UserChainAsset {
       userId: this.userId,
       tokenSymbol: this.tokenSymbol,
       tokenName: this.tokenName,
-      tokenDecimals: this.tokenDecimals,
       balance: this.balance,
-      formattedBalance: this.formattedBalance,
       usdValue: this.usdValue,
       priceUsd: this.priceUsd,
       lastUpdatedAt: this.lastUpdatedAt,

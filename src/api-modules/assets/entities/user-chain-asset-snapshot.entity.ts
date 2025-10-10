@@ -57,13 +57,6 @@ export class UserChainAssetSnapshot {
   tokenName: string;
 
   @Column({
-    name: 'token_decimals',
-    type: 'int',
-    default: 18,
-  })
-  tokenDecimals: number;
-
-  @Column({
     name: 'balance',
     type: 'decimal',
     precision: 36,
@@ -113,14 +106,6 @@ export class UserChainAssetSnapshot {
     name: 'created_at',
   })
   createdAt: Date;
-
-  /**
-   * 获取格式化的余额（考虑小数位数）
-   */
-  get formattedBalance(): Decimal {
-    return this.balance.div(new Decimal(10).pow(this.tokenDecimals));
-  }
-
   /**
    * 获取总价值（USD）
    */
@@ -146,9 +131,7 @@ export class UserChainAssetSnapshot {
       snapshotDate: this.snapshotDate,
       tokenSymbol: this.tokenSymbol,
       tokenName: this.tokenName,
-      tokenDecimals: this.tokenDecimals,
       balance: this.balance,
-      formattedBalance: this.formattedBalance,
       usdValue: this.usdValue,
       priceUsd: this.priceUsd,
       snapshotMetadata: this.snapshotMetadata,
@@ -172,7 +155,6 @@ export class UserChainAssetSnapshot {
       snapshotDate,
       tokenSymbol: chainAsset.tokenSymbol,
       tokenName: chainAsset.tokenName,
-      tokenDecimals: chainAsset.tokenDecimals,
       balance: chainAsset.balance,
       usdValue: chainAsset.usdValue,
       priceUsd: chainAsset.priceUsd,

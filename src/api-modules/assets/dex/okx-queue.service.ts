@@ -8,6 +8,7 @@ import {
 
 export interface OKXQueueRequestOptions extends OKXRequestOptions {
   priority?: number;
+  callbackFunctionId?: string;
 }
 
 @Injectable()
@@ -93,6 +94,7 @@ export class OKXQueueService {
   private async addToQueue(
     method: string,
     path: string,
+    callbackFunctionId: string,
     data?: any,
     queryParams?: Record<string, string>,
     headers?: Record<string, string>,
@@ -109,7 +111,7 @@ export class OKXQueueService {
       method,
       fullUrl,
       OKX_REQUEST_FUNCTION_ID,
-      OKX_TRENDING_CALLBACK_FUNCTION_ID,
+      callbackFunctionId,
       headers,
       data,
       queryParams,
@@ -122,6 +124,7 @@ export class OKXQueueService {
    */
   public async get(
     path: string,
+    callbackFunctionId: string,
     queryParams?: Record<string, string>,
     priority = 0,
   ): Promise<string> {
@@ -129,6 +132,7 @@ export class OKXQueueService {
     return this.addToQueue(
       'GET',
       path,
+      callbackFunctionId,
       undefined,
       queryParams,
       undefined,
@@ -139,27 +143,59 @@ export class OKXQueueService {
   /**
    * 队列化的 POST 请求
    */
-  public async post(path: string, data?: any, priority = 0): Promise<string> {
+  public async post(
+    path: string,
+    callbackFunctionId: string,
+    data?: any,
+    priority = 0,
+  ): Promise<string> {
     this.logger.debug(`Queuing POST request: ${path}`);
-    return this.addToQueue('POST', path, data, undefined, undefined, priority);
+    return this.addToQueue(
+      'POST',
+      path,
+      callbackFunctionId,
+      data,
+      undefined,
+      undefined,
+      priority,
+    );
   }
 
   /**
    * 队列化的 PUT 请求
    */
-  public async put(path: string, data?: any, priority = 0): Promise<string> {
+  public async put(
+    path: string,
+    callbackFunctionId: string,
+    data?: any,
+    priority = 0,
+  ): Promise<string> {
     this.logger.debug(`Queuing PUT request: ${path}`);
-    return this.addToQueue('PUT', path, data, undefined, undefined, priority);
+    return this.addToQueue(
+      'PUT',
+      path,
+      callbackFunctionId,
+      data,
+      undefined,
+      undefined,
+      priority,
+    );
   }
 
   /**
    * 队列化的 DELETE 请求
    */
-  public async delete(path: string, data?: any, priority = 0): Promise<string> {
+  public async delete(
+    path: string,
+    callbackFunctionId: string,
+    data?: any,
+    priority = 0,
+  ): Promise<string> {
     this.logger.debug(`Queuing DELETE request: ${path}`);
     return this.addToQueue(
       'DELETE',
       path,
+      callbackFunctionId,
       data,
       undefined,
       undefined,
@@ -171,10 +207,26 @@ export class OKXQueueService {
    * 队列化的通用请求方法
    */
   public async request(options: OKXQueueRequestOptions): Promise<string> {
-    const { method, path, data, queryParams, headers, priority = 0 } = options;
+    const {
+      method,
+      path,
+      data,
+      queryParams,
+      headers,
+      priority = 0,
+      callbackFunctionId,
+    } = options;
 
     this.logger.debug(`Queuing ${method} request: ${path}`);
-    return this.addToQueue(method, path, data, queryParams, headers, priority);
+    return this.addToQueue(
+      method,
+      path,
+      callbackFunctionId,
+      data,
+      queryParams,
+      headers,
+      priority,
+    );
   }
 
   /**
@@ -189,6 +241,7 @@ export class OKXQueueService {
       bar?: string;
       limit?: string;
     },
+    callbackFunctionId: string,
     priority = 0,
   ): Promise<string> {
     const queryParams: Record<string, string> = {
@@ -204,6 +257,7 @@ export class OKXQueueService {
 
     return this.get(
       '/api/v5/dex/market/historical-candles',
+      callbackFunctionId,
       queryParams,
       priority,
     );
@@ -214,6 +268,7 @@ export class OKXQueueService {
    */
   public async getSupportedChains(
     params: { chainIndex?: string } = {},
+    callbackFunctionId: string,
     priority = 0,
   ): Promise<string> {
     const queryParams: Record<string, string> = {};
@@ -223,6 +278,7 @@ export class OKXQueueService {
 
     return this.get(
       '/api/v6/dex/aggregator/supported/chain',
+      callbackFunctionId,
       queryParams,
       priority,
     );
@@ -233,13 +289,19 @@ export class OKXQueueService {
    */
   public async getAllTokens(
     params: { chainIndex: string },
+    callbackFunctionId: string,
     priority = 0,
   ): Promise<string> {
     const queryParams: Record<string, string> = {
       chainIndex: params.chainIndex,
     };
 
-    return this.get('/api/v6/dex/aggregator/all-tokens', queryParams, priority);
+    return this.get(
+      '/api/v6/dex/aggregator/all-tokens',
+      callbackFunctionId,
+      queryParams,
+      priority,
+    );
   }
 
   /**
@@ -255,6 +317,7 @@ export class OKXQueueService {
       cursor?: string;
       limit?: string;
     },
+    callbackFunctionId: string,
     priority = 0,
   ): Promise<string> {
     const queryParams: Record<string, string> = {
@@ -277,11 +340,35 @@ export class OKXQueueService {
     }
     if (params.limit) {
       queryParams.limit = params.limit;
+    } else {
+      params.limit = '100';
     }
 
     return this.get(
       '/api/v6/dex/post-transaction/transactions-by-address',
+      callbackFunctionId,
       queryParams,
+      priority,
+    );
+  }
+
+  /**
+   * 队列化的获取所有链上资产
+   */
+  public async getAllChainAssets(
+    params: {
+      address: string;
+      chains: string;
+      excludeRiskToken: string;
+    },
+    callbackFunctionId: string,
+    priority = 0,
+  ): Promise<string> {
+    params.excludeRiskToken = '0';
+    return this.get(
+      '/api/v6/dex/balance/all-token-balances-by-address',
+      callbackFunctionId,
+      params,
       priority,
     );
   }

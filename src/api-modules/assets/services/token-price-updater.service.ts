@@ -114,6 +114,7 @@ export class TokenPriceUpdaterService {
             bar: '1H',
             limit: '24',
           },
+          OKX_TRENDING_CALLBACK_FUNCTION_ID,
           5, // 高优先级
         );
 

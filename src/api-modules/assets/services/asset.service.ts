@@ -15,6 +15,9 @@ import {
   SnapshotType,
 } from '../entities/user-chain-asset-snapshot.entity';
 import { WalletService } from 'src/api-modules/user/service/wallet.service';
+import { OKXQueueService } from '../dex/okx-queue.service';
+import { OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID } from '../constants';
+import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
 
 export interface DepositRequest {
   userId: string;
@@ -69,10 +72,19 @@ export class AssetService {
     @InjectRepository(UserChainAssetSnapshot)
     private readonly userChainAssetSnapshotRepository: Repository<UserChainAssetSnapshot>,
 
+    private readonly okxQueueService: OKXQueueService,
+
     private readonly dataSource: DataSource,
 
     private readonly walletService: WalletService,
-  ) {}
+
+    private readonly queueService: RedisQueueService,
+  ) {
+    this.queueService.registerCallbackFunction(
+      OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID,
+      this.updateUserChainAssetsCallback.bind(this),
+    );
+  }
 
   /**
    * 获取用户资产
@@ -562,28 +574,20 @@ export class AssetService {
 
   async updateUserChainAssets(userId: string): Promise<UserChainAsset[]> {
     try {
-      const universalAccount = await this.walletService.getUniversalAccount(
-        userId,
+      // get user address
+      const userAddress = await this.walletService.getAAWallet(userId);
+      console.log('userAddress: ', userAddress);
+      await this.okxQueueService.getAllChainAssets(
+        {
+          address: userAddress,
+          chains: '56',
+          excludeRiskToken: '0',
+        },
+        OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID,
+        1,
       );
-      const primaryAssets = await universalAccount.getPrimaryAssets();
-      console.log('primaryAssets', primaryAssets);
 
-      const updatedAssets: UserChainAsset[] = [];
-
-      // 确保primaryAssets是数组
-      const assetsArray = Array.isArray(primaryAssets.assets)
-        ? primaryAssets.assets
-        : [];
-
-      for (const asset of assetsArray) {
-        const chainAsset = await this.updateOrCreateChainAsset(userId, asset);
-        updatedAssets.push(chainAsset);
-      }
-
-      this.logger.log(
-        `用户 ${userId} 链上资产更新完成，共更新 ${updatedAssets.length} 个资产`,
-      );
-      return updatedAssets;
+      return [];
     } catch (error) {
       this.logger.error(`更新用户 ${userId} 链上资产失败:`, error);
       throw new BadRequestException('更新链上资产失败');
@@ -626,7 +630,6 @@ export class AssetService {
         userId,
         tokenSymbol: tokenSymbol,
         tokenName: tokenSymbol,
-        tokenDecimals: assetData.decimals || 18,
         balance,
         usdValue,
         priceUsd,
@@ -659,6 +662,7 @@ export class AssetService {
    * 获取用户链上资产
    */
   async getUserChainAssets(userId: string): Promise<UserChainAsset[]> {
+    this.updateUserChainAssets(userId);
     return this.userChainAssetRepository.find({
       where: { userId },
       order: { usdValue: 'DESC' },
@@ -785,5 +789,26 @@ export class AssetService {
     }
 
     return results;
+  }
+
+  async updateUserChainAssetsCallback(result: any, requestParams: any) {
+    const tokens = result[0]?.tokenAssets;
+    const userAddress = requestParams.queryParams.address;
+
+    console.log('tokens: ', requestParams);
+    // get user id
+    const user = await this.walletService.getUserByAddress(userAddress);
+    if (!tokens || !user) {
+      return;
+    }
+    for (const token of tokens) {
+      await this.updateOrCreateChainAsset(user.id, {
+        tokenType: token.symbol,
+        price: token.tokenPrice,
+        amount: token.balance,
+        amountInUSD: parseFloat(token.balance) * parseFloat(token.tokenPrice),
+        decimals: token.decimals,
+      });
+    }
   }
 }
