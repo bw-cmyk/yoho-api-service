@@ -142,6 +142,9 @@ export class TransactionHistoryService {
         where: { txHash: txData.txHash },
       });
 
+      // ethers get transaction
+      // const transaction = await ethers.provider.getTransaction(txData.txHash);
+
       if (existingTx) {
         // 更新现有记录
         await this.transactionHistoryRepository.update(

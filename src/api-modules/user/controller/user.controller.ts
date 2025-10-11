@@ -182,7 +182,7 @@ export class UserController {
       email,
       displayName,
     );
-    return this.authService.login({ user });
+    return this.authService.login(user);
   }
 
   // @UseGuards(AppleAuthGuard)
