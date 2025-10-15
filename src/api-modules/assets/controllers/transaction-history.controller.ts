@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { TransactionHistoryService } from '../services/transaction-history.service';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
+import { Request as ExpressRequest } from 'express';
 
 export interface GetTransactionHistoryQuery {
   address: string;
@@ -31,8 +32,7 @@ export interface GetTransactionHistoryFromDBQuery {
   offset?: number;
 }
 
-@Controller('transaction-history')
-// @UseGuards(JwtAuthGuard)
+@Controller('/api/v1/transaction-history')
 export class TransactionHistoryController {
   private readonly logger = new Logger(TransactionHistoryController.name);
 
@@ -81,10 +81,10 @@ export class TransactionHistoryController {
   /**
    * 从数据库获取交易历史
    */
-  @Get('db/:address')
+  @Get('list')
+  @UseGuards(JwtAuthGuard)
   async getTransactionHistoryFromDB(
-    @Param('address') address: string,
-    @Request() req: any,
+    @Request() req: ExpressRequest,
     @Query() query: GetTransactionHistoryFromDBQuery,
   ): Promise<{
     success: boolean;
@@ -98,11 +98,8 @@ export class TransactionHistoryController {
       };
     };
   }> {
+    const { id: userId } = req.user as any;
     try {
-      this.logger.log(
-        `User ${req.user.id} requesting transaction history from DB for address: ${address}`,
-      );
-
       const begin = query.begin ? new Date(query.begin) : undefined;
       const end = query.end ? new Date(query.end) : undefined;
       const limit = query.limit || 100;
@@ -110,7 +107,7 @@ export class TransactionHistoryController {
 
       const result =
         await this.transactionHistoryService.getTransactionHistoryFromDB(
-          address,
+          userId,
           query.chainIndex,
           query.tokenContractAddress,
           begin,

@@ -67,7 +67,7 @@ export class UserController {
       username: body.username,
       verifyCode: body.verifyCode,
     });
-    return this.authService.login({ user });
+    return this.authService.login(user);
   }
 
   @Post('/email/login')
@@ -116,7 +116,7 @@ export class UserController {
   //   }
 
   //   const user = await this.userService.findOrCreateUserWithEmail(result.email);
-  //   return this.authService.login({ user });
+  //   return this.authService.login(user);
   // }
 
   // @UseGuards(TwitterAuthGuard)
@@ -138,7 +138,7 @@ export class UserController {
   //     username,
   //     displayName,
   //   );
-  //   return this.authService.login({ user });
+  //   return this.authService.login(user);
   // }
 
   // @UseGuards(DiscordAuthGuard)
@@ -159,7 +159,7 @@ export class UserController {
   //     id,
   //     `${username}#${discriminator}`,
   //   );
-  //   return this.authService.login({ user });
+  //   return this.authService.login(user);
   // }
 
   @UseGuards(GoogleAuthGuard)
@@ -182,7 +182,7 @@ export class UserController {
       email,
       displayName,
     );
-    return this.authService.login(user);
+    return this.authService.login({ user });
   }
 
   // @UseGuards(AppleAuthGuard)
@@ -200,7 +200,7 @@ export class UserController {
   //   }
 
   //   const user = await this.userService.findOrCreateUserWithApple(id, email);
-  //   return this.authService.login({ user });
+  //   return this.authService.login(user);
   // }
 
   // @UseGuards(FacebookAuthGuard)
@@ -218,7 +218,7 @@ export class UserController {
   //     id,
   //     displayName,
   //   );
-  //   return this.authService.login({ user });
+  //   return this.authService.login(user);
   // }
 
   // @UseGuards(GoogleAuthGuard)

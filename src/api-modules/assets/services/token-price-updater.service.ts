@@ -7,7 +7,6 @@ import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service'
 import { OKXQueueService } from '../dex/okx-queue.service';
 import {
   OKX_TRENDING_CALLBACK_FUNCTION_ID,
-  OKX_PRICE_UPDATE_CALLBACK_FUNCTION_ID,
   OKX_TOKEN_SYNC_CALLBACK_FUNCTION_ID,
 } from '../constants';
 
@@ -27,16 +26,6 @@ export class TokenPriceUpdaterService {
    * 初始化回调函数
    */
   private initializeCallbacks(): void {
-    // 注册价格更新回调
-    this.queueService.registerCallbackFunction(
-      OKX_PRICE_UPDATE_CALLBACK_FUNCTION_ID,
-      async (result: any, requestParams: any) => {
-        if (result && Array.isArray(result)) {
-          await this.updateTokenTrending(result, requestParams);
-        }
-      },
-    );
-
     // 注册token同步回调
     this.queueService.registerCallbackFunction(
       OKX_TOKEN_SYNC_CALLBACK_FUNCTION_ID,

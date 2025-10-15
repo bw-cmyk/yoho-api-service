@@ -242,6 +242,21 @@ export class TokenService {
       const syncedTokens: Token[] = [];
 
       for (const okxToken of okxTokens) {
+        if (
+          ![
+            'BNB',
+            'USDC',
+            'DOGE',
+            'ETH',
+            'USDT',
+            'VELO',
+            'XTER',
+            'ASTER',
+          ].includes(okxToken.tokenSymbol)
+        ) {
+          continue;
+        }
+
         try {
           // 检查token是否已存在
           let token = await this.tokenRepository.findOne({
@@ -298,7 +313,6 @@ export class TokenService {
       throw new BadRequestException('Failed to sync tokens from OKX');
     }
   }
-
 
   /**
    * 删除token

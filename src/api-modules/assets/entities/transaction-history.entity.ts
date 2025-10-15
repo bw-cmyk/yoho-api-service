@@ -9,9 +9,11 @@ import {
 import { Decimal } from 'decimal.js';
 
 export enum TransactionItype {
-  OUTER_MAIN_CHAIN = '0', // 外层主链币转移
-  INNER_MAIN_CHAIN = '1', // 合约内层主链币转移
-  TOKEN_TRANSFER = '2', // token转移
+  OUTER_MAIN_CHAIN = 'outer_main_chain', // 外层主链币转移
+  INNER_MAIN_CHAIN = 'inner_main_chain', // 合约内层主链币转移
+  TOKEN_TRANSFER = 'token_transfer', // token转移
+  SWAP = 'swap', // 交易
+  OTHER = 'other', // 其他
 }
 
 export enum TransactionStatus {
@@ -116,30 +118,6 @@ export class TransactionHistory {
   })
   costBasis: Decimal; // 成本基础（买入价格）
 
-  @Column({
-    type: 'decimal',
-    precision: 36,
-    scale: 18,
-    nullable: true,
-    transformer: {
-      to: (value: Decimal) => value?.toString(),
-      from: (value: string) => (value ? new Decimal(value) : null),
-    },
-  })
-  realizedPnl: Decimal; // 已实现盈亏
-
-  @Column({
-    type: 'decimal',
-    precision: 36,
-    scale: 18,
-    nullable: true,
-    transformer: {
-      to: (value: Decimal) => value?.toString(),
-      from: (value: string) => (value ? new Decimal(value) : null),
-    },
-  })
-  unrealizedPnl: Decimal; // 未实现盈亏
-
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>; // 额外的元数据
 
@@ -159,7 +137,7 @@ export class TransactionHistory {
 
     const sellValue = sellPrice.mul(this.amount);
     const costValue = this.costBasis.mul(this.amount);
-    
+
     return sellValue.minus(costValue);
   }
 
@@ -173,7 +151,7 @@ export class TransactionHistory {
 
     const currentValue = currentPrice.mul(this.amount);
     const costValue = this.costBasis.mul(this.amount);
-    
+
     return currentValue.minus(costValue);
   }
 
@@ -190,8 +168,6 @@ export class TransactionHistory {
       amount: this.amount,
       txTime: this.txTime,
       txStatus: this.txStatus,
-      realizedPnl: this.realizedPnl,
-      unrealizedPnl: this.unrealizedPnl,
       costBasis: this.costBasis,
     };
   }

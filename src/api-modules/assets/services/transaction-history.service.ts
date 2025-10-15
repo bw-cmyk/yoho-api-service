@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { JsonRpcProvider } from 'ethers';
 import { Repository } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import {
@@ -11,6 +12,8 @@ import { OKXQueueService } from '../dex/okx-queue.service';
 import { TokenService } from './token.service';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
 import { OKX_TRANSACTION_HISTORY_CALLBACK_FUNCTION_ID } from '../constants';
+import { extractParamsFromTxByTopic } from '../dex/bsc/pancakeParser';
+import { UserService } from 'src/api-modules/user/service/user.service';
 
 export interface TransactionHistoryParams {
   address: string;
@@ -49,15 +52,18 @@ export interface TokenPosition {
 @Injectable()
 export class TransactionHistoryService {
   private readonly logger = new Logger(TransactionHistoryService.name);
+  private readonly provider: JsonRpcProvider;
 
   constructor(
     @InjectRepository(TransactionHistory)
     private readonly transactionHistoryRepository: Repository<TransactionHistory>,
+    private readonly userService: UserService,
     private readonly okxQueueService: OKXQueueService,
     private readonly tokenService: TokenService,
     private readonly queueService: RedisQueueService,
   ) {
     this.initializeCallbacks();
+    this.provider = new JsonRpcProvider(process.env.RPC_URL);
   }
 
   /**
@@ -119,7 +125,7 @@ export class TransactionHistoryService {
 
     try {
       for (const txData of transactions) {
-        await this.saveOrUpdateTransaction(txData);
+        await this.saveOrUpdateTransaction(address, txData);
       }
 
       this.logger.log(
@@ -136,32 +142,27 @@ export class TransactionHistoryService {
   /**
    * 保存或更新交易记录
    */
-  private async saveOrUpdateTransaction(txData: any): Promise<void> {
+  private async saveOrUpdateTransaction(
+    address: string,
+    txData: any,
+  ): Promise<void> {
     try {
       const existingTx = await this.transactionHistoryRepository.findOne({
         where: { txHash: txData.txHash },
       });
 
-      // ethers get transaction
-      // const transaction = await ethers.provider.getTransaction(txData.txHash);
-
-      if (existingTx) {
-        // 更新现有记录
-        await this.transactionHistoryRepository.update(
-          { txHash: txData.txHash },
-          {
-            txStatus: txData.txStatus,
-            hitBlacklist: txData.hitBlacklist,
-            updatedAt: new Date(),
-          },
+      if (!existingTx) {
+        // ethers get transaction
+        const params = await extractParamsFromTxByTopic(
+          txData.txHash,
+          this.provider,
         );
-      } else {
         // 创建新记录
         const transaction = this.transactionHistoryRepository.create({
-          address: txData.address || '',
+          address: address,
           chainIndex: txData.chainIndex,
           txHash: txData.txHash,
-          itype: txData.itype as TransactionItype,
+          itype: params ? TransactionItype.SWAP : TransactionItype.OTHER,
           methodId: txData.methodId,
           nonce: txData.nonce,
           txTime: parseInt(txData.txTime),
@@ -173,6 +174,7 @@ export class TransactionHistoryService {
           txFee: txData.txFee ? new Decimal(txData.txFee) : null,
           txStatus: txData.txStatus as TransactionStatus,
           hitBlacklist: txData.hitBlacklist || false,
+          metadata: params,
         });
 
         await this.transactionHistoryRepository.save(transaction);
@@ -186,7 +188,7 @@ export class TransactionHistoryService {
    * 从数据库获取交易历史
    */
   async getTransactionHistoryFromDB(
-    address: string,
+    userId: string,
     chainIndex?: string,
     tokenContractAddress?: string,
     begin?: Date,
@@ -197,9 +199,10 @@ export class TransactionHistoryService {
     transactions: TransactionHistory[];
     total: number;
   }> {
+    const user = await this.userService.getUser(userId);
     const queryBuilder = this.transactionHistoryRepository
       .createQueryBuilder('tx')
-      .where('tx.address = :address', { address });
+      .where('tx.address = :address', { address: user.evmAAWallet });
 
     if (chainIndex) {
       queryBuilder.andWhere('tx.chainIndex = :chainIndex', { chainIndex });
@@ -383,12 +386,13 @@ export class TransactionHistoryService {
    * 判断是否为买入交易
    */
   private isBuyTransaction(tx: TransactionHistory): boolean {
-    // 这里需要根据具体的业务逻辑来判断
-    // 简单示例：根据交易类型和地址判断
-    return (
-      tx.itype === TransactionItype.TOKEN_TRANSFER &&
-      tx.to.some((output) => output.address === tx.address)
-    );
+    // // 这里需要根据具体的业务逻辑来判断
+    // // 简单示例：根据交易类型和地址判断
+    // return (
+    //   tx.itype === TransactionItype.TOKEN_TRANSFER &&
+    //   tx.to.some((output) => output.address === tx.address)
+    // );
+    return false;
   }
 
   /**

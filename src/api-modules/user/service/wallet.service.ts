@@ -35,11 +35,12 @@ export class WalletService {
     const endpoint = this.configService.get('PARTICLE_API_ENDPOINT');
     const projectId = this.configService.get('PARTICLE_PROJECT_ID');
     const serverKey = this.configService.get('PARTICLE_SERVER_KEY');
+
     const userInfo = await axios.post<ParticleUserInfoResponse>(
       endpoint,
       {
         jsonrpc: '2.0',
-        id: 0,
+        id: 1,
         method: 'getUserInfo',
         params: [particleUid, particleAuthToken],
       },
