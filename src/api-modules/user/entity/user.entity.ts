@@ -126,6 +126,7 @@ export class User {
 
   @Column({
     name: 'botim_user_id',
+    nullable: true,
   })
   botId: string;
 
