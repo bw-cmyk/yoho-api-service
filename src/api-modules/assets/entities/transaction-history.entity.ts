@@ -169,6 +169,7 @@ export class TransactionHistory {
       txTime: this.txTime,
       txStatus: this.txStatus,
       costBasis: this.costBasis,
+      metadata: this.metadata,
     };
   }
 }

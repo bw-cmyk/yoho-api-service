@@ -13,7 +13,7 @@ import { UserModule } from 'src/api-modules/user/user.module';
     }),
     UserModule,
   ],
-  providers: [EventsGateway, BinanceIndexService, GameService],
-  exports: [BinanceIndexService, GameService],
+  providers: [BinanceIndexService, GameService, EventsGateway],
+  // exports: [BinanceIndexService, GameService],
 })
 export class GameModule {}

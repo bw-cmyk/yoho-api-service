@@ -1,10 +1,19 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import * as WebSocket from 'ws';
+import axios from 'axios';
 
 export interface BinanceIndexPriceData {
   symbol: string;
   price: string;
   timestamp: number;
+}
+
+export interface HistoricalPriceData {
+  symbol: string;
+  price: string;
+  timestamp: number;
+  openTime: number;
+  closeTime: number;
 }
 
 export interface BinanceIndexConfig {
@@ -33,10 +42,8 @@ export class BinanceIndexService implements OnModuleDestroy {
     healthCheckInterval: 2000,
   };
 
-  constructor(config?: BinanceIndexConfig) {
-    if (config) {
-      this.config = { ...this.config, ...config };
-    }
+  constructor() {
+    this.config = { ...this.config };
   }
 
   /**
@@ -85,6 +92,74 @@ export class BinanceIndexService implements OnModuleDestroy {
       lastMessageTime: this.lastMessageTime,
       streams: this.config.streams,
     };
+  }
+
+  /**
+   * 获取历史价格数据
+   */
+  async getHistoricalPrices(
+    symbol = 'BTCUSDT',
+    interval = '1m',
+    limit = 100,
+    endTime?: number,
+  ): Promise<HistoricalPriceData[]> {
+    try {
+      this.logger.log(`Fetching historical prices for ${symbol}...`);
+
+      const baseUrl = 'https://api.binance.com/api/v3/klines';
+      const params = new URLSearchParams({
+        symbol,
+        interval,
+        limit: limit.toString(),
+      });
+
+      if (endTime) {
+        params.append('endTime', endTime.toString());
+      }
+
+      const response = await axios.get(`${baseUrl}?${params}`, {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const klines = response.data;
+      const historicalData: HistoricalPriceData[] = klines.map(
+        (kline: any[]) => ({
+          symbol,
+          price: kline[4], // 收盘价
+          timestamp: kline[6], // 收盘时间
+          openTime: kline[0], // 开盘时间
+          closeTime: kline[6], // 收盘时间
+        }),
+      );
+
+      this.logger.log(
+        `Successfully fetched ${historicalData.length} historical price records`,
+      );
+      return historicalData;
+    } catch (error) {
+      this.logger.error('Failed to fetch historical prices:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取最近的历史价格数据（用于游戏启动时显示历史趋势）
+   */
+  async getRecentHistoricalPrices(
+    symbol = 'BTCUSDT',
+    hours = 24,
+  ): Promise<HistoricalPriceData[]> {
+    const endTime = Date.now();
+    const limit = Math.min(hours * 60, 1000); // 限制最大1000条记录
+
+    return this.getHistoricalPrices(symbol, '1m', limit, endTime);
   }
 
   /**

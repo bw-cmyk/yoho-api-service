@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   WebSocketGateway,
@@ -15,6 +15,7 @@ import {
 } from './binance-index.service';
 import { GameService } from './game.service';
 import { GamePhase, BetDirection, BetRequest } from './game.types';
+import { WsGuard } from 'src/common-modules/auth/ws.guard';
 
 @WebSocketGateway({
   cors: {
@@ -34,7 +35,9 @@ export class EventsGateway {
     protected readonly userService: UserService,
     private readonly binanceIndexService: BinanceIndexService,
     private readonly gameService: GameService,
-  ) {}
+  ) {
+    this.setup();
+  }
 
   async setup() {
     // 启动游戏服务
@@ -42,6 +45,9 @@ export class EventsGateway {
 
     // 启动币安指数价格服务
     await this.binanceIndexService.start();
+
+    // 获取历史价格数据
+    await this.loadHistoricalPrices();
 
     // 注册价格回调
     this.binanceIndexService.addPriceCallback((data: BinanceIndexPriceData) => {
@@ -56,6 +62,32 @@ export class EventsGateway {
   }
 
   /**
+   * 加载历史价格数据
+   */
+  private async loadHistoricalPrices(): Promise<void> {
+    try {
+      this.logger.log('Loading historical price data...');
+
+      // 获取最近24小时的历史价格数据
+      const historicalPrices =
+        await this.binanceIndexService.getRecentHistoricalPrices('BTCUSDT', 24);
+
+      // 将历史价格数据存储到游戏服务中
+      this.gameService.setHistoricalPrices(historicalPrices);
+
+      this.logger.log(
+        `Successfully loaded ${historicalPrices.length} historical price records`,
+      );
+
+      // 广播历史价格数据给所有连接的客户端
+      this.broadcastHistoricalPrices();
+    } catch (error) {
+      this.logger.error('Failed to load historical prices:', error);
+      // 即使历史价格加载失败，游戏仍然可以继续运行
+    }
+  }
+
+  /**
    * 启动游戏循环
    */
   private startGameLoop(): void {
@@ -65,7 +97,7 @@ export class EventsGateway {
 
     this.gameLoopInterval = setInterval(() => {
       this.gameLoop();
-    }, 100); // 每100ms检查一次
+    }, 1000); // 每100ms检查一次
   }
 
   /**
@@ -132,6 +164,7 @@ export class EventsGateway {
         this.logger.log(
           `Entered settling phase. Closed price: ${this.currentBtcPrice}`,
         );
+        this.settleGame();
         break;
     }
 
@@ -200,6 +233,22 @@ export class EventsGateway {
   }
 
   /**
+   * 广播历史价格数据
+   */
+  private broadcastHistoricalPrices(): void {
+    const historicalPrices = this.gameService.getRecentHistoricalPrices(100);
+
+    this.server?.emit('historicalPrices', {
+      prices: historicalPrices,
+      count: historicalPrices.length,
+    });
+
+    this.logger.log(
+      `Broadcasted ${historicalPrices.length} historical price records`,
+    );
+  }
+
+  /**
    * 处理 BTC 价格更新
    */
   private handleBtcPriceUpdate(data: BinanceIndexPriceData): void {
@@ -212,7 +261,7 @@ export class EventsGateway {
       timestamp: data.timestamp,
     });
 
-    this.logger.debug(`BTC Price updated: ${data.price}`);
+    // this.logger.debug(`BTC Price updated: ${data.price}`);
   }
 
   /**
@@ -246,13 +295,16 @@ export class EventsGateway {
    * 处理投注请求
    */
   @SubscribeMessage('placeBet')
+  @UseGuards(WsGuard)
   handlePlaceBet(
     @ConnectedSocket() client: Socket,
     @MessageBody()
     data: { userId: string; direction: BetDirection; amount: number },
   ): void {
+    const user = client.handshake.auth.user;
+
     const betRequest: BetRequest = {
-      userId: data.userId,
+      userId: user.sub,
       direction: data.direction,
       amount: data.amount,
     };
@@ -316,6 +368,62 @@ export class EventsGateway {
   }
 
   /**
+   * 获取历史价格数据
+   */
+  @SubscribeMessage('getHistoricalPrices')
+  handleGetHistoricalPrices(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { limit?: number },
+  ): void {
+    const limit = data.limit || 100;
+    const historicalPrices = this.gameService.getRecentHistoricalPrices(limit);
+
+    client.emit('historicalPrices', {
+      prices: historicalPrices,
+      count: historicalPrices.length,
+      limit,
+    });
+  }
+
+  /**
+   * 刷新历史价格数据
+   */
+  @SubscribeMessage('refreshHistoricalPrices')
+  async handleRefreshHistoricalPrices(
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    try {
+      this.logger.log('Refreshing historical prices...');
+
+      // 重新获取历史价格数据
+      const historicalPrices =
+        await this.binanceIndexService.getRecentHistoricalPrices('BTCUSDT', 24);
+
+      // 更新游戏服务中的历史价格数据
+      this.gameService.setHistoricalPrices(historicalPrices);
+
+      // 发送给请求的客户端
+      client.emit('historicalPrices', {
+        prices: historicalPrices,
+        count: historicalPrices.length,
+      });
+
+      // 广播给所有客户端
+      this.broadcastHistoricalPrices();
+
+      this.logger.log(
+        `Refreshed ${historicalPrices.length} historical price records`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to refresh historical prices:', error);
+      client.emit('error', {
+        message: 'Failed to refresh historical prices',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * 发送游戏状态给特定客户端
    */
   private sendGameStatusToClient(client: Socket): void {
@@ -346,6 +454,21 @@ export class EventsGateway {
       },
       platformFee: gameStatus.platformFee,
       minBetAmount: gameStatus.minBetAmount,
+    });
+
+    // 同时发送历史价格数据
+    this.sendHistoricalPricesToClient(client);
+  }
+
+  /**
+   * 发送历史价格数据给特定客户端
+   */
+  private sendHistoricalPricesToClient(client: Socket): void {
+    const historicalPrices = this.gameService.getRecentHistoricalPrices(100);
+
+    client.emit('historicalPrices', {
+      prices: historicalPrices,
+      count: historicalPrices.length,
     });
   }
 

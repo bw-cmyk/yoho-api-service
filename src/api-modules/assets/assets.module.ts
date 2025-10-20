@@ -10,9 +10,11 @@ import { AssetService } from './services/asset.service';
 import { TokenService } from './services/token.service';
 import { TokenPriceUpdaterService } from './services/token-price-updater.service';
 import { TransactionHistoryService } from './services/transaction-history.service';
+import { DexService } from './services/dex.service';
 import { AssetController } from './controllers/asset.controller';
 import { TokenController } from './controllers/token.controller';
 import { TransactionHistoryController } from './controllers/transaction-history.controller';
+import { DexController } from './controllers/dex.controller';
 import { UserModule } from '../user/user.module';
 import { OKXDEX } from './dex/okx';
 import { OKXQueueService } from './dex/okx-queue.service';
@@ -36,6 +38,7 @@ import { QueueModule } from 'src/common-modules/queue/queue.module';
     TokenService,
     TokenPriceUpdaterService,
     TransactionHistoryService,
+    DexService,
     OKXQueueService,
     {
       provide: OKXDEX,
@@ -44,7 +47,12 @@ import { QueueModule } from 'src/common-modules/queue/queue.module';
       },
     },
   ],
-  controllers: [AssetController, TokenController, TransactionHistoryController],
+  controllers: [
+    AssetController,
+    TokenController,
+    TransactionHistoryController,
+    DexController,
+  ],
   exports: [AssetService, TokenService],
 })
 export class AssetsModule {}

@@ -76,3 +76,11 @@ export interface GameConfig {
   minBetAmount: number; // 最低投注金额 (USDT)
   supportedAssets: string[]; // 支持的资产
 }
+
+export interface HistoricalPriceData {
+  symbol: string;
+  price: string;
+  timestamp: number;
+  openTime: number;
+  closeTime: number;
+}

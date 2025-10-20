@@ -151,7 +151,17 @@ export class TransactionHistoryService {
         where: { txHash: txData.txHash },
       });
 
-      if (!existingTx) {
+      if (existingTx) {
+        // 更新现有记录
+        await this.transactionHistoryRepository.update(
+          { txHash: txData.txHash },
+          {
+            txStatus: txData.txStatus,
+            hitBlacklist: txData.hitBlacklist,
+            updatedAt: new Date(),
+          },
+        );
+      } else {
         // ethers get transaction
         const params = await extractParamsFromTxByTopic(
           txData.txHash,

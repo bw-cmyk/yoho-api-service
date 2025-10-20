@@ -7,3 +7,4 @@ export const OKX_TRANSACTION_HISTORY_CALLBACK_FUNCTION_ID =
   'okx-transaction-history-callback';
 export const OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID =
   'okx-all-chain-assets-callback';
+export const OKX_SWAP_QUOTE_CALLBACK_FUNCTION_ID = 'okx-swap-quote-callback';

@@ -55,6 +55,35 @@ export interface TokenData {
   tokenSymbol: string; // 币种简称 (如: USDT)
 }
 
+export interface SwapQuoteParams {
+  chainIndex: string;
+  fromTokenAddress: string;
+  toTokenAddress: string;
+  amount: string;
+  slippagePercent?: string; // 默认 "0.5"
+}
+
+export interface SwapQuoteData {
+  buyAmount: string;
+  sellAmount: string;
+  buyTokenAddress: string;
+  sellTokenAddress: string;
+  buyTokenSymbol: string;
+  sellTokenSymbol: string;
+  buyTokenDecimals: string;
+  sellTokenDecimals: string;
+  priceImpact: string;
+  gas: string;
+  estimatedGas: string;
+  gasPrice: string;
+  txValue: string;
+  data: string;
+  routerContract: string;
+  routerContractAbi: any[];
+  allowanceTarget: string;
+  allowanceTargetAbi: any[];
+}
+
 export class OKXDEX {
   private readonly config: OKXConfig;
 
@@ -287,6 +316,26 @@ export class OKXDEX {
 
     return this.get<TokenData[]>(
       '/api/v6/dex/aggregator/all-tokens',
+      queryParams,
+    );
+  }
+
+  /**
+   * 获取 DEX 聚合器交换报价
+   * @param params 请求参数
+   * @returns 交换报价数据
+   */
+  public async getSwapQuote(params: SwapQuoteParams): Promise<SwapQuoteData[]> {
+    const queryParams: Record<string, string> = {
+      chainIndex: params.chainIndex,
+      fromTokenAddress: params.fromTokenAddress,
+      toTokenAddress: params.toTokenAddress,
+      amount: params.amount,
+      slippagePercent: params.slippagePercent || '0.5',
+    };
+
+    return this.get<SwapQuoteData[]>(
+      '/api/v5/dex/aggregator/quote',
       queryParams,
     );
   }

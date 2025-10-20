@@ -4,12 +4,12 @@ import {
   BetDirection,
   GameResult,
   Bet,
-  BettingPool,
   GameRound,
   BettingResult,
   GameStatus,
   BetRequest,
   GameConfig,
+  HistoricalPriceData,
 } from './game.types';
 
 @Injectable()
@@ -17,6 +17,7 @@ export class GameService {
   private readonly logger = new Logger(GameService.name);
   private currentRound: GameRound | null = null;
   private gameHistory: GameRound[] = [];
+  private historicalPrices: HistoricalPriceData[] = [];
   private isActive = false;
 
   private readonly config: GameConfig = {
@@ -25,7 +26,7 @@ export class GameService {
     settlingDuration: 3 * 1000, // 3秒
     platformFee: 0.03, // 3%
     minBetAmount: 1, // 1 USDT
-    supportedAssets: ['BTC', 'ETH', 'SOL', 'BNB'],
+    supportedAssets: ['BTC'],
   };
 
   /**
@@ -382,5 +383,47 @@ export class GameService {
     }
 
     return { shouldAdvance: false };
+  }
+
+  /**
+   * 设置历史价格数据
+   */
+  setHistoricalPrices(prices: HistoricalPriceData[]): void {
+    this.historicalPrices = prices;
+    this.logger.log(`Loaded ${prices.length} historical price records`);
+  }
+
+  /**
+   * 获取历史价格数据
+   */
+  getHistoricalPrices(): HistoricalPriceData[] {
+    return this.historicalPrices;
+  }
+
+  /**
+   * 获取最近的历史价格数据（用于显示趋势）
+   */
+  getRecentHistoricalPrices(limit = 100): HistoricalPriceData[] {
+    return this.historicalPrices.slice(-limit);
+  }
+
+  /**
+   * 添加新的历史价格数据
+   */
+  addHistoricalPrice(priceData: HistoricalPriceData): void {
+    this.historicalPrices.push(priceData);
+
+    // 保持最多1000条记录，删除最旧的记录
+    if (this.historicalPrices.length > 1000) {
+      this.historicalPrices = this.historicalPrices.slice(-1000);
+    }
+  }
+
+  /**
+   * 清空历史价格数据
+   */
+  clearHistoricalPrices(): void {
+    this.historicalPrices = [];
+    this.logger.log('Historical prices cleared');
   }
 }

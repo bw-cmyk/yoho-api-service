@@ -1,10 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OKXDEX, OKXRequestOptions } from './okx';
+import { OKXDEX, OKXRequestOptions, SwapQuoteParams } from './okx';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
-import {
-  OKX_REQUEST_FUNCTION_ID,
-  OKX_TRENDING_CALLBACK_FUNCTION_ID,
-} from '../constants';
+import { OKX_REQUEST_FUNCTION_ID } from '../constants';
 
 export interface OKXQueueRequestOptions extends OKXRequestOptions {
   priority?: number;
@@ -369,6 +366,30 @@ export class OKXQueueService {
       '/api/v6/dex/balance/all-token-balances-by-address',
       callbackFunctionId,
       params,
+      priority,
+    );
+  }
+
+  /**
+   * 队列化的获取交换报价
+   */
+  public async getSwapQuote(
+    params: SwapQuoteParams,
+    callbackFunctionId: string,
+    priority = 0,
+  ): Promise<string> {
+    const queryParams: Record<string, string> = {
+      chainIndex: params.chainIndex,
+      fromTokenAddress: params.fromTokenAddress,
+      toTokenAddress: params.toTokenAddress,
+      amount: params.amount,
+      slippagePercent: params.slippagePercent || '0.5',
+    };
+
+    return this.get(
+      '/api/v5/dex/aggregator/quote',
+      callbackFunctionId,
+      queryParams,
       priority,
     );
   }

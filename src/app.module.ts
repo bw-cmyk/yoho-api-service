@@ -14,6 +14,7 @@ import { PayModule } from './api-modules/pay/pay.module';
 import { AssetsModule } from './api-modules/assets/assets.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { QueueModule } from './common-modules/queue/queue.module';
+import { GameModule } from './websocket-modules/btc-prediction/game.module';
 
 const ENV = process.env.NODE_ENV || 'development';
 const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
@@ -44,6 +45,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     PayModule,
     QueueModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),
+    GameModule,
   ],
   controllers: [JwkController],
   providers: [
