@@ -19,25 +19,6 @@ logger.setLogLevels(logLevels);
 console.log(`current env: ${ENV}`);
 
 async function bootstrap() {
-  if (process.env.SENTRY_DSN) {
-    Sentry.init({
-      dsn: process.env.SENTRY_DSN,
-      debug: ENV !== 'production',
-      environment: ENV,
-      tracesSampleRate: 1.0,
-      beforeSend: (event) => {
-        event.exception.values = event.exception.values.filter((exception) => {
-          return !['UnauthorizedException', 'BadRequestException'].includes(
-            exception.type,
-          );
-        });
-        if (event.exception.values.length === 0) {
-          return null;
-        }
-        return event;
-      },
-    });
-  }
   const app = await NestFactory.create(AppModule, {
     logger,
   });

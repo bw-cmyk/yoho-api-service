@@ -57,7 +57,7 @@ export class EventsGateway {
     await this.binanceIndexService.start();
 
     // 获取历史价格数据
-    await this.loadHistoricalPrices();
+    // await this.loadHistoricalPrices();
 
     // 注册价格回调
     this.binanceIndexService.addPriceCallback((data: BinanceIndexPriceData) => {
