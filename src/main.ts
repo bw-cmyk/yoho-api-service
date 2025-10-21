@@ -16,8 +16,6 @@ const logLevels: LogLevel[] = ['error', 'warn', 'log', 'debug', 'verbose'];
 const logger = new SentryLogger();
 logger.setLogLevels(logLevels);
 
-console.log(`current env: ${ENV}`);
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger,
@@ -53,13 +51,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT || 3000);
 }
-
-async function bootstrapWebsocket() {
-  const app = await NestFactory.create(AppModule, {
-    logger,
-  });
-
-  await app.listen(process.env.PORT || 3000);
-}
-
-process.env.ENABLE_GAME_SOCKET === '1' ? bootstrapWebsocket() : bootstrap();
+bootstrap();

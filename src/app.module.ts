@@ -54,7 +54,7 @@ export class AppModule {
 
   configure(consumer: MiddlewareConsumer) {
     this.idService.init();
-  //   consumer.apply(HttpLoggerMiddleware).forRoutes('*');
-  //   consumer.apply(AuthMiddleware).forRoutes('api/v1/inner');
+    consumer.apply(HttpLoggerMiddleware).forRoutes('api/');
+    consumer.apply(AuthMiddleware).forRoutes('api/v1/inner');
   }
 }

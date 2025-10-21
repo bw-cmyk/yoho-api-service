@@ -18,7 +18,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     const user = jwt.decode(authorization);
     this.logger.log(
       `[HTTP Request] uid: ${user?.sub} path: ${
-        req.path
+        req.url
       } requestId: ${requestId} query: ${JSON.stringify(
         omit(req.query, ['password']),
       )} body: ${JSON.stringify(omit(req.body, ['password']))}`,

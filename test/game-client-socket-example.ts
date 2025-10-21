@@ -7,16 +7,14 @@ export class GameClient {
   private userId: string;
 
   constructor(
-    serverUrl = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com/',
+    serverUrl = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com',
     userId: string,
   ) {
     this.userId = userId;
     this.socket = io(serverUrl, {
+      path: '/ws',
       transports: ['websocket', 'polling'],
       timeout: 10000,
-      auth: {
-        token: '', // 如果用户登录了 就要用用户的 auth_token 来连接
-      },
     });
 
     this.setupEventListeners();
@@ -254,7 +252,7 @@ export class GameClient {
 export async function simpleClientExample() {
   console.log('=== 简单客户端示例 ===\n');
 
-  const client = new GameClient('http://localhost:3000', 'simple-user');
+  const client = new GameClient('https://yoho-api-service-dev-ff05bf602cab.herokuapp.com/', 'simple-user');
 
   try {
     // 连接

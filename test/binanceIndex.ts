@@ -29,7 +29,7 @@ function connect() {
       // 判断是否为组合流格式 {"stream": "...", "data": {...}}
       const data = msg.data || msg;
       if (data.e === 'index') {
-        console.log(`📈 [${data.s}] Index Price: ${data.p}`);
+        // console.log(`📈 [${data.s}] Index Price: ${data.p}`);
       } else if (msg.result === null && msg.id) {
         console.log('✅ Subscription confirmed');
       }

@@ -221,9 +221,9 @@ export class BinanceIndexService implements OnModuleDestroy {
           timestamp: data.E || Date.now(),
         };
 
-        this.logger.debug(
-          `📈 [${priceData.symbol}] Index Price: ${priceData.price}`,
-        );
+        // this.logger.debug(
+        //   `📈 [${priceData.symbol}] Index Price: ${priceData.price}`,
+        // );
 
         // 调用所有注册的回调函数
         this.priceCallbacks.forEach((callback) => {
