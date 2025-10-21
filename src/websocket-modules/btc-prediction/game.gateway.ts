@@ -18,6 +18,7 @@ import { GamePhase, BetDirection, BetRequest } from './game.types';
 import { WsGuard } from 'src/common-modules/auth/ws.guard';
 
 @WebSocketGateway({
+  path: '/ws',
   cors: {
     origin: '*',
   },
