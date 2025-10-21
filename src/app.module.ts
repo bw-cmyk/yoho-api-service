@@ -37,7 +37,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
       }),
       inject: [ConfigService],
     }),
-    RavenModule,
+    // RavenModule,
     AuthModule,
     UserModule,
     AssetsModule,
