@@ -53,4 +53,13 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT || 3000);
 }
-bootstrap();
+
+async function bootstrapWebsocket() {
+  const app = await NestFactory.create(AppModule, {
+    logger,
+  });
+
+  await app.listen(process.env.PORT || 3000);
+}
+
+process.env.ENABLE_GAME_SOCKET === '1' ? bootstrapWebsocket() : bootstrap();
