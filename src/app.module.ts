@@ -48,12 +48,6 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     GameModule,
   ],
   controllers: [JwkController],
-  providers: [
-    {
-      provide: APP_INTERCEPTOR,
-      useValue: new RavenInterceptor(),
-    },
-  ],
 })
 export class AppModule {
   constructor(private idService: IdService) {}
