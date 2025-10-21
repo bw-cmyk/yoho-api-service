@@ -39,6 +39,16 @@ export class EventsGateway {
     this.setup();
   }
 
+  afterInit() {
+    this.logger.log('socket Initialized');
+  }
+
+  handleConnection(client: any, ...args: any[]) {
+    this.logger.debug(
+      `Number of connected clients: ${this.server.engine.clientsCount}`,
+    );
+  }
+
   async setup() {
     // 启动游戏服务
     this.gameService.start();

@@ -6,7 +6,10 @@ export class GameClient {
   private isConnected = false;
   private userId: string;
 
-  constructor(serverUrl = 'http://localhost:3000', userId: string) {
+  constructor(
+    serverUrl = 'wss://yoho-api-service-dev-ff05bf602cab.herokuapp.com',
+    userId: string,
+  ) {
     this.userId = userId;
     this.socket = io(serverUrl, {
       transports: ['websocket', 'polling'],

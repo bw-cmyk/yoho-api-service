@@ -11,6 +11,8 @@ import {
   GameConfig,
   HistoricalPriceData,
 } from './game.types';
+import { AssetService } from 'src/api-modules/assets/services/asset.service';
+import { Currency } from 'src/api-modules/assets/entities/user-asset.entity';
 
 @Injectable()
 export class GameService {
@@ -29,6 +31,7 @@ export class GameService {
     supportedAssets: ['BTC'],
   };
 
+  constructor(private readonly assetService: AssetService) {}
   /**
    * 启动游戏服务
    */
@@ -137,6 +140,14 @@ export class GameService {
       timestamp: Date.now(),
       gameRoundId: this.currentRound.id,
     };
+
+    // await this.assetService.bet({
+    //   userId: bet.userId,
+    //   game_id: 'BTC_PREDICTION',
+    //   currency: Currency.USD,
+    //   amount: bet.amount,
+    //   metadata: bet,
+    // })
 
     // 添加到相应的投注池
     if (betRequest.direction === BetDirection.UP) {
