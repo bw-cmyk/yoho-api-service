@@ -7,7 +7,7 @@ export class GameClient {
   private userId: string;
 
   constructor(
-    serverUrl = 'wss://yoho-api-service-dev-ff05bf602cab.herokuapp.com',
+    serverUrl = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com/',
     userId: string,
   ) {
     this.userId = userId;

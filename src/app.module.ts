@@ -58,9 +58,9 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
 export class AppModule {
   constructor(private idService: IdService) {}
 
-  configure(consumer: MiddlewareConsumer) {
-    this.idService.init();
-    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
-    consumer.apply(AuthMiddleware).forRoutes('api/v1/inner');
-  }
+  // configure(consumer: MiddlewareConsumer) {
+  //   this.idService.init();
+  //   consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+  //   consumer.apply(AuthMiddleware).forRoutes('api/v1/inner');
+  // }
 }

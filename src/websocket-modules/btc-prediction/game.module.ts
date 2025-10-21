@@ -9,7 +9,7 @@ import { AssetsModule } from 'src/api-modules/assets/assets.module';
 @Module({
   imports: [
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
+      secret: process.env.JWT_SECRET || 'P-w8Iewr3efdfd8r-dsdsrew4556y6vwq=',
       signOptions: { expiresIn: '1d' },
     }),
     UserModule,
