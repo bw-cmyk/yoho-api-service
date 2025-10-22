@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { TokenService } from './token.service';
-import { CandleData } from '../dex/okx';
+import { CandleData } from '../assets/dex/okx';
 import { Decimal } from 'decimal.js';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
-import { OKXQueueService } from '../dex/okx-queue.service';
+import { OKXQueueService } from '../assets/dex/okx-queue.service';
 import {
   OKX_TRENDING_CALLBACK_FUNCTION_ID,
   OKX_TOKEN_SYNC_CALLBACK_FUNCTION_ID,
-} from '../constants';
+} from '../assets/constants';
 
 @Injectable()
 export class TokenPriceUpdaterService {

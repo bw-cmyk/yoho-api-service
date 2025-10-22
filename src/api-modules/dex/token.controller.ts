@@ -20,21 +20,16 @@ import {
 } from '@nestjs/swagger';
 import {
   TokenService,
-  TokenCreateRequest,
   TokenUpdateRequest,
   TokenListQuery,
-} from '../services/token.service';
-import { Token } from '../entities/token.entity';
+} from './token.service';
+import { Token } from './token.entity';
 import { Decimal } from 'decimal.js';
-import { TokenPriceUpdaterService } from '../services/token-price-updater.service';
 
 @ApiTags('Token Management')
 @Controller('api/v1/tokens')
 export class TokenController {
-  constructor(
-    private readonly tokenService: TokenService,
-    private readonly tokenPriceUpdaterService: TokenPriceUpdaterService,
-  ) {}
+  constructor(private readonly tokenService: TokenService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get token list with pagination and filters' })
@@ -81,15 +76,6 @@ export class TokenController {
     totalVolume24h: Decimal;
   }> {
     return this.tokenService.getTokenStats();
-  }
-
-  @Get('sync-price-history')
-  @HttpCode(HttpStatus.OK)
-  async syncTokenPriceHistoryFromOKX() {
-    await this.tokenPriceUpdaterService.updateTokenPrices();
-    return {
-      success: true,
-    };
   }
 
   @Get(':id')
@@ -139,16 +125,6 @@ export class TokenController {
     @Body() request: TokenUpdateRequest,
   ): Promise<Token> {
     return this.tokenService.updateToken(id, request);
-  }
-
-  @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete token (soft delete)' })
-  @ApiResponse({ status: 204, description: 'Token deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Token not found' })
-  @ApiParam({ name: 'id', description: 'Token ID' })
-  async deleteToken(@Param('id') id: string): Promise<void> {
-    return this.tokenService.deleteToken(id);
   }
 
   @Post('sync/:chainIndex')

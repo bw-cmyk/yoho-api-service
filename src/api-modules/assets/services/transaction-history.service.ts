@@ -7,13 +7,13 @@ import {
   TransactionHistory,
   TransactionItype,
   TransactionStatus,
-} from '../entities/transaction-history.entity';
+} from '../entities/onchain/transaction-onchain-history.entity';
 import { OKXQueueService } from '../dex/okx-queue.service';
-import { TokenService } from './token.service';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
 import { OKX_TRANSACTION_HISTORY_CALLBACK_FUNCTION_ID } from '../constants';
 import { extractParamsFromTxByTopic } from '../dex/bsc/pancakeParser';
 import { UserService } from 'src/api-modules/user/service/user.service';
+import { Token } from 'src/api-modules/dex/token.entity';
 
 export interface TransactionHistoryParams {
   address: string;
@@ -57,9 +57,12 @@ export class TransactionHistoryService {
   constructor(
     @InjectRepository(TransactionHistory)
     private readonly transactionHistoryRepository: Repository<TransactionHistory>,
+
+    @InjectRepository(Token)
+    private readonly tokenRepository: Repository<Token>,
+
     private readonly userService: UserService,
     private readonly okxQueueService: OKXQueueService,
-    private readonly tokenService: TokenService,
     private readonly queueService: RedisQueueService,
   ) {
     this.initializeCallbacks();
@@ -413,11 +416,12 @@ export class TransactionHistoryService {
     tokenContractAddress: string,
   ): Promise<Decimal | null> {
     try {
-      const token = await this.tokenService.getTokenByContractAddress(
-        chainIndex,
-        tokenContractAddress,
-      );
-
+      const token = await this.tokenRepository.findOne({
+        where: {
+          chainIndex,
+          tokenContractAddress,
+        },
+      });
       return token?.currentPriceUsd || null;
     } catch (error) {
       this.logger.error(
@@ -456,10 +460,13 @@ export class TransactionHistoryService {
       const tokenPnl = await this.calculateTokenPnL(tokenTxs);
 
       if (tokenPnl.costBasis.gt(0)) {
-        const token = await this.tokenService.getTokenByContractAddress(
-          chainIdx,
-          contractAddress === 'native' ? null : contractAddress,
-        );
+        const token = await this.tokenRepository.findOne({
+          where: {
+            chainIndex: chainIdx,
+            tokenContractAddress:
+              contractAddress === 'native' ? null : contractAddress,
+          },
+        });
 
         positions.push({
           tokenContractAddress: contractAddress,

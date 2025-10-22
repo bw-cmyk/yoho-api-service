@@ -1,8 +1,8 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { OKXDEX, SwapQuoteParams, SwapQuoteData } from '../dex/okx';
-import { OKXQueueService } from '../dex/okx-queue.service';
+import { OKXDEX, SwapQuoteParams, SwapQuoteData } from '../assets/dex/okx';
+import { OKXQueueService } from '../assets/dex/okx-queue.service';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
-import { OKX_SWAP_QUOTE_CALLBACK_FUNCTION_ID } from '../constants';
+import { OKX_SWAP_QUOTE_CALLBACK_FUNCTION_ID } from '../assets/constants';
 
 @Injectable()
 export class DexService {

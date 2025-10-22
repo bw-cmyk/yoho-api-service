@@ -2,18 +2,21 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Decimal } from 'decimal.js';
-import { UserAsset, Currency } from '../entities/user-asset.entity';
+import { UserAsset, Currency } from '../entities/balance/user-asset.entity';
 import {
   Transaction,
   TransactionType,
   TransactionSource,
   TransactionStatus,
-} from '../entities/transaction.entity';
-import { UserChainAsset, ChainType } from '../entities/user-chain-asset.entity';
+} from '../entities/balance/transaction.entity';
+import {
+  UserChainAsset,
+  ChainType,
+} from '../entities/onchain/user-chain-asset.entity';
 import {
   UserChainAssetSnapshot,
   SnapshotType,
-} from '../entities/user-chain-asset-snapshot.entity';
+} from '../entities/onchain/user-chain-asset-snapshot.entity';
 import { WalletService } from 'src/api-modules/user/service/wallet.service';
 import { OKXQueueService } from '../dex/okx-queue.service';
 import { OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID } from '../constants';

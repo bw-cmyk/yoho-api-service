@@ -156,7 +156,6 @@ export class GameStorageService {
         order: { createdAt: 'DESC' },
         take: limit,
         skip: offset,
-        relations: ['round'],
       });
 
       return { bets, total };
@@ -178,7 +177,6 @@ export class GameStorageService {
         order: { startTime: 'DESC' },
         take: limit,
         skip: offset,
-        relations: ['bets'],
       });
 
       return { rounds, total };
@@ -195,7 +193,6 @@ export class GameStorageService {
     try {
       const round = await this.roundRepository.findOne({
         where: { roundId },
-        relations: ['bets'],
       });
 
       return round;
@@ -218,7 +215,6 @@ export class GameStorageService {
           userId,
           gameRoundId,
         },
-        relations: ['round'],
       });
 
       return bet;

@@ -13,7 +13,7 @@ import {
 } from './game.types';
 import { GameStorageService } from './game-storage.service';
 import { AssetService } from 'src/api-modules/assets/services/asset.service';
-import { Currency } from 'src/api-modules/assets/entities/user-asset.entity';
+import { Currency } from 'src/api-modules/assets/entities/balance/user-asset.entity';
 import Decimal from 'decimal.js';
 
 @Injectable()

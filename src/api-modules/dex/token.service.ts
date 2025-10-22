@@ -7,8 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Decimal } from 'decimal.js';
-import { Token } from '../entities/token.entity';
-import { OKXDEX } from '../dex/okx';
+import { Token } from './token.entity';
+import { OKXDEX } from '../assets/dex/okx';
 
 export interface TokenCreateRequest {
   chainIndex: string;
@@ -312,15 +312,6 @@ export class TokenService {
       );
       throw new BadRequestException('Failed to sync tokens from OKX');
     }
-  }
-
-  /**
-   * 删除token
-   */
-  async deleteToken(id: string): Promise<void> {
-    const token = await this.getTokenById(id);
-    token.isActive = false;
-    await this.tokenRepository.save(token);
   }
 
   /**

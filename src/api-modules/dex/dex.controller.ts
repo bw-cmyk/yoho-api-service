@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { DexService } from '../services/dex.service';
+import { DexService } from './dex.service';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 
 export interface SwapQuoteRequest {

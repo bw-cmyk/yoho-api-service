@@ -10,8 +10,6 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
 import { AssetService } from '../services/asset.service';
-import { Currency } from '../entities/user-asset.entity';
-import { TransactionType } from '../entities/transaction.entity';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 
 @ApiTags('资产管理')
