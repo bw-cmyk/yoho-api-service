@@ -11,8 +11,10 @@ import {
   GameConfig,
   HistoricalPriceData,
 } from './game.types';
+import { GameStorageService } from './game-storage.service';
 import { AssetService } from 'src/api-modules/assets/services/asset.service';
 import { Currency } from 'src/api-modules/assets/entities/user-asset.entity';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class GameService {
@@ -21,6 +23,11 @@ export class GameService {
   private gameHistory: GameRound[] = [];
   private historicalPrices: HistoricalPriceData[] = [];
   private isActive = false;
+
+  constructor(
+    private readonly gameStorageService: GameStorageService,
+    private readonly assetService: AssetService,
+  ) {}
 
   private readonly config: GameConfig = {
     bettingDuration: 15 * 1000, // 15秒
@@ -31,7 +38,6 @@ export class GameService {
     supportedAssets: ['BTC'],
   };
 
-  constructor(private readonly assetService: AssetService) {}
   /**
    * 启动游戏服务
    */
@@ -63,7 +69,7 @@ export class GameService {
   /**
    * 开始新游戏轮次
    */
-  startNewRound(): GameRound {
+  async startNewRound(): Promise<GameRound> {
     const now = Date.now();
     const roundId = `round_${now}`;
 
@@ -93,6 +99,8 @@ export class GameService {
       phaseRemainingTime: this.config.bettingDuration,
     };
 
+    await this.gameStorageService.saveGameRound(this.currentRound);
+
     this.logger.log(`New round started: ${roundId}`);
     return this.currentRound;
   }
@@ -100,11 +108,11 @@ export class GameService {
   /**
    * 处理投注
    */
-  placeBet(betRequest: BetRequest): {
+  async placeBet(betRequest: BetRequest): Promise<{
     success: boolean;
     message: string;
     bet?: Bet;
-  } {
+  }> {
     if (!this.isActive) {
       return { success: false, message: 'Game is not active' };
     }
@@ -141,13 +149,29 @@ export class GameService {
       gameRoundId: this.currentRound.id,
     };
 
-    // await this.assetService.bet({
-    //   userId: bet.userId,
-    //   game_id: 'BTC_PREDICTION',
-    //   currency: Currency.USD,
-    //   amount: bet.amount,
-    //   metadata: bet,
-    // })
+    try {
+      await this.assetService.bet({
+        userId: bet.userId,
+        game_id: 'BTC_PREDICTION',
+        currency: Currency.USD,
+        amount: new Decimal(bet.amount.toString()),
+        metadata: bet,
+      });
+
+      // 保存投注到数据库
+      await this.gameStorageService.saveBet(
+        betRequest.userId,
+        betRequest.direction,
+        betRequest.amount,
+        this.currentRound.id,
+      );
+    } catch (error) {
+      this.logger.error(`Error placing bet: ${error}`);
+      return {
+        success: false,
+        message: 'Failed to place bet: ' + error.message,
+      };
+    }
 
     // 添加到相应的投注池
     if (betRequest.direction === BetDirection.UP) {
@@ -242,7 +266,7 @@ export class GameService {
   /**
    * 结算游戏
    */
-  settleGame(): { round: GameRound; results: BettingResult[] } {
+  async settleGame(): Promise<{ round: GameRound; results: BettingResult[] }> {
     if (!this.currentRound) {
       throw new Error('No active round to settle');
     }
@@ -269,6 +293,41 @@ export class GameService {
     // 计算投注结果
     const results = this.calculateBettingResults(result);
 
+    // 计算费用分配
+    const feeCalculation = this.calculateFeeDistribution(results);
+
+    // 更新轮次费用信息
+    this.currentRound.totalPayout = feeCalculation.totalPayout;
+    this.currentRound.platformFee = feeCalculation.platformFee;
+    this.currentRound.netProfit = feeCalculation.netProfit;
+
+    try {
+      // update round to database
+      await this.gameStorageService.saveGameRound(this.currentRound);
+
+      // 更新投注结果到数据库
+      await this.gameStorageService.updateBetResults(
+        results,
+        this.currentRound.id,
+      );
+
+      for (const result of results) {
+        if (result.isWinner) {
+          await this.assetService.win({
+            userId: result.userId,
+            currency: Currency.USD,
+            amount: new Decimal(result.payout.toString()),
+            game_id: 'BTC_PREDICTION',
+          });
+        }
+      }
+
+      this.logger.log(`✅ 游戏轮次已保存到数据库: ${this.currentRound.id}`);
+    } catch (error) {
+      this.logger.error('❌ 保存游戏数据到数据库失败:', error);
+      // 即使数据库保存失败，游戏逻辑仍然继续
+    }
+
     // 保存到历史记录
     this.gameHistory.push(this.currentRound);
 
@@ -278,6 +337,33 @@ export class GameService {
     );
 
     return { round: this.currentRound, results };
+  }
+
+  /**
+   * 计算费用分配
+   */
+  private calculateFeeDistribution(results: BettingResult[]): {
+    totalPayout: number;
+    platformFee: number;
+    netProfit: number;
+  } {
+    const totalPayout = results.reduce((sum, result) => {
+      return sum + (result.isWinner ? result.payout : 0);
+    }, 0);
+
+    const totalPool = this.currentRound?.bettingPool.totalPool || 0;
+    const platformFee = totalPayout * this.config.platformFee;
+    const netProfit = totalPool - totalPayout;
+
+    this.logger.log(
+      `费用分配计算: 总池=${totalPool}, 总赔付=${totalPayout}, 平台费=${platformFee}, 净利润=${netProfit}`,
+    );
+
+    return {
+      totalPayout,
+      platformFee,
+      netProfit,
+    };
   }
 
   /**
@@ -300,6 +386,7 @@ export class GameService {
         ? bet.amount * multiplier * (1 - this.config.platformFee)
         : 0;
 
+      // TODO: update record to database
       results.push({
         userId: bet.userId,
         betDirection: BetDirection.UP,
@@ -312,6 +399,7 @@ export class GameService {
 
     // 处理 DOWN 投注
     for (const bet of pool.downBets) {
+      // TODO: update record to database
       const isWinner = gameResult === GameResult.DOWN_WIN;
       const multiplier = isWinner ? downOdds : 0;
       const payout = isWinner
@@ -436,5 +524,74 @@ export class GameService {
   clearHistoricalPrices(): void {
     this.historicalPrices = [];
     this.logger.log('Historical prices cleared');
+  }
+
+  /**
+   * 获取用户投注历史（从数据库）
+   */
+  async getUserBetHistory(
+    userId: string,
+    limit = 50,
+    offset = 0,
+  ): Promise<{ bets: any[]; total: number }> {
+    return this.gameStorageService.getUserBetHistory(userId, limit, offset);
+  }
+
+  /**
+   * 获取游戏轮次历史（从数据库）
+   */
+  async getGameRoundHistory(
+    limit = 50,
+    offset = 0,
+  ): Promise<{ rounds: any[]; total: number }> {
+    return this.gameStorageService.getGameRoundHistory(limit, offset);
+  }
+
+  /**
+   * 获取用户投注统计
+   */
+  async getUserBettingStats(
+    userId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<{
+    totalBets: number;
+    totalAmount: number;
+    wonBets: number;
+    lostBets: number;
+    totalPayout: number;
+    winRate: number;
+  }> {
+    return this.gameStorageService.getBettingStats(userId, startDate, endDate);
+  }
+
+  /**
+   * 获取用户在当前轮次的投注（从数据库）
+   */
+  async getUserCurrentBetFromDB(
+    userId: string,
+    gameRoundId: string,
+  ): Promise<any | null> {
+    return this.gameStorageService.getUserCurrentBet(userId, gameRoundId);
+  }
+
+  /**
+   * 获取平台费用统计
+   */
+  async getPlatformFeeStats(
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<{
+    totalRounds: number;
+    totalPool: number;
+    totalPayout: number;
+    totalPlatformFee: number;
+    totalNetProfit: number;
+    averagePoolSize: number;
+    averagePayout: number;
+    averagePlatformFee: number;
+    averageNetProfit: number;
+  }> {
+    return this.gameStorageService.getPlatformFeeStats(startDate, endDate);
   }
 }

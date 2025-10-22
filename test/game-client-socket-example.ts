@@ -15,6 +15,9 @@ export class GameClient {
       path: '/ws',
       transports: ['websocket', 'polling'],
       timeout: 10000,
+      auth: {
+        token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNzMzNTgyNzQwMjE3ODA0ODAiLCJpYXQiOjE3NjEwNjM5NjQsImV4cCI6MTc2MTY2ODc2NH0.F7L4ubd0oeoMCR2xNDeJD07FxCVcw8Cu9qRBmEulij4',
+      },
     });
 
     this.setupEventListeners();
@@ -46,15 +49,7 @@ export class GameClient {
 
     // 游戏状态更新
     this.socket.on('gameStatus', (data) => {
-      console.log(`🎮 [${this.userId}] 游戏状态更新:`, {
-        roundId: data.roundId,
-        phase: data.phase,
-        remainingTime: data.phaseRemainingTime,
-        currentPrice: data.currentPrice,
-        lockedPrice: data.lockedPrice,
-        odds: data.odds,
-        pool: data.bettingPool,
-      });
+      console.log(`🎮 [${this.userId}] 游戏状态更新:`, data);
     });
 
     // 历史价格数据
@@ -252,7 +247,7 @@ export class GameClient {
 export async function simpleClientExample() {
   console.log('=== 简单客户端示例 ===\n');
 
-  const client = new GameClient('https://yoho-api-service-dev-ff05bf602cab.herokuapp.com/', 'simple-user');
+  const client = new GameClient('http://localhost:3000', 'simple-user');
 
   try {
     // 连接
@@ -270,7 +265,7 @@ export async function simpleClientExample() {
 
     // 等待3秒后投注
     setTimeout(() => {
-      client.placeBet('UP', 25);
+      client.placeBet('UP', 1);
     }, 3000);
 
     // 等待6秒后查询状态

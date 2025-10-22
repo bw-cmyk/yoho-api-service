@@ -44,6 +44,9 @@ export interface GameRound {
   bettingPool: BettingPool;
   phaseStartTime: number;
   phaseRemainingTime: number;
+  totalPayout?: number;
+  platformFee?: number;
+  netProfit?: number;
 }
 
 export interface BettingResult {
@@ -64,6 +67,7 @@ export interface GameStatus {
 
 export interface BetRequest {
   userId: string;
+  nickname: string;
   direction: BetDirection;
   amount: number;
 }

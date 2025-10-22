@@ -44,57 +44,44 @@ export class EventsGateway {
     this.logger.log('socket Initialized');
   }
 
-  handleConnection(client: any, ...args: any[]) {
+  handleConnection() {
     this.logger.debug(
       `Number of connected clients: ${this.server.engine.clientsCount}`,
     );
   }
 
   async setup() {
-    // 启动游戏服务
-    this.gameService.start();
-
-    // 启动币安指数价格服务
-    await this.binanceIndexService.start();
-
-    // 获取历史价格数据
-    // await this.loadHistoricalPrices();
-
-    // 注册价格回调
-    this.binanceIndexService.addPriceCallback((data: BinanceIndexPriceData) => {
-      this.handleBtcPriceUpdate(data);
-    });
-
-    // 启动游戏循环
-    this.startGameLoop();
-
-    // 开始第一轮游戏
-    this.startNewGameRound();
-  }
-
-  /**
-   * 加载历史价格数据
-   */
-  private async loadHistoricalPrices(): Promise<void> {
     try {
-      this.logger.log('Loading historical price data...');
+      this.logger.log('🚀 开始初始化游戏服务...');
 
-      // 获取最近24小时的历史价格数据
-      const historicalPrices =
-        await this.binanceIndexService.getRecentHistoricalPrices('BTCUSDT', 24);
+      // 启动游戏服务
+      this.gameService.start();
+      this.logger.log('✅ 游戏服务已启动');
 
-      // 将历史价格数据存储到游戏服务中
-      this.gameService.setHistoricalPrices(historicalPrices);
+      // 启动币安指数价格服务
+      await this.binanceIndexService.start();
+      this.logger.log('✅ 币安指数价格服务已启动');
 
-      this.logger.log(
-        `Successfully loaded ${historicalPrices.length} historical price records`,
+      // 异步加载历史价格数据（不阻塞游戏启动）
+      this.loadHistoricalPricesAsync();
+
+      // 注册价格回调
+      this.binanceIndexService.addPriceCallback(
+        (data: BinanceIndexPriceData) => {
+          this.handleBtcPriceUpdate(data);
+        },
       );
 
-      // 广播历史价格数据给所有连接的客户端
-      this.broadcastHistoricalPrices();
+      // 启动游戏循环
+      this.startGameLoop();
+      this.logger.log('✅ 游戏循环已启动');
+
+      // 开始第一轮游戏
+      await this.startNewGameRound();
+      this.logger.log('✅ 游戏初始化完成');
     } catch (error) {
-      this.logger.error('Failed to load historical prices:', error);
-      // 即使历史价格加载失败，游戏仍然可以继续运行
+      this.logger.error('❌ 游戏服务初始化失败:', error);
+      throw error;
     }
   }
 
@@ -140,8 +127,8 @@ export class EventsGateway {
   /**
    * 开始新的游戏轮次
    */
-  private startNewGameRound(): void {
-    const newRound = this.gameService.startNewRound();
+  private async startNewGameRound(): Promise<void> {
+    const newRound = await this.gameService.startNewRound();
     this.logger.log(`Started new game round: ${newRound.id}`);
     this.broadcastGameStatus();
   }
@@ -185,9 +172,9 @@ export class EventsGateway {
   /**
    * 结算游戏
    */
-  private settleGame(): void {
+  private async settleGame(): Promise<void> {
     try {
-      const { round, results } = this.gameService.settleGame();
+      const { round, results } = await this.gameService.settleGame();
 
       // 广播结算结果
       this.server?.emit('gameSettled', {
@@ -200,10 +187,7 @@ export class EventsGateway {
 
       this.logger.log(`Game settled: ${round.result}`);
 
-      // 延迟3秒后开始新轮次
-      setTimeout(() => {
-        this.startNewGameRound();
-      }, 3000);
+      await this.startNewGameRound();
     } catch (error) {
       this.logger.error('Error settling game:', error);
     }
@@ -233,6 +217,8 @@ export class EventsGateway {
         upTotal: gameStatus.currentRound.bettingPool.upTotal,
         downTotal: gameStatus.currentRound.bettingPool.downTotal,
         totalPool: gameStatus.currentRound.bettingPool.totalPool,
+        upBets: gameStatus.currentRound.bettingPool.upBets,
+        downBets: gameStatus.currentRound.bettingPool.downBets,
       },
       odds: {
         up: upOdds,
@@ -271,8 +257,6 @@ export class EventsGateway {
       price: data.price,
       timestamp: data.timestamp,
     });
-
-    // this.logger.debug(`BTC Price updated: ${data.price}`);
   }
 
   /**
@@ -287,6 +271,44 @@ export class EventsGateway {
    */
   getBinanceServiceStatus() {
     return this.binanceIndexService.getConnectionStatus();
+  }
+
+  /**
+   * 获取游戏服务健康状态
+   */
+  getGameServiceHealth() {
+    const gameStatus = this.gameService.getGameStatus();
+    const binanceStatus = this.binanceIndexService.getConnectionStatus();
+    const historicalPrices = this.gameService.getHistoricalPrices();
+
+    return {
+      game: {
+        isActive: gameStatus.isActive,
+        currentRound: gameStatus.currentRound
+          ? {
+              id: gameStatus.currentRound.id,
+              phase: gameStatus.currentRound.phase,
+              phaseRemainingTime: gameStatus.currentRound.phaseRemainingTime,
+            }
+          : null,
+        historyCount: this.gameService.getGameHistory().length,
+      },
+      binance: {
+        connected: binanceStatus.connected,
+        lastMessageTime: binanceStatus.lastMessageTime,
+        streams: binanceStatus.streams,
+      },
+      historicalPrices: {
+        count: historicalPrices.length,
+        latestPrice: historicalPrices[historicalPrices.length - 1]?.price,
+        oldestPrice: historicalPrices[0]?.price,
+        lastUpdate: historicalPrices[historicalPrices.length - 1]?.timestamp,
+      },
+      server: {
+        connectedClients: this.server?.engine?.clientsCount || 0,
+        currentBtcPrice: this.currentBtcPrice,
+      },
+    };
   }
 
   // WebSocket 事件处理器
@@ -307,20 +329,22 @@ export class EventsGateway {
    */
   @SubscribeMessage('placeBet')
   @UseGuards(WsGuard)
-  handlePlaceBet(
+  async handlePlaceBet(
     @ConnectedSocket() client: Socket,
     @MessageBody()
     data: { userId: string; direction: BetDirection; amount: number },
-  ): void {
+  ): Promise<void> {
     const user = client.handshake.auth.user;
-
+    const { sub: userId, nickname } = user;
+    console.log('user', user);
     const betRequest: BetRequest = {
-      userId: user.sub,
+      userId: userId,
+      nickname: nickname,
       direction: data.direction,
       amount: data.amount,
     };
 
-    const result = this.gameService.placeBet(betRequest);
+    const result = await this.gameService.placeBet(betRequest);
 
     if (result.success) {
       client.emit('betPlaced', {
@@ -343,10 +367,13 @@ export class EventsGateway {
    * 获取用户投注状态
    */
   @SubscribeMessage('getUserBet')
+  @UseGuards(WsGuard)
   handleGetUserBet(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { userId: string },
   ): void {
+    const user = client.handshake.auth.user;
+    const { sub: userId, nickname } = user;
     const userBet = this.gameService.findUserBet(data.userId);
 
     client.emit('userBet', {
@@ -356,18 +383,107 @@ export class EventsGateway {
   }
 
   /**
-   * 获取游戏历史
+   * 获取用户投注历史（从数据库）
    */
-  @SubscribeMessage('getGameHistory')
-  handleGetGameHistory(
+  @SubscribeMessage('getUserBetHistory')
+  @UseGuards(WsGuard)
+  async handleGetUserBetHistory(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { limit?: number },
-  ): void {
-    const history = this.gameService.getGameHistory(data.limit || 10);
+    @MessageBody() data: { limit?: number; offset?: number },
+  ): Promise<void> {
+    try {
+      const user = client.handshake.auth.user;
+      const { sub: userId } = user;
+      const result = await this.gameService.getUserBetHistory(
+        userId,
+        data.limit || 50,
+        data.offset || 0,
+      );
 
-    client.emit('gameHistory', {
-      history,
-    });
+      client.emit('userBetHistory', {
+        bets: result.bets,
+        total: result.total,
+        limit: data.limit || 50,
+        offset: data.offset || 0,
+      });
+    } catch (error) {
+      this.logger.error('获取用户投注历史失败:', error);
+      client.emit('error', {
+        message: '获取用户投注历史失败',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * 获取游戏轮次历史（从数据库）
+   */
+  @SubscribeMessage('getGameRoundHistory')
+  async handleGetGameRoundHistory(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { limit?: number; offset?: number },
+  ): Promise<void> {
+    try {
+      const result = await this.gameService.getGameRoundHistory(
+        data.limit || 50,
+        data.offset || 0,
+      );
+
+      client.emit('gameRoundHistory', {
+        rounds: result.rounds,
+        total: result.total,
+        limit: data.limit || 50,
+        offset: data.offset || 0,
+      });
+    } catch (error) {
+      this.logger.error('获取游戏轮次历史失败:', error);
+      client.emit('error', {
+        message: '获取游戏轮次历史失败',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * 获取用户投注统计
+   */
+  @SubscribeMessage('getUserBettingStats')
+  @UseGuards(WsGuard)
+  async handleGetUserBettingStats(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      startDate?: string;
+      endDate?: string;
+    },
+  ): Promise<void> {
+    try {
+      const user = client.handshake.auth.user;
+      const { sub: userId } = user;
+      const startDate = data.startDate ? new Date(data.startDate) : undefined;
+      const endDate = data.endDate ? new Date(data.endDate) : undefined;
+
+      const stats = await this.gameService.getUserBettingStats(
+        userId,
+        startDate,
+        endDate,
+      );
+
+      client.emit('userBettingStats', {
+        stats,
+        userId: userId,
+        period: {
+          startDate: data.startDate,
+          endDate: data.endDate,
+        },
+      });
+    } catch (error) {
+      this.logger.error('获取用户投注统计失败:', error);
+      client.emit('error', {
+        message: '获取用户投注统计失败',
+        error: error.message,
+      });
+    }
   }
 
   /**
@@ -379,59 +495,12 @@ export class EventsGateway {
   }
 
   /**
-   * 获取历史价格数据
+   * 获取游戏服务健康状态
    */
-  @SubscribeMessage('getHistoricalPrices')
-  handleGetHistoricalPrices(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { limit?: number },
-  ): void {
-    const limit = data.limit || 100;
-    const historicalPrices = this.gameService.getRecentHistoricalPrices(limit);
-
-    client.emit('historicalPrices', {
-      prices: historicalPrices,
-      count: historicalPrices.length,
-      limit,
-    });
-  }
-
-  /**
-   * 刷新历史价格数据
-   */
-  @SubscribeMessage('refreshHistoricalPrices')
-  async handleRefreshHistoricalPrices(
-    @ConnectedSocket() client: Socket,
-  ): Promise<void> {
-    try {
-      this.logger.log('Refreshing historical prices...');
-
-      // 重新获取历史价格数据
-      const historicalPrices =
-        await this.binanceIndexService.getRecentHistoricalPrices('BTCUSDT', 24);
-
-      // 更新游戏服务中的历史价格数据
-      this.gameService.setHistoricalPrices(historicalPrices);
-
-      // 发送给请求的客户端
-      client.emit('historicalPrices', {
-        prices: historicalPrices,
-        count: historicalPrices.length,
-      });
-
-      // 广播给所有客户端
-      this.broadcastHistoricalPrices();
-
-      this.logger.log(
-        `Refreshed ${historicalPrices.length} historical price records`,
-      );
-    } catch (error) {
-      this.logger.error('Failed to refresh historical prices:', error);
-      client.emit('error', {
-        message: 'Failed to refresh historical prices',
-        error: error.message,
-      });
-    }
+  @SubscribeMessage('getGameHealth')
+  handleGetGameHealth(@ConnectedSocket() client: Socket): void {
+    const health = this.getGameServiceHealth();
+    client.emit('gameHealth', health);
   }
 
   /**
@@ -458,6 +527,8 @@ export class EventsGateway {
         upTotal: gameStatus.currentRound.bettingPool.upTotal,
         downTotal: gameStatus.currentRound.bettingPool.downTotal,
         totalPool: gameStatus.currentRound.bettingPool.totalPool,
+        upBets: gameStatus.currentRound.bettingPool.upBets,
+        downBets: gameStatus.currentRound.bettingPool.downBets,
       },
       odds: {
         up: upOdds,
@@ -488,5 +559,76 @@ export class EventsGateway {
    */
   handleDisconnect(@ConnectedSocket() client: Socket): void {
     this.logger.log(`Client ${client.id} disconnected`);
+  }
+
+  /**
+   * 异步加载历史价格数据（不阻塞游戏启动）
+   */
+  private loadHistoricalPricesAsync(): void {
+    // 使用 setTimeout 确保不阻塞主线程
+    setTimeout(async () => {
+      await this.loadHistoricalPrices();
+    }, 1000); // 延迟1秒后开始加载，确保币安服务完全启动
+  }
+
+  /**
+   * 加载历史价格数据
+   */
+  private async loadHistoricalPrices(): Promise<void> {
+    try {
+      this.logger.log('📈 开始加载历史价格数据...');
+
+      // 获取最近24小时的历史价格数据
+      const historicalPrices =
+        await this.binanceIndexService.getRecentHistoricalPrices('BTCUSDT', 24);
+
+      // 将历史价格数据存储到游戏服务中
+      this.gameService.setHistoricalPrices(historicalPrices);
+
+      this.logger.log(`✅ 成功加载 ${historicalPrices.length} 条历史价格记录`);
+
+      // 广播历史价格数据给所有连接的客户端
+      this.broadcastHistoricalPrices();
+    } catch (error) {
+      this.logger.error('❌ 加载历史价格数据失败:', error);
+
+      // 尝试重试加载
+      this.retryLoadHistoricalPrices();
+    }
+  }
+
+  /**
+   * 重试加载历史价格数据
+   */
+  private retryLoadHistoricalPrices(): void {
+    this.logger.log('🔄 将在30秒后重试加载历史价格数据...');
+
+    setTimeout(async () => {
+      try {
+        this.logger.log('🔄 重试加载历史价格数据...');
+        await this.loadHistoricalPrices();
+      } catch (error) {
+        this.logger.error('❌ 重试加载历史价格数据失败:', error);
+        // 可以继续重试或放弃
+      }
+    }, 30000); // 30秒后重试
+  }
+
+  /**
+   * 获取历史价格数据
+   */
+  @SubscribeMessage('getHistoricalPrices')
+  handleGetHistoricalPrices(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { limit?: number },
+  ): void {
+    const limit = data.limit || 100;
+    const historicalPrices = this.gameService.getRecentHistoricalPrices(limit);
+
+    client.emit('historicalPrices', {
+      prices: historicalPrices,
+      count: historicalPrices.length,
+      limit,
+    });
   }
 }

@@ -35,7 +35,7 @@ export enum TransactionStatus {
 }
 
 @Entity('yoho_transactions')
-@Index(['user_id', 'created_at'])
+@Index(['userId', 'created_at'])
 @Index(['transaction_id'], { unique: true })
 @Index(['type', 'status'])
 export class Transaction {
@@ -45,8 +45,8 @@ export class Transaction {
   @Column({ type: 'varchar', length: 64, unique: true })
   transaction_id: string;
 
-  @Column({ type: 'bigint' })
-  user_id: number;
+  @Column({ type: 'varchar', length: 64, name: 'user_id' })
+  userId: string;
 
   @Column({ type: 'varchar', length: 10 })
   currency: Currency;
@@ -130,7 +130,7 @@ export class Transaction {
   static generateTransactionId(): string {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
-    return `TXN${timestamp}${random}`.toUpperCase();
+    return `TX_${timestamp}${random}`.toUpperCase();
   }
 
   /**

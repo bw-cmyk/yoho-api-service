@@ -278,6 +278,8 @@ export class AssetService {
         processed_at: new Date(),
       });
 
+      console.log('transaction: ', transaction);
+
       await manager.save(transaction);
 
       this.logger.log(
