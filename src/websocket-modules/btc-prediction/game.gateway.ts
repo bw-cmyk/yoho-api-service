@@ -230,6 +230,7 @@ export class EventsGateway {
       },
       platformFee: gameStatus.platformFee,
       minBetAmount: gameStatus.minBetAmount,
+      result: gameStatus.currentRound.result,
     });
   }
 
