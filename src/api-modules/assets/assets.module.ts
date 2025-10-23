@@ -14,6 +14,11 @@ import { OKXDEX } from './dex/okx';
 import { OKXQueueService } from './dex/okx-queue.service';
 import { QueueModule } from 'src/common-modules/queue/queue.module';
 import { Token } from '../dex/token.entity';
+import { DepositWithdrawHookController } from './controllers/hook.controller';
+import { HookService } from './services/hooks.service';
+import { DepositWithdrawService } from './services/deposit-withdraw.service';
+import { DepositWithdrawController } from './controllers/deposit-withdraw.controller';
+import { Order } from './entities/balance/order.entity';
 
 @Module({
   imports: [
@@ -24,6 +29,7 @@ import { Token } from '../dex/token.entity';
       UserChainAssetSnapshot,
       TransactionHistory,
       Token,
+      Order,
     ]),
     UserModule,
     QueueModule,
@@ -32,6 +38,8 @@ import { Token } from '../dex/token.entity';
     AssetService,
     TransactionHistoryService,
     OKXQueueService,
+    HookService,
+    DepositWithdrawService,
     {
       provide: OKXDEX,
       useFactory: () => {
@@ -39,7 +47,12 @@ import { Token } from '../dex/token.entity';
       },
     },
   ],
-  controllers: [AssetController, TransactionHistoryController],
+  controllers: [
+    AssetController,
+    TransactionHistoryController,
+    DepositWithdrawHookController,
+    DepositWithdrawController,
+  ],
   exports: [AssetService, OKXQueueService],
 })
 export class AssetsModule {}

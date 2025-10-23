@@ -1,16 +1,16 @@
 import { LogLevel, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as Sentry from '@sentry/node';
+import { config } from 'dotenv';
+config();
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { config } from 'dotenv';
 import { SentryLogger } from './utils/sentry.logger';
 import * as session from 'express-session';
 import * as createRedisStore from 'connect-redis';
 import redis from './common-modules/redis/redis-client';
 // import
 const SWAGGER_ENABLE = process.env.SWAGGER_ENABLE === '1';
-config();
 const ENV = process.env.NODE_ENV || 'development';
 const logLevels: LogLevel[] = ['error', 'warn', 'log', 'debug', 'verbose'];
 const logger = new SentryLogger();

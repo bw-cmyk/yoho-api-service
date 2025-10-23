@@ -40,6 +40,7 @@ export interface GameRound {
   settleEndTime: number;
   lockedPrice: string | null;
   closedPrice: string | null;
+  closedPriceTimestamp: number | null;
   result: GameResult | null;
   bettingPool: BettingPool;
   phaseStartTime: number;

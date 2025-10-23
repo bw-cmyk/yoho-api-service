@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  VersionColumn,
 } from 'typeorm';
 import { Decimal } from 'decimal.js';
 
@@ -16,7 +17,6 @@ export enum AssetType {
 
 export enum Currency {
   USD = 'USD',
-  // 可以根据需要添加更多币种
 }
 
 @Entity('yoho_user_assets')
@@ -78,6 +78,12 @@ export class UserAsset {
     name: 'updated_at',
   })
   updatedAt: Date;
+
+  @VersionColumn({
+    name: 'version',
+    default: 1,
+  })
+  version: number;
 
   /**
    * 获取总可用余额（真实余额 + 赠金余额）

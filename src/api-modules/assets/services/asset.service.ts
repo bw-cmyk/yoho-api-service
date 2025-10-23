@@ -136,24 +136,61 @@ export class AssetService {
     }
 
     return await this.dataSource.transaction(async (manager) => {
-      // 获取或创建用户资产
+      // 检查 reference_id 是否已存在，防止重复处理
+      if (reference_id) {
+        const existingTransaction = await manager.findOne(Transaction, {
+          where: { reference_id: reference_id },
+        });
+        if (existingTransaction) {
+          this.logger.warn(
+            `Deposit with reference_id ${reference_id} already exists`,
+          );
+          // 返回已存在的交易记录，确保幂等性
+          const existingAsset = await manager.findOne(UserAsset, {
+            where: { userId: userId, currency },
+          });
+          return {
+            asset: existingAsset,
+            transactions: [existingTransaction],
+          };
+        }
+      }
+
+      // 使用悲观锁获取用户资产，防止并发修改
       let asset = await manager.findOne(UserAsset, {
         where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
       });
 
       if (!asset) {
+        // 创建新资产时也需要锁保护
         asset = manager.create(UserAsset, {
           userId: userId,
           currency,
           balanceReal: new Decimal(0),
           balanceBonus: new Decimal(0),
           balanceLocked: new Decimal(0),
+          version: 1,
         });
       }
 
       const balanceBefore = asset.balanceReal;
       asset.balanceReal = asset.balanceReal.plus(amount);
-      await manager.save(asset);
+
+      try {
+        await manager.save(asset);
+      } catch (error) {
+        // 处理乐观锁冲突
+        if (error.code === '23505' || error.message.includes('version')) {
+          this.logger.warn(
+            `Optimistic lock conflict for user ${userId} currency ${currency}`,
+          );
+          throw new BadRequestException(
+            'Concurrent update detected, please retry',
+          );
+        }
+        throw error;
+      }
 
       // 创建充值交易记录
       const depositTransaction = manager.create(Transaction, {
@@ -181,7 +218,21 @@ export class AssetService {
       if (bonusAmount.gt(0)) {
         const bonusBefore = asset.balanceBonus;
         asset.balanceBonus = asset.balanceBonus.plus(bonusAmount);
-        await manager.save(asset);
+
+        try {
+          await manager.save(asset);
+        } catch (error) {
+          // 处理赠金更新的乐观锁冲突
+          if (error.code === '23505' || error.message.includes('version')) {
+            this.logger.warn(
+              `Optimistic lock conflict for bonus update user ${userId} currency ${currency}`,
+            );
+            throw new BadRequestException(
+              'Concurrent update detected during bonus processing, please retry',
+            );
+          }
+          throw error;
+        }
 
         // 创建赠金交易记录
         const bonusTransaction = manager.create(Transaction, {
@@ -228,7 +279,15 @@ export class AssetService {
     }
 
     return await this.dataSource.transaction(async (manager) => {
-      const asset = await this.getUserAsset(userId, currency);
+      // 使用悲观锁获取用户资产，防止并发修改
+      const asset = await manager.findOne(UserAsset, {
+        where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!asset) {
+        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+      }
 
       if (!asset.hasEnoughBalance(amount)) {
         throw new BadRequestException(
@@ -253,7 +312,20 @@ export class AssetService {
         asset.balanceBonus = asset.balanceBonus.minus(bonusAmount);
       }
 
-      await manager.save(asset);
+      try {
+        await manager.save(asset);
+      } catch (error) {
+        // 处理乐观锁冲突
+        if (error.code === '23505' || error.message.includes('version')) {
+          this.logger.warn(
+            `Optimistic lock conflict for bet user ${userId} currency ${currency}`,
+          );
+          throw new BadRequestException(
+            'Concurrent update detected during bet, please retry',
+          );
+        }
+        throw error;
+      }
 
       // 创建下注交易记录
       const transaction = manager.create(Transaction, {
@@ -307,7 +379,15 @@ export class AssetService {
     }
 
     return await this.dataSource.transaction(async (manager) => {
-      const asset = await this.getUserAsset(userId, currency);
+      // 使用悲观锁获取用户资产，防止并发修改
+      const asset = await manager.findOne(UserAsset, {
+        where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!asset) {
+        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+      }
 
       // 根据策略决定收益进入哪个账户（这里使用保守策略：优先进入赠金账户）
       const targetSource = await this.determineWinTarget(asset);
@@ -323,7 +403,20 @@ export class AssetService {
         asset.balanceReal = asset.balanceReal.plus(amount);
       }
 
-      await manager.save(asset);
+      try {
+        await manager.save(asset);
+      } catch (error) {
+        // 处理乐观锁冲突
+        if (error.code === '23505' || error.message.includes('version')) {
+          this.logger.warn(
+            `Optimistic lock conflict for win user ${userId} currency ${currency}`,
+          );
+          throw new BadRequestException(
+            'Concurrent update detected during win, please retry',
+          );
+        }
+        throw error;
+      }
 
       // 创建中奖交易记录
       const transaction = manager.create(Transaction, {
@@ -375,7 +468,15 @@ export class AssetService {
     }
 
     return await this.dataSource.transaction(async (manager) => {
-      const asset = await this.getUserAsset(userId, currency);
+      // 使用悲观锁获取用户资产，防止并发修改
+      const asset = await manager.findOne(UserAsset, {
+        where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!asset) {
+        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+      }
 
       if (!asset.hasEnoughWithdrawableBalance(amount)) {
         throw new BadRequestException(
@@ -385,7 +486,21 @@ export class AssetService {
 
       const balanceBefore = asset.balanceReal;
       asset.balanceReal = asset.balanceReal.minus(amount);
-      await manager.save(asset);
+
+      try {
+        await manager.save(asset);
+      } catch (error) {
+        // 处理乐观锁冲突
+        if (error.code === '23505' || error.message.includes('version')) {
+          this.logger.warn(
+            `Optimistic lock conflict for withdraw user ${userId} currency ${currency}`,
+          );
+          throw new BadRequestException(
+            'Concurrent update detected during withdraw, please retry',
+          );
+        }
+        throw error;
+      }
 
       // 创建提现交易记录
       const transaction = manager.create(Transaction, {
@@ -426,16 +541,40 @@ export class AssetService {
     }
 
     return await this.dataSource.transaction(async (manager) => {
-      const asset = await this.getUserAsset(userId, currency);
+      // 使用悲观锁获取用户资产，防止并发修改
+      const asset = await manager.findOne(UserAsset, {
+        where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
+      });
 
-      if (!asset.hasEnoughBalance(amount)) {
+      if (!asset) {
+        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+      }
+
+      if (!asset.hasEnoughWithdrawableBalance(amount)) {
         throw new BadRequestException(
-          `可用余额不足，无法锁定 ${amount} ${currency}`,
+          `真实余额不足，无法锁定 ${amount} ${currency}，真实余额 ${asset.balanceReal} ${currency}`,
         );
       }
 
+      // 从真实余额扣除，增加到锁定余额
+      asset.balanceReal = asset.balanceReal.minus(amount);
       asset.balanceLocked = asset.balanceLocked.plus(amount);
-      await manager.save(asset);
+
+      try {
+        await manager.save(asset);
+      } catch (error) {
+        // 处理乐观锁冲突
+        if (error.code === '23505' || error.message.includes('version')) {
+          this.logger.warn(
+            `Optimistic lock conflict for lock balance user ${userId} currency ${currency}`,
+          );
+          throw new BadRequestException(
+            'Concurrent update detected during lock balance, please retry',
+          );
+        }
+        throw error;
+      }
 
       // 创建锁定交易记录
       const transaction = manager.create(Transaction, {
@@ -443,11 +582,11 @@ export class AssetService {
         userId: userId,
         currency,
         type: TransactionType.LOCK,
-        source: TransactionSource.LOCKED,
+        source: TransactionSource.REAL,
         status: TransactionStatus.SUCCESS,
         amount,
-        balance_before: asset.balanceLocked.minus(amount),
-        balance_after: asset.balanceLocked,
+        balance_before: asset.balanceReal.plus(amount),
+        balance_after: asset.balanceReal,
         reference_id,
         description: `锁定余额 ${amount} ${currency}`,
         processed_at: new Date(),
@@ -473,16 +612,40 @@ export class AssetService {
     }
 
     return await this.dataSource.transaction(async (manager) => {
-      const asset = await this.getUserAsset(userId, currency);
+      // 使用悲观锁获取用户资产，防止并发修改
+      const asset = await manager.findOne(UserAsset, {
+        where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!asset) {
+        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+      }
 
       if (asset.balanceLocked.lt(amount)) {
         throw new BadRequestException(
-          `锁定余额不足，无法解锁 ${amount} ${currency}`,
+          `锁定余额不足，无法解锁 ${amount} ${currency}，锁定余额 ${asset.balanceLocked} ${currency}`,
         );
       }
 
+      // 从锁定余额扣除，增加回真实余额
       asset.balanceLocked = asset.balanceLocked.minus(amount);
-      await manager.save(asset);
+      asset.balanceReal = asset.balanceReal.plus(amount);
+
+      try {
+        await manager.save(asset);
+      } catch (error) {
+        // 处理乐观锁冲突
+        if (error.code === '23505' || error.message.includes('version')) {
+          this.logger.warn(
+            `Optimistic lock conflict for unlock balance user ${userId} currency ${currency}`,
+          );
+          throw new BadRequestException(
+            'Concurrent update detected during unlock balance, please retry',
+          );
+        }
+        throw error;
+      }
 
       // 创建解锁交易记录
       const transaction = manager.create(Transaction, {
@@ -493,8 +656,8 @@ export class AssetService {
         source: TransactionSource.LOCKED,
         status: TransactionStatus.SUCCESS,
         amount,
-        balance_before: asset.balanceLocked.plus(amount),
-        balance_after: asset.balanceLocked,
+        balance_before: asset.balanceReal.minus(amount),
+        balance_after: asset.balanceReal,
         reference_id,
         description: `解锁余额 ${amount} ${currency}`,
         processed_at: new Date(),
@@ -648,19 +811,8 @@ export class AssetService {
   /**
    * 映射链类型
    */
-  private mapChainType(chain: string): ChainType {
-    const chainMap: Record<string, ChainType> = {
-      ethereum: ChainType.EVM,
-      polygon: ChainType.EVM,
-      bsc: ChainType.EVM,
-      arbitrum: ChainType.EVM,
-      optimism: ChainType.EVM,
-      avalanche: ChainType.EVM,
-      solana: ChainType.SOLANA,
-      bitcoin: ChainType.BITCOIN,
-    };
-
-    return chainMap.bsc;
+  private mapChainType(): ChainType {
+    return ChainType.EVM;
   }
 
   /**

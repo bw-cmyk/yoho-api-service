@@ -27,6 +27,7 @@ import { WsGuard } from 'src/common-modules/auth/ws.guard';
 export class EventsGateway {
   protected readonly logger = new Logger(EventsGateway.name);
   private currentBtcPrice: string | null = null;
+  private currentBtcPriceTimestamp: number | null = null;
   private gameLoopInterval: NodeJS.Timeout | null = null;
   @WebSocketServer()
   server: Server;
@@ -158,6 +159,7 @@ export class EventsGateway {
           GamePhase.Settling,
           undefined,
           this.currentBtcPrice || '0',
+          this.currentBtcPriceTimestamp || 0,
         );
         this.logger.log(
           `Entered settling phase. Closed price: ${this.currentBtcPrice}`,
@@ -182,6 +184,7 @@ export class EventsGateway {
         result: round.result,
         lockedPrice: round.lockedPrice,
         closedPrice: round.closedPrice,
+        closedPriceTimestamp: round.closedPriceTimestamp,
         results: results,
       });
 
@@ -212,6 +215,7 @@ export class EventsGateway {
       phaseRemainingTime: gameStatus.currentRound.phaseRemainingTime,
       lockedPrice: gameStatus.currentRound.lockedPrice,
       closedPrice: gameStatus.currentRound.closedPrice,
+      closedPriceTimestamp: gameStatus.currentRound.closedPriceTimestamp,
       currentPrice: this.currentBtcPrice,
       bettingPool: {
         upTotal: gameStatus.currentRound.bettingPool.upTotal,
@@ -250,7 +254,7 @@ export class EventsGateway {
    */
   private handleBtcPriceUpdate(data: BinanceIndexPriceData): void {
     this.currentBtcPrice = data.price;
-
+    this.currentBtcPriceTimestamp = data.timestamp;
     // 广播价格更新给所有连接的客户端
     this.server?.emit('btcPriceUpdate', {
       symbol: data.symbol,

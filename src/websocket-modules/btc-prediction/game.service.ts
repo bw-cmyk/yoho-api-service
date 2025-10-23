@@ -87,6 +87,7 @@ export class GameService {
         this.config.settlingDuration,
       lockedPrice: null,
       closedPrice: null,
+      closedPriceTimestamp: null,
       result: null,
       bettingPool: {
         upBets: [],
@@ -232,6 +233,7 @@ export class GameService {
     newPhase: GamePhase,
     lockedPrice?: string,
     closedPrice?: string,
+    currentPriceTimestamp?: number,
   ): GameRound | null {
     if (!this.currentRound) return null;
 
@@ -250,6 +252,7 @@ export class GameService {
       case GamePhase.Settling:
         this.currentRound.phaseRemainingTime = this.config.settlingDuration;
         this.currentRound.closedPrice = closedPrice || null;
+        this.currentRound.closedPriceTimestamp = currentPriceTimestamp || null;
         this.logger.log(
           `Round ${this.currentRound.id} entered settling phase. Closed price: ${closedPrice}`,
         );
