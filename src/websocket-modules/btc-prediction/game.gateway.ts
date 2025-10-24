@@ -52,7 +52,6 @@ export class EventsGateway {
   }
 
   async setup() {
-    return;
     try {
       this.logger.log('🚀 开始初始化游戏服务...');
 
