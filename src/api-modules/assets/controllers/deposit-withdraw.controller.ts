@@ -25,11 +25,11 @@ export class DepositWithdrawController {
   @UseGuards(JwtAuthGuard)
   @Post('/deposit')
   async paymentDepositSignature(@Request() req: ExpressRequest) {
-    const { wallet } = req.user as any;
+    const { id: uid } = req.user as any;
     const { amount, chainId, type, customerOrderId, notifyUrl } = req.body;
     return await this.paymentService.getTopUpSignature(
       amount,
-      wallet,
+      uid,
       chainId,
       type,
       customerOrderId,
@@ -44,12 +44,12 @@ export class DepositWithdrawController {
   @UseGuards(JwtAuthGuard)
   @Post('/withdraw')
   async getWithDrawSignature(@Request() req: ExpressRequest) {
-    const { wallet } = req.user as any;
+    const { id: uid } = req.user as any;
     const { amount, chainId, type, customerOrderId, notifyUrl } = req.body;
 
     return await this.paymentService.getWithDrawSignature(
       amount,
-      wallet,
+      uid,
       chainId,
       type,
       customerOrderId,
@@ -64,10 +64,10 @@ export class DepositWithdrawController {
   @UseGuards(JwtAuthGuard)
   @Get('/orders')
   async getOrderStatus(@Request() req: ExpressRequest) {
-    const { wallet } = req.user as any;
+    const { uid } = req.user as any;
     const { limit, offset } = req.query;
     return await this.paymentService.getOrders(
-      wallet,
+      uid,
       Number(limit),
       Number(offset),
     );

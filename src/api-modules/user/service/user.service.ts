@@ -73,7 +73,6 @@ export class UserService {
   ) {}
 
   public async getUser(uid: string): Promise<Partial<User>> {
-    console.log('getUser', uid);
     const user = await this.userRepository.findOne({
       where: { id: uid },
     });

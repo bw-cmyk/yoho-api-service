@@ -478,14 +478,14 @@ export class AssetService {
         throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
       }
 
-      if (!asset.hasEnoughWithdrawableBalance(amount)) {
+      if (!asset.balanceLocked.gte(amount)) {
         throw new BadRequestException(
-          `可提现余额不足，需要 ${amount} ${currency}，可提现余额 ${asset.withdrawableBalance} ${currency}`,
+          `可提现余额不足，需要 ${amount} ${currency}，可提现余额 ${asset.balanceLocked} ${currency}`,
         );
       }
 
       const balanceBefore = asset.balanceReal;
-      asset.balanceReal = asset.balanceReal.minus(amount);
+      asset.balanceLocked = asset.balanceLocked.minus(amount);
 
       try {
         await manager.save(asset);
@@ -968,4 +968,5 @@ export class AssetService {
       });
     }
   }
+  
 }

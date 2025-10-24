@@ -3,13 +3,14 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Order } from '../entities/balance/order.entity';
 import { DataSource, Repository } from 'typeorm';
-import { Contract, Wallet, JsonRpcProvider } from 'ethers';
+import { Contract, Wallet, JsonRpcProvider, parseUnits } from 'ethers';
 import * as moment from 'moment';
 import { formatUnits } from 'ethers';
 import { Decimal } from 'decimal.js';
 import redisClient from '../../../common-modules/redis/redis-client';
 import { AssetService } from './asset.service';
 import { Currency } from '../entities/balance/user-asset.entity';
+import { UserService } from 'src/api-modules/user/service/user.service';
 
 const abi = [
   {
@@ -78,6 +79,8 @@ export class DepositWithdrawService {
 
     private readonly assetService: AssetService,
 
+    private readonly userService: UserService,
+
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
 
@@ -107,22 +110,29 @@ export class DepositWithdrawService {
 
   public async getWithDrawSignature(
     amount: string,
-    wallet: string,
+    uid: string,
     chainId: number,
     type: string,
     orderId: number,
     notifyUrl: string,
   ) {
-    const exists = await this.orderRepository.findOne({
-      where: {
-        orderId: orderId,
-      },
-    });
+    const user = await this.userService.getUser(uid);
+    if (!user) {
+      throw new BadRequestException('user not found');
+    }
+    const wallet = user.evmAAWallet;
 
-    if (exists) {
-      exists.expireAt = moment().add(5, 'minute').unix();
-      await this.orderRepository.save(exists);
-      return await this.signWithDrawMessage(exists);
+    if (orderId) {
+      const exists = await this.orderRepository.findOne({
+        where: {
+          orderId: orderId,
+        },
+      });
+      if (exists) {
+        exists.expireAt = moment().add(5, 'minute').unix();
+        await this.orderRepository.save(exists);
+        return await this.signWithDrawMessage(exists);
+      }
     }
 
     const tokenAddress = tokenMap[chainId]?.[type];
@@ -132,16 +142,19 @@ export class DepositWithdrawService {
     }
 
     try {
+      console.log('amount', formatUnits(amount, 18));
       await this.assetService.lockBalance(
-        wallet,
+        uid,
         Currency.USD,
-        new Decimal(amount),
+        new Decimal(formatUnits(amount, 18)),
         `withdraw-${orderId}`,
       );
     } catch (error) {
+      console.log('error', error);
       throw new BadRequestException('Lock balance failed');
     }
     const order = await this.createOrder(
+      uid,
       wallet,
       amount,
       chainId,
@@ -155,22 +168,29 @@ export class DepositWithdrawService {
 
   public async getTopUpSignature(
     amount: string,
-    wallet: string,
+    uid: string,
     chainId: number,
     type: string,
     orderId: number,
     notifyUrl: string,
   ) {
-    const exists = await this.orderRepository.findOne({
-      where: {
-        orderId: orderId,
-      },
-    });
+    const user = await this.userService.getUser(uid);
+    if (!user) {
+      throw new BadRequestException('user not found');
+    }
+    const wallet = user.evmAAWallet;
 
-    if (exists) {
-      exists.expireAt = moment().add(5, 'minute').unix();
-      await this.orderRepository.save(exists);
-      return this.signPaymentMessage(exists);
+    if (orderId) {
+      const exists = await this.orderRepository.findOne({
+        where: {
+          orderId: orderId,
+        },
+      });
+      if (exists) {
+        exists.expireAt = moment().add(5, 'minute').unix();
+        await this.orderRepository.save(exists);
+        return this.signPaymentMessage(exists);
+      }
     }
 
     const tokenAddress = tokenMap[chainId]?.[type];
@@ -178,8 +198,8 @@ export class DepositWithdrawService {
     if (!tokenAddress) {
       throw new BadRequestException('token not found');
     }
-
     const order = await this.createOrder(
+      uid,
       wallet,
       amount,
       chainId,
@@ -287,6 +307,7 @@ export class DepositWithdrawService {
   }
 
   private async createOrder(
+    uid: string,
     address: string,
     amount: string,
     chainId: number,
@@ -299,6 +320,7 @@ export class DepositWithdrawService {
     await queryRunner.startTransaction();
     try {
       const order = new Order();
+      order.uid = uid;
       order.wallet = address;
       order.amount = amount;
       order.chainId = chainId;
@@ -335,6 +357,7 @@ export class DepositWithdrawService {
       amount: order.amount,
     };
 
+    console.log('params', params);
     const signature = await this.signer.signTypedData(
       {
         name: 'SignedPayment',
@@ -432,7 +455,7 @@ export class DepositWithdrawService {
         await this.assetService.deposit({
           userId: order.uid,
           currency: Currency.USD,
-          amount: new Decimal(params.amount),
+          amount: new Decimal(formatUnits(params.amount, 18)),
           reference_id: `deposit-${order.orderId}`,
           description: `Deposit from order ${order.orderId}`,
           metadata: {
@@ -447,7 +470,7 @@ export class DepositWithdrawService {
         await this.assetService.withdraw({
           userId: order.uid,
           currency: Currency.USD,
-          amount: new Decimal(params.amount),
+          amount: new Decimal(formatUnits(params.amount, 18)),
           reference_id: `withdraw-${order.orderId}`,
           description: `Withdraw from order ${order.orderId}`,
           metadata: {

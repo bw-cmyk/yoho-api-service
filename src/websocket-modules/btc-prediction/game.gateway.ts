@@ -52,6 +52,7 @@ export class EventsGateway {
   }
 
   async setup() {
+    return;
     try {
       this.logger.log('🚀 开始初始化游戏服务...');
 
@@ -147,6 +148,8 @@ export class EventsGateway {
         this.gameService.updateGamePhase(
           GamePhase.Waiting,
           this.currentBtcPrice || '0',
+          undefined,
+          this.currentBtcPriceTimestamp || 0,
         );
         this.logger.log(
           `Entered waiting phase. Locked price: ${this.currentBtcPrice}`,
@@ -214,6 +217,7 @@ export class EventsGateway {
       phase: gameStatus.currentRound.phase,
       phaseRemainingTime: gameStatus.currentRound.phaseRemainingTime,
       lockedPrice: gameStatus.currentRound.lockedPrice,
+      lockedPriceTimestamp: gameStatus.currentRound.lockedPriceTimestamp,
       closedPrice: gameStatus.currentRound.closedPrice,
       closedPriceTimestamp: gameStatus.currentRound.closedPriceTimestamp,
       currentPrice: this.currentBtcPrice,

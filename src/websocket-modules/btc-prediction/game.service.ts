@@ -88,6 +88,7 @@ export class GameService {
       lockedPrice: null,
       closedPrice: null,
       closedPriceTimestamp: null,
+      lockedPriceTimestamp: null,
       result: null,
       bettingPool: {
         upBets: [],
@@ -244,6 +245,7 @@ export class GameService {
       case GamePhase.Waiting:
         this.currentRound.phaseRemainingTime = this.config.waitingDuration;
         this.currentRound.lockedPrice = lockedPrice || null;
+        this.currentRound.lockedPriceTimestamp = currentPriceTimestamp || null;
         this.logger.log(
           `Round ${this.currentRound.id} entered waiting phase. Locked price: ${lockedPrice}`,
         );
