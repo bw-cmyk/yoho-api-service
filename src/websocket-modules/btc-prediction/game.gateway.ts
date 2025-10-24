@@ -598,7 +598,7 @@ export class EventsGateway {
       // 广播历史价格数据给所有连接的客户端
       this.broadcastHistoricalPrices();
     } catch (error) {
-      this.logger.error('❌ 加载历史价格数据失败:', error);
+      this.logger.error('❌ 加载历史价格数据失败');
 
       // 尝试重试加载
       this.retryLoadHistoricalPrices();
