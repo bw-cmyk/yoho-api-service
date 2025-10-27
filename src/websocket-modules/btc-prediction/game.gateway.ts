@@ -616,7 +616,7 @@ export class EventsGateway {
         this.logger.log('🔄 重试加载历史价格数据...');
         await this.loadHistoricalPrices();
       } catch (error) {
-        this.logger.error('❌ 重试加载历史价格数据失败:', error);
+        this.logger.error('❌ 重试加载历史价格数据失败');
         // 可以继续重试或放弃
       }
     }, 30000); // 30秒后重试
