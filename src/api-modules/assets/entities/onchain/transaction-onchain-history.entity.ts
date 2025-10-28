@@ -163,6 +163,7 @@ export class TransactionHistory {
       id: this.id,
       txHash: this.txHash,
       chainIndex: this.chainIndex,
+      itype: this.itype,
       tokenContractAddress: this.tokenContractAddress,
       symbol: this.symbol,
       amount: this.amount,
