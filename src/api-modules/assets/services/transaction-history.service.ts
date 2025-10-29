@@ -107,14 +107,14 @@ export class TransactionHistoryService {
     );
 
     // add redis lock to prevent duplicate requests
-    // const lockKey = `transaction-history-lock:${params.address}`;
-    // const lock = await this.getRedisLock(lockKey);
-    // if (!lock) {
-    //   this.logger.error(
-    //     `Failed to get redis lock for address ${params.address}, Waiting for other instance to finish`,
-    //   );
-    //   return;
-    // }
+    const lockKey = `transaction-history-lock:${params.address}`;
+    const lock = await this.getRedisLock(lockKey);
+    if (!lock) {
+      this.logger.error(
+        `Failed to get redis lock for address ${params.address}, Waiting for other instance to finish`,
+      );
+      return;
+    }
     console.log('get redis lock success');
 
     return this.okxQueueService.getTransactionHistory(
