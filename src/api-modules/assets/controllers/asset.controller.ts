@@ -49,4 +49,18 @@ export class AssetController {
       })),
     };
   }
+
+  // get balance history
+  @Get('/balance-history')
+  @UseGuards(JwtAuthGuard)
+  async getBalanceHistory(@Request() req: ExpressRequest) {
+    const { id: userId } = req.user as any;
+    const balanceHistory = await this.assetService.getTransactionHistory(
+      userId,
+    );
+    return {
+      user_id: userId,
+      balanceHistory: balanceHistory,
+    };
+  }
 }
