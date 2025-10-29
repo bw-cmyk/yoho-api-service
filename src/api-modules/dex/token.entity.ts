@@ -52,6 +52,21 @@ export class Token {
   decimals: number;
 
   @Column({
+    nullable: true,
+  })
+  description?: string;
+
+  @Column({
+    nullable: true,
+  })
+  website?: string;
+
+  @Column({
+    nullable: true,
+  })
+  twitter?: string;
+
+  @Column({
     name: 'token_logo_url',
     type: 'varchar',
     length: 500,
