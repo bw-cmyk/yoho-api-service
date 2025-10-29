@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JsonRpcProvider } from 'ethers';
+import { ethers, JsonRpcProvider } from 'ethers';
 import { Repository } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import {
@@ -107,11 +107,15 @@ export class TransactionHistoryService {
     );
 
     // add redis lock to prevent duplicate requests
-    const lockKey = `transaction-history-lock:${params.address}`;
-    const lock = await this.getRedisLock(lockKey);
-    if (!lock) {
-      return;
-    }
+    // const lockKey = `transaction-history-lock:${params.address}`;
+    // const lock = await this.getRedisLock(lockKey);
+    // if (!lock) {
+    //   this.logger.error(
+    //     `Failed to get redis lock for address ${params.address}, Waiting for other instance to finish`,
+    //   );
+    //   return;
+    // }
+    console.log('get redis lock success');
 
     return this.okxQueueService.getTransactionHistory(
       params,
@@ -178,6 +182,13 @@ export class TransactionHistoryService {
           txData.txHash,
           this.provider,
         );
+        console.log('params: ', params);
+        const tokenContractAddress =
+          params &&
+          params.type === TransactionItype.SWAP &&
+          params.outputToken !== '0x55d398326f99059fF775485246999027B3197955'
+            ? params?.outputToken
+            : params?.inputToken;
         // 创建新记录
         const transaction = this.transactionHistoryRepository.create({
           address: address,
@@ -189,7 +200,9 @@ export class TransactionHistoryService {
           txTime: parseInt(txData.txTime),
           from: txData.from || [],
           to: txData.to || [],
-          tokenContractAddress: txData.tokenContractAddress,
+          tokenContractAddress: txData.tokenContractAddress
+            ? this.formatAddress(txData.tokenContractAddress)
+            : tokenContractAddress,
           amount: txData.amount ? new Decimal(txData.amount) : null,
           symbol: txData.symbol,
           txFee: txData.txFee ? new Decimal(txData.txFee) : null,
@@ -566,7 +579,16 @@ export class TransactionHistoryService {
         if (err) {
           reject(err);
         }
+        resolve(result === 'OK');
       });
     });
+  }
+
+  private formatAddress(address: string) {
+    try {
+      return ethers.getAddress(address);
+    } catch (e) {
+      return null;
+    }
   }
 }

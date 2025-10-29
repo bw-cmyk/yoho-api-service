@@ -47,7 +47,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     QueueModule,
     DexModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),
-    GameModule,
+    // GameModule,
   ],
   controllers: [JwkController],
 })

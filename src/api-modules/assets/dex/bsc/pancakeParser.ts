@@ -3,6 +3,7 @@ import * as web3 from 'web3';
 import { isArray, isObject } from 'class-validator';
 import * as pancakeAbi from './abi.json';
 import * as uniswapAbi from './uniswap.json';
+import * as usdtAbi from './usdt.json';
 import { TransactionItype } from '../../entities/onchain/transaction-onchain-history.entity';
 
 /**
@@ -173,6 +174,7 @@ export const extractParamsFromTxByTopic = async (
         amount0,
         amount1,
       });
+      transferCounts = 40;
     } else if (
       log.topics.indexOf(
         '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67',
@@ -192,32 +194,23 @@ export const extractParamsFromTxByTopic = async (
         amount0,
         amount1,
       });
+      transferCounts = 40;
     } else if (
       log.topics.indexOf(
         '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
       ) !== -1
     ) {
       transferCounts++;
-      const transferAbi = [
-        {
-          inputs: [
-            { name: 'from', type: 'address' },
-            { name: 'to', type: 'address' },
-            { name: 'value', type: 'uint256' },
-          ],
-        },
-      ];
-      const params = parseParams(log, transferAbi);
+      const params = parseParams(log, usdtAbi);
       transferParams = {
         from: params.from,
         to: params.to,
         value: params.value,
         type: TransactionItype.TOKEN_TRANSFER,
       };
-      return transferParams;
     }
   }
-
+  console.log('transferCounts: ', transferCounts);
   if (transferCounts === 1) {
     return transferParams;
   }
