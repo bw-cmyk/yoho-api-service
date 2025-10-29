@@ -21,6 +21,7 @@ import { WalletService } from 'src/api-modules/user/service/wallet.service';
 import { OKXQueueService } from '../dex/okx-queue.service';
 import { OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID } from '../constants';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
+import redisClient from 'src/common-modules/redis/redis-client';
 
 export interface DepositRequest {
   userId: string;
@@ -108,6 +109,8 @@ export class AssetService {
       });
       await this.userAssetRepository.save(asset);
     }
+
+    await this.batchUpdateChainAssets([userId]);
 
     return asset;
   }
@@ -952,7 +955,12 @@ export class AssetService {
     const tokens = result[0]?.tokenAssets;
     const userAddress = requestParams.queryParams.address;
 
-    console.log('tokens: ', requestParams);
+    const lockKey = `update-user-chain-assets-lock:${userAddress}`;
+    const lock = await this.getRedisLock(lockKey);
+    if (!lock) {
+      return;
+    }
+
     // get user id
     const user = await this.walletService.getUserByAddress(userAddress);
     if (!tokens || !user) {
@@ -968,5 +976,14 @@ export class AssetService {
       });
     }
   }
-  
+
+  private async getRedisLock(key: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      redisClient.set(key, 'locked', 'EX', 60 * 5, 'NX', (err, result) => {
+        if (err) {
+          reject(err);
+        }
+      });
+    });
+  }
 }

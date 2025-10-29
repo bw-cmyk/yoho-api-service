@@ -14,6 +14,7 @@ import { OKX_TRANSACTION_HISTORY_CALLBACK_FUNCTION_ID } from '../constants';
 import { extractParamsFromTxByTopic } from '../dex/bsc/pancakeParser';
 import { UserService } from 'src/api-modules/user/service/user.service';
 import { Token } from 'src/api-modules/dex/token.entity';
+import redisClient from 'src/common-modules/redis/redis-client';
 
 export interface TransactionHistoryParams {
   address: string;
@@ -105,6 +106,13 @@ export class TransactionHistoryService {
       `Queuing transaction history request for address: ${params.address}`,
     );
 
+    // add redis lock to prevent duplicate requests
+    const lockKey = `transaction-history-lock:${params.address}`;
+    const lock = await this.getRedisLock(lockKey);
+    if (!lock) {
+      return;
+    }
+
     return this.okxQueueService.getTransactionHistory(
       params,
       OKX_TRANSACTION_HISTORY_CALLBACK_FUNCTION_ID,
@@ -175,7 +183,7 @@ export class TransactionHistoryService {
           address: address,
           chainIndex: txData.chainIndex,
           txHash: txData.txHash,
-          itype: params ? TransactionItype.SWAP : TransactionItype.OTHER,
+          itype: params ? params.type : TransactionItype.OTHER,
           methodId: txData.methodId,
           nonce: txData.nonce,
           txTime: parseInt(txData.txTime),
@@ -239,6 +247,11 @@ export class TransactionHistoryService {
       .limit(limit)
       .offset(offset)
       .getManyAndCount();
+
+    await this.getTransactionHistory({
+      address: user.evmAAWallet,
+      chains: chainIndex,
+    });
 
     return { transactions, total };
   }
@@ -545,5 +558,15 @@ export class TransactionHistoryService {
     };
 
     return stats;
+  }
+
+  private async getRedisLock(key: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      redisClient.set(key, 'locked', 'EX', 60 * 5, 'NX', (err, result) => {
+        if (err) {
+          reject(err);
+        }
+      });
+    });
   }
 }

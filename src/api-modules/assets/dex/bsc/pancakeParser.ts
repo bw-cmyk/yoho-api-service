@@ -3,6 +3,7 @@ import * as web3 from 'web3';
 import { isArray, isObject } from 'class-validator';
 import * as pancakeAbi from './abi.json';
 import * as uniswapAbi from './uniswap.json';
+import { TransactionItype } from '../../entities/onchain/transaction-onchain-history.entity';
 
 /**
  * 验证交换路由的方向逻辑
@@ -150,6 +151,9 @@ export const extractParamsFromTxByTopic = async (
   let abi = null;
   const swapChain = [];
 
+  let transferCounts = 0;
+  let transferParams = null;
+
   for (const log of logs) {
     if (
       log.topics.indexOf(
@@ -188,14 +192,39 @@ export const extractParamsFromTxByTopic = async (
         amount0,
         amount1,
       });
+    } else if (
+      log.topics.indexOf(
+        '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+      ) !== -1
+    ) {
+      transferCounts++;
+      const transferAbi = [
+        {
+          inputs: [
+            { name: 'from', type: 'address' },
+            { name: 'to', type: 'address' },
+            { name: 'value', type: 'uint256' },
+          ],
+        },
+      ];
+      const params = parseParams(log, transferAbi);
+      transferParams = {
+        from: params.from,
+        to: params.to,
+        value: params.value,
+        type: TransactionItype.TOKEN_TRANSFER,
+      };
+      return transferParams;
     }
+  }
+
+  if (transferCounts === 1) {
+    return transferParams;
   }
 
   if (!swapChain.length) {
     return null;
   }
-
-  console.log('swapChain: ', swapChain);
 
   // 验证路由方向逻辑：通过正负值判断交易方向
   if (!validateSwapRoute(swapChain)) {
@@ -235,5 +264,6 @@ export const extractParamsFromTxByTopic = async (
     inputAmount,
     outputToken,
     outputAmount,
+    type: TransactionItype.SWAP,
   };
 };
