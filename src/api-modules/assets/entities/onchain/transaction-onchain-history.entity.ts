@@ -165,7 +165,7 @@ export class TransactionHistory {
       chainIndex: this.chainIndex,
       itype: this.itype,
       tokenContractAddress: this.tokenContractAddress,
-      symbol: this.symbol,
+      // symbol: this.symbol,
       amount: this.amount,
       txTime: this.txTime,
       txStatus: this.txStatus,

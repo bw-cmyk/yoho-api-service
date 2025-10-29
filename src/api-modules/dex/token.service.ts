@@ -9,6 +9,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Token } from './token.entity';
 import { OKXDEX } from '../assets/dex/okx';
+import { TransactionHistoryService } from '../assets/services/transaction-history.service';
 
 export interface TokenCreateRequest {
   chainIndex: string;
@@ -63,6 +64,8 @@ export class TokenService {
     private readonly dataSource: DataSource,
 
     private readonly okxDex: OKXDEX,
+
+    private readonly transactionHistoryService: TransactionHistoryService,
   ) {}
 
   /**
@@ -358,5 +361,17 @@ export class TokenService {
       totalMarketCap: new Decimal(stats.totalMarketCap || '0'),
       totalVolume24h: new Decimal(stats.totalVolume24h || '0'),
     };
+  }
+
+  public getTokensTransactions(
+    tokenContractAddress: string,
+    limit = 100,
+    offset = 0,
+  ) {
+    return this.transactionHistoryService.getTokensTransactionsFromDB(
+      tokenContractAddress,
+      limit || 100,
+      offset || 0,
+    );
   }
 }

@@ -269,6 +269,33 @@ export class TransactionHistoryService {
     return { transactions, total };
   }
 
+  async getTokensTransactionsFromDB(
+    tokenContractAddress?: string,
+    limit = 100,
+    offset = 0,
+  ): Promise<TransactionHistory[]> {
+    const queryBuilder = this.transactionHistoryRepository
+      .createQueryBuilder('tx')
+      .where('tx."tokenContractAddress" = :tokenContractAddress', {
+        tokenContractAddress,
+      })
+      .andWhere('tx.itype = :itype', { itype: TransactionItype.SWAP });
+
+    if (limit) {
+      queryBuilder.limit(limit);
+    }
+
+    if (offset) {
+      queryBuilder.offset(offset);
+    }
+
+    const transactions = await queryBuilder
+      .orderBy('tx.txTime', 'ASC')
+      .getMany();
+
+    return transactions;
+  }
+
   /**
    * 计算 PnL
    */

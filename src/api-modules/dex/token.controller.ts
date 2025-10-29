@@ -78,19 +78,6 @@ export class TokenController {
     return this.tokenService.getTokenStats();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get token by ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Token retrieved successfully',
-    type: Token,
-  })
-  @ApiResponse({ status: 404, description: 'Token not found' })
-  @ApiParam({ name: 'id', description: 'Token ID' })
-  async getTokenById(@Param('id') id: string): Promise<Token> {
-    return this.tokenService.getTokenById(id);
-  }
-
   @Get('contract/:chainIndex/:contractAddress')
   @ApiOperation({ summary: 'Get token by contract address' })
   @ApiResponse({
@@ -111,22 +98,6 @@ export class TokenController {
     );
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Update token information' })
-  @ApiResponse({
-    status: 200,
-    description: 'Token updated successfully',
-    type: Token,
-  })
-  @ApiResponse({ status: 404, description: 'Token not found' })
-  @ApiParam({ name: 'id', description: 'Token ID' })
-  async updateToken(
-    @Param('id') id: string,
-    @Body() request: TokenUpdateRequest,
-  ): Promise<Token> {
-    return this.tokenService.updateToken(id, request);
-  }
-
   @Post('sync/:chainIndex')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sync tokens from OKX for a specific chain' })
@@ -136,5 +107,27 @@ export class TokenController {
     @Param('chainIndex') chainIndex: string,
   ): Promise<Token[]> {
     return this.tokenService.syncTokensFromOKX(chainIndex);
+  }
+
+  @Get('transactions')
+  @ApiOperation({ summary: 'Get token transactions' })
+  @ApiResponse({
+    status: 200,
+    description: 'Token transactions retrieved successfully',
+  })
+  @ApiParam({
+    name: 'tokenContractAddress',
+    description: 'Token contract address',
+  })
+  async getTokenTransactions(
+    @Query('tokenContractAddress') tokenContractAddress: string,
+    @Query('limit') limit: number,
+    @Query('offset') offset: number,
+  ) {
+    return this.tokenService.getTokensTransactions(
+      tokenContractAddress,
+      limit,
+      offset,
+    );
   }
 }

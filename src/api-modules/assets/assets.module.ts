@@ -53,6 +53,6 @@ import { Order } from './entities/balance/order.entity';
     DepositWithdrawHookController,
     DepositWithdrawController,
   ],
-  exports: [AssetService, OKXQueueService],
+  exports: [AssetService, OKXQueueService, TransactionHistoryService],
 })
 export class AssetsModule {}
