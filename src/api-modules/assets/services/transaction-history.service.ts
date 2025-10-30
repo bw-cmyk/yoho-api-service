@@ -261,10 +261,12 @@ export class TransactionHistoryService {
       .offset(offset)
       .getManyAndCount();
 
-    await this.getTransactionHistory({
-      address: user.evmAAWallet,
-      chains: chainIndex,
-    });
+    if (user.evmAAWallet) {
+      await this.getTransactionHistory({
+        address: user.evmAAWallet,
+        chains: chainIndex,
+      });
+    }
 
     return { transactions, total };
   }
