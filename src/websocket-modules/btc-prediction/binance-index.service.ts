@@ -144,7 +144,7 @@ export class BinanceIndexService implements OnModuleDestroy {
       );
       return historicalData;
     } catch (error) {
-      this.logger.error('Failed to fetch historical prices:', error);
+      this.logger.error('Failed to fetch historical prices');
       throw error;
     }
   }
