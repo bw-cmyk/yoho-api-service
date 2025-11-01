@@ -3,7 +3,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Order } from '../entities/balance/order.entity';
 import { DataSource, Repository } from 'typeorm';
-import { Contract, Wallet, JsonRpcProvider, parseUnits } from 'ethers';
+import { Wallet, JsonRpcProvider } from 'ethers';
 import * as moment from 'moment';
 import { formatUnits } from 'ethers';
 import { Decimal } from 'decimal.js';
@@ -12,27 +12,7 @@ import { AssetService } from './asset.service';
 import { Currency } from '../entities/balance/user-asset.entity';
 import { UserService } from 'src/api-modules/user/service/user.service';
 
-const abi = [
-  {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    name: 'usedSystemIds',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
+// removed unused abi
 
 export const RPC = {
   56: 'https://bsc-mainnet.nodereal.io/v1/23c9bf70154c4c50bb759399e398b380',
@@ -129,9 +109,21 @@ export class DepositWithdrawService {
         },
       });
       if (exists) {
+        // refresh deadline
         exists.expireAt = moment().add(5, 'minute').unix();
         await this.orderRepository.save(exists);
-        return await this.signWithDrawMessage(exists);
+
+        // Only approved orders can get signature
+        if (exists.status === 'approved') {
+          return await this.signWithDrawMessage(exists);
+        }
+
+        // Not approved yet, return order info only
+        return {
+          orderId: exists.orderId,
+          status: exists.status,
+          expireAt: exists.expireAt,
+        } as any;
       }
     }
 
@@ -163,7 +155,12 @@ export class DepositWithdrawService {
       'withdraw',
     );
 
-    return this.signWithDrawMessage(order);
+    // Withdraw requires manual approval first
+    return {
+      orderId: order.orderId,
+      status: order.status,
+      expireAt: order.expireAt,
+    } as any;
   }
 
   public async getTopUpSignature(
@@ -284,6 +281,7 @@ export class DepositWithdrawService {
 
         // 标记订单为已处理
         currentOrder.processed = true;
+        currentOrder.status = 'finish';
         await manager.save(currentOrder);
 
         this.logger.log(`Order ${orderId} processed successfully`);
@@ -330,6 +328,8 @@ export class DepositWithdrawService {
       order.type = type;
       order.timestamp = moment().unix();
       order.expireAt = moment().add(5, 'minute').unix();
+      // withdraw requires approval, deposit can be immediate
+      order.status = 'pending';
 
       const ticketInDb = await queryRunner.manager.save(order);
 
@@ -385,6 +385,9 @@ export class DepositWithdrawService {
   }
 
   private async signWithDrawMessage(order: Order) {
+    if (order.status !== 'approved') {
+      throw new BadRequestException('withdraw order not approved');
+    }
     const SIGNED_PAYMENT_CONTRACT = this.configService.get(
       'SIGNED_PAYMENT_CONTRACT',
     );
@@ -424,6 +427,57 @@ export class DepositWithdrawService {
     };
   }
 
+  public async approveWithdraw(orderId: number) {
+    const order = await this.orderRepository.findOne({ where: { orderId } });
+    if (!order) {
+      throw new BadRequestException('order not found');
+    }
+    if (order.type !== 'withdraw') {
+      throw new BadRequestException('only withdraw can be approved');
+    }
+    if (order.status === 'cancel') {
+      throw new BadRequestException('order already cancelled');
+    }
+    if (order.status === 'finish') {
+      throw new BadRequestException('order already finished');
+    }
+    order.status = 'approved';
+    await this.orderRepository.save(order);
+    return { orderId: order.orderId, status: order.status };
+  }
+
+  public async rejectWithdraw(orderId: number) {
+    const order = await this.orderRepository.findOne({ where: { orderId } });
+    if (!order) {
+      throw new BadRequestException('order not found');
+    }
+    if (order.type !== 'withdraw') {
+      throw new BadRequestException('only withdraw can be rejected');
+    }
+    if (order.status === 'cancel') {
+      return { orderId: order.orderId, status: order.status };
+    }
+    if (order.status === 'finish') {
+      throw new BadRequestException('order already finished');
+    }
+
+    // unlock locked balance
+    try {
+      await this.assetService.unlockBalance(
+        order.uid,
+        Currency.USD,
+        new Decimal(formatUnits(order.amount.toString(), 18)),
+        `withdraw-${order.orderId}`,
+      );
+    } catch (e) {
+      this.logger.error('unlock balance failed for reject', e);
+    }
+
+    order.status = 'cancel';
+    await this.orderRepository.save(order);
+    return { orderId: order.orderId, status: order.status };
+  }
+
   async getLock(lockKey: string, ttl = 30) {
     return new Promise((resolve, reject) => {
       redisClient.set(lockKey, 'locked', 'EX', ttl, 'NX', (err, result) => {
@@ -455,7 +509,7 @@ export class DepositWithdrawService {
         await this.assetService.deposit({
           userId: order.uid,
           currency: Currency.USD,
-          amount: new Decimal(formatUnits(params.amount, 18)),
+          amount: new Decimal(params.amount),
           reference_id: `deposit-${order.orderId}`,
           description: `Deposit from order ${order.orderId}`,
           metadata: {
@@ -470,7 +524,7 @@ export class DepositWithdrawService {
         await this.assetService.withdraw({
           userId: order.uid,
           currency: Currency.USD,
-          amount: new Decimal(formatUnits(params.amount, 18)),
+          amount: new Decimal(params.amount),
           reference_id: `withdraw-${order.orderId}`,
           description: `Withdraw from order ${order.orderId}`,
           metadata: {

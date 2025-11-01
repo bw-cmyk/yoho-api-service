@@ -703,7 +703,7 @@ export class AssetService {
    */
   private async calculateBonusAmount(depositAmount: Decimal): Promise<Decimal> {
     // 示例：充值100U送10U赠金
-    const bonusRatio = new Decimal('0.1'); // 10%
+    const bonusRatio = new Decimal('0'); // 10%
     return depositAmount.mul(bonusRatio).toDecimalPlaces(8);
   }
 

@@ -57,6 +57,22 @@ export class DepositWithdrawController {
     );
   }
 
+  @ApiResponse({ status: 200, description: 'approve withdraw' })
+  @UseGuards(JwtAuthGuard)
+  @Post('/withdraw/approve')
+  async approveWithdraw(@Request() req: ExpressRequest) {
+    const { orderId } = req.body as any;
+    return await this.paymentService.approveWithdraw(Number(orderId));
+  }
+
+  @ApiResponse({ status: 200, description: 'reject withdraw' })
+  @UseGuards(JwtAuthGuard)
+  @Post('/withdraw/reject')
+  async rejectWithdraw(@Request() req: ExpressRequest) {
+    const { orderId } = req.body as any;
+    return await this.paymentService.rejectWithdraw(Number(orderId));
+  }
+
   @ApiResponse({
     status: 200,
     description: 'payment',

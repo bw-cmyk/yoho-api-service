@@ -82,6 +82,12 @@ export class Order {
   })
   processed: boolean;
 
+  @Column({
+    nullable: true,
+    default: 'pending',
+  })
+  status: 'pending' | 'approved' | 'cancel' | 'finish';
+
   @CreateDateColumn()
   createdAt: Date;
 
