@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Order } from '../entities/balance/order.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, LessThan, Repository } from 'typeorm';
 import { Wallet, JsonRpcProvider } from 'ethers';
 import * as moment from 'moment';
 import { formatUnits } from 'ethers';
@@ -11,6 +11,9 @@ import redisClient from '../../../common-modules/redis/redis-client';
 import { AssetService } from './asset.service';
 import { Currency } from '../entities/balance/user-asset.entity';
 import { UserService } from 'src/api-modules/user/service/user.service';
+import { Contract } from 'ethers';
+import * as paymentAbi from './payment.json';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 // removed unused abi
 
@@ -53,6 +56,7 @@ export class DepositWithdrawService {
   private readonly logger = new Logger(DepositWithdrawService.name);
   private signer: Wallet = null;
   private provider: JsonRpcProvider = null;
+  private isProcessing = false;
 
   constructor(
     private readonly configService: ConfigService,
@@ -71,6 +75,7 @@ export class DepositWithdrawService {
       'SIGNED_PAYMENT_PRIVATE_KEY',
     );
     this.signer = new Wallet(MINT_PRIVATE_KEY);
+    this.provider = new JsonRpcProvider(RPC[56]);
   }
 
   public async getOrders(
@@ -109,12 +114,10 @@ export class DepositWithdrawService {
         },
       });
       if (exists) {
-        // refresh deadline
-        exists.expireAt = moment().add(5, 'minute').unix();
-        await this.orderRepository.save(exists);
-
         // Only approved orders can get signature
         if (exists.status === 'approved') {
+          exists.expireAt = moment().add(5, 'minute').unix();
+          await this.orderRepository.save(exists);
           return await this.signWithDrawMessage(exists);
         }
 
@@ -134,7 +137,6 @@ export class DepositWithdrawService {
     }
 
     try {
-      console.log('amount', formatUnits(amount, 18));
       await this.assetService.lockBalance(
         uid,
         Currency.USD,
@@ -544,14 +546,52 @@ export class DepositWithdrawService {
     }
   }
 
-  private mapTokenToCurrency(tokenAddress: string): string {
-    // 映射代币地址到货币类型
-    const tokenMap: Record<string, string> = {
-      '0x55d398326f99059ff775485246999027b3197955': 'USDT', // BSC USDT
-      '0x337610d27c682e347c9cd60bd4b3b107c9d34ddd': 'USDT', // BSC Testnet USDT
-      '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE': 'BNB', // Native BNB
-    };
+  @Cron(CronExpression.EVERY_MINUTE)
+  public async processExpiredOrders() {
+    if (this.isProcessing) {
+      return;
+    }
+    try {
+      this.isProcessing = true;
+      const expiredOrders = await this.orderRepository.find({
+        where: {
+          expireAt: LessThan(moment().unix()),
+          status: 'pending',
+        },
+        take: 10,
+        order: {
+          expireAt: 'ASC',
+        },
+      });
+      for (const order of expiredOrders) {
+        await this.processExpiredOrder(order);
+      }
+    } catch (error) {
+      this.logger.error('Failed to process expired orders:', error);
+    } finally {
+      this.isProcessing = false;
+    }
+  }
 
-    return tokenMap[tokenAddress] || 'UNKNOWN';
+  private async processExpiredOrder(order: Order) {
+    // find order on chain
+    const contract = new Contract(
+      process.env.SIGNED_PAYMENT_CONTRACT,
+      paymentAbi,
+      this.provider,
+    );
+    const orderData = await contract.usedSystemIds(order.orderId);
+    if (orderData === false) {
+      order.status = 'cancel';
+      if (order.type === 'withdraw') {
+        await this.assetService.unlockBalance(
+          order.uid,
+          Currency.USD,
+          new Decimal(formatUnits(order.amount.toString(), 18)),
+          `withdraw-${order.orderId}`,
+        );
+      }
+      await this.orderRepository.save(order);
+    }
   }
 }
