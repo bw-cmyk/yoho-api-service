@@ -114,7 +114,7 @@ export class TokenService {
       isActive = true,
       page = 1,
       limit = 20,
-      sortBy = 'currentPriceUsd',
+      sortBy = 'createdAt',
       sortOrder = 'DESC',
     } = query;
 
@@ -245,21 +245,6 @@ export class TokenService {
       const syncedTokens: Token[] = [];
 
       for (const okxToken of okxTokens) {
-        if (
-          ![
-            'BNB',
-            'USDC',
-            'DOGE',
-            'ETH',
-            'USDT',
-            'VELO',
-            'XTER',
-            'ASTER',
-          ].includes(okxToken.tokenSymbol)
-        ) {
-          continue;
-        }
-
         try {
           // 检查token是否已存在
           let token = await this.tokenRepository.findOne({
