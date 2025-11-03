@@ -115,7 +115,7 @@ export class TokenService {
       page = 1,
       limit = 20,
       sortBy = 'createdAt',
-      sortOrder = 'DESC',
+      sortOrder = 'ASC',
     } = query;
 
     const queryBuilder = this.tokenRepository
