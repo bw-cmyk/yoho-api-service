@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { UserAsset, Currency } from '../entities/balance/user-asset.entity';
 import {
@@ -22,6 +22,7 @@ import { OKXQueueService } from '../dex/okx-queue.service';
 import { OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID } from '../constants';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
 import redisClient from 'src/common-modules/redis/redis-client';
+import { Token } from 'src/api-modules/dex/token.entity';
 
 export interface DepositRequest {
   userId: string;
@@ -72,6 +73,9 @@ export class AssetService {
 
     @InjectRepository(UserChainAsset)
     private readonly userChainAssetRepository: Repository<UserChainAsset>,
+
+    @InjectRepository(Token)
+    private readonly tokenRepository: Repository<Token>,
 
     @InjectRepository(UserChainAssetSnapshot)
     private readonly userChainAssetSnapshotRepository: Repository<UserChainAssetSnapshot>,
@@ -823,10 +827,25 @@ export class AssetService {
    */
   async getUserChainAssets(userId: string): Promise<UserChainAsset[]> {
     this.updateUserChainAssets(userId);
-    return this.userChainAssetRepository.find({
+    const assets = await this.userChainAssetRepository.find({
       where: { userId },
       order: { usdValue: 'DESC' },
     });
+    // get token ids
+    const tokenIds = assets.map((asset) => asset.tokenSymbol);
+    // get tokens
+    const tokens = await this.tokenRepository.find({
+      where: { tokenSymbol: In(tokenIds) },
+    });
+
+    for (const asset of assets) {
+      const token = tokens.find(
+        (token) => token.tokenSymbol === asset.tokenSymbol,
+      );
+      // @ts-ignore
+      asset.token = token;
+    }
+    return assets;
   }
 
   /**
