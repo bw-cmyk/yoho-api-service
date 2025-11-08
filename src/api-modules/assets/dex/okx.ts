@@ -153,7 +153,7 @@ export class OKXDEX {
       timestamp,
       method,
       fullPath,
-      data ? this.buildQueryString(data) : '',
+      data ? JSON.stringify(data) : '',
     );
 
     // 合并自定义请求头
@@ -187,6 +187,7 @@ export class OKXDEX {
 
       // 检查OKX API响应状态
       if (responseData.code !== '0') {
+        console.log('responseData:', responseData);
         throw new Error(
           `OKX API error: ${responseData.msg} (code: ${responseData.code})`,
         );

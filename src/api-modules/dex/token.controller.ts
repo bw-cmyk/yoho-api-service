@@ -25,11 +25,15 @@ import {
 } from './token.service';
 import { Token } from './token.entity';
 import { Decimal } from 'decimal.js';
+import { TokenPriceUpdaterService } from './token-updater.service';
 
 @ApiTags('Token Management')
 @Controller('api/v1/tokens')
 export class TokenController {
-  constructor(private readonly tokenService: TokenService) {}
+  constructor(
+    private readonly tokenService: TokenService,
+    private readonly tokenUpdaterService: TokenPriceUpdaterService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get token list with pagination and filters' })
@@ -129,5 +133,16 @@ export class TokenController {
       limit,
       offset,
     );
+  }
+
+  @Get('sync-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sync all tokens from OKX' })
+  @ApiResponse({ status: 200, description: 'Tokens synced successfully' })
+  async syncAllTokensFromOKX(): Promise<void> {
+    await this.tokenUpdaterService.updateTokensForChain('56', [
+      { contractAddress: '0x000ae314e2a2172a039b26378814c252734f556a' },
+    ]);
+    return;
   }
 }

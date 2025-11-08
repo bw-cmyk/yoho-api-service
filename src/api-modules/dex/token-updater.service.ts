@@ -85,7 +85,7 @@ export class TokenPriceUpdaterService {
   /**
    * 为特定链更新token价格
    */
-  private async updateTokensForChain(
+  public async updateTokensForChain(
     chainIndex: string,
     tokens: any[],
   ): Promise<void> {

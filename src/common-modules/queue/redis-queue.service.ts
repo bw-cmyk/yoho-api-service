@@ -142,9 +142,6 @@ export class RedisQueueService {
         return;
       }
 
-      // log
-      this.logger.debug(`teest`)
-
       // 获取要处理的请求
       const itemsToProcess: ApiRequestData[] = [];
       for (let i = 0; i < this.config.maxConcurrent && i < queueLength; i++) {
