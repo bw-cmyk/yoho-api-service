@@ -18,34 +18,34 @@ const authHeader = {
 };
 
 const run = async () => {
-  // const response = await fetch(`${endpoint}/api/v1/campaigns`, {
-  //   method: 'GET',
-  //   headers: authHeader,
-  // });
-  // const data = await response.json();
-  // console.log(data);
+  const response = await fetch(`${endpoint}/api/v1/campaigns`, {
+    method: 'GET',
+    headers: authHeader,
+  });
+  const data = await response.json();
+  console.log(data);
 
-  // // get task by campaign id
-  // const taskResponse = await fetch(
-  //   `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/tasks`,
-  //   {
-  //     method: 'GET',
-  //     headers: authHeader,
-  //   },
-  // );
-  // const taskData = await taskResponse.json();
-  // console.log(taskData);
+  // get task by campaign id
+  const taskResponse = await fetch(
+    `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/tasks`,
+    {
+      method: 'GET',
+      headers: authHeader,
+    },
+  );
+  const taskData = await taskResponse.json();
+  console.log(taskData);
 
-  // // participate campaign
-  // const participateResponse = await fetch(
-  //   `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/participate`,
-  //   {
-  //     method: 'POST',
-  //     headers: authHeader,
-  //   },
-  // );
-  // const participateData = await participateResponse.json();
-  // console.log(participateData);
+  // participate campaign
+  const participateResponse = await fetch(
+    `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/participate`,
+    {
+      method: 'POST',
+      headers: authHeader,
+    },
+  );
+  const participateData = await participateResponse.json();
+  console.log(participateData);
 
   // complete task
   const completeResponse = await fetch(
