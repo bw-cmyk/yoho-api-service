@@ -10,7 +10,7 @@ import {
  * 任务完成记录实体
  * 用于记录每次任务完成，支持重复任务
  */
-@Entity('yoho_task_completions')
+@Entity('yoho_campaign_task_completions')
 @Index(['userId', 'taskId', 'completedAt'])
 @Index(['userId', 'campaignId'])
 export class TaskCompletion {

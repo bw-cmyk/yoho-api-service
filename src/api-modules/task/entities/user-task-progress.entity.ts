@@ -20,7 +20,7 @@ export enum UserTaskStatus {
 /**
  * 用户任务进度实体
  */
-@Entity('yoho_user_task_progress')
+@Entity('yoho_campaign_user_task_progress')
 @Index(['userId', 'taskId'])
 @Index(['userId', 'campaignId'])
 @Index(['taskId'])

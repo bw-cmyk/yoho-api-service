@@ -21,7 +21,7 @@ export enum UserCampaignStatus {
 /**
  * 用户活动进度实体
  */
-@Entity('yoho_user_campaign_progress')
+@Entity('yoho_campaign_user_progress')
 @Index(['userId', 'campaignId'], { unique: true })
 @Index(['userId', 'status'])
 @Index(['campaignId'])

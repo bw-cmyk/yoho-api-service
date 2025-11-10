@@ -24,7 +24,7 @@ export enum UserTaskRewardStatus {
  * 每个用户每种奖励类型只有一条记录，用于记录用户的任务奖励金
  * 唯一性约束：userId + rewardType
  */
-@Entity('yoho_user_task_rewards')
+@Entity('yoho_campaign_user_task_rewards')
 @Unique(['userId', 'rewardType'])
 @Index(['userId', 'rewardType'])
 @Index(['userId'])

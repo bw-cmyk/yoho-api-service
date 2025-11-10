@@ -30,7 +30,7 @@ export enum RewardGrantType {
 /**
  * 任务奖励实体
  */
-@Entity('yoho_task_rewards')
+@Entity('yoho_campaign_task_rewards')
 @Index(['taskId'])
 export class TaskReward {
   @PrimaryGeneratedColumn('increment')

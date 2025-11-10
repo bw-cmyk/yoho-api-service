@@ -38,7 +38,7 @@ export enum TaskRepeatType {
 /**
  * 任务实体
  */
-@Entity('yoho_tasks')
+@Entity('yoho_campaign_tasks')
 @Index(['campaignId', 'sortOrder'])
 @Index(['type', 'status'])
 export class Task {
