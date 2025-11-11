@@ -55,10 +55,8 @@ export class CampaignService {
    * 获取活动详情（包含任务列表）
    */
   async getCampaignById(id: number, includeTasks = true): Promise<Campaign> {
-    const relations = includeTasks ? ['tasks', 'tasks.rewards'] : [];
     const campaign = await this.campaignRepository.findOne({
       where: { id },
-      relations,
     });
     if (!campaign) {
       throw new NotFoundException(`Campaign with id ${id} not found`);
