@@ -14,7 +14,6 @@ export class CheckInTaskHandler extends BaseTaskHandler {
 
   async validate(
     _task: Task,
-    _completionData: Record<string, any>,
     _userProgress?: UserTaskProgress,
   ): Promise<TaskValidationResult> {
     // 签到任务不需要特殊验证，只需要检查是否在有效时间范围内

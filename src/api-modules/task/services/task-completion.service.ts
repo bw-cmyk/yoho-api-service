@@ -159,6 +159,7 @@ export class TaskCompletionService {
         // 在同一事务中更新用户任务奖励
         await this.userTaskRewardService.addReward(
           userId,
+          taskId,
           rewardType,
           rewardAmount,
           currency,

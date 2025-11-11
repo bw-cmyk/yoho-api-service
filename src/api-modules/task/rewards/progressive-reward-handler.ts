@@ -18,7 +18,6 @@ export class ProgressiveRewardHandler extends BaseRewardHandler {
   async calculate(
     reward: TaskReward,
     userProgress?: UserTaskProgress,
-    _completionData?: Record<string, any>,
   ): Promise<RewardCalculationResult> {
     const config = reward.amountConfig || {};
     const rules = config.progressiveRules || [];

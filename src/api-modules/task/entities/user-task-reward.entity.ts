@@ -25,8 +25,8 @@ export enum UserTaskRewardStatus {
  * 唯一性约束：userId + rewardType
  */
 @Entity('yoho_campaign_user_task_rewards')
-@Unique(['userId', 'rewardType'])
-@Index(['userId', 'rewardType'])
+@Unique(['userId', 'taskId'])
+@Index(['userId', 'taskId'])
 @Index(['userId'])
 export class UserTaskReward {
   @PrimaryGeneratedColumn('increment')
@@ -34,6 +34,9 @@ export class UserTaskReward {
 
   @Column({ type: 'varchar', length: 64, name: 'user_id' })
   userId: string; // 用户ID
+
+  @Column({ type: 'int', name: 'task_id' })
+  taskId: number; // 任务ID
 
   @Column({
     type: 'enum',

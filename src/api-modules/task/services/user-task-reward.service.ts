@@ -57,6 +57,7 @@ export class UserTaskRewardService {
    */
   async addReward(
     userId: string,
+    taskId: number,
     rewardType: RewardType,
     amount: number,
     currency = 'USD',
@@ -72,6 +73,7 @@ export class UserTaskRewardService {
         // 如果不存在，创建新记录
         const newReward = mgr.create(UserTaskReward, {
           userId,
+          taskId,
           rewardType,
           currency,
           totalReward: amount,

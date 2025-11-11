@@ -5,7 +5,7 @@ import * as jwt from 'jsonwebtoken';
 const endpoint = 'http://localhost:3000';
 const token = jwt.sign(
   {
-    sub: '271472926769848320',
+    sub: '358801635322889216',
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 60 * 1,
   },
@@ -52,11 +52,7 @@ const run = async () => {
     `${endpoint}/api/v1/campaigns/tasks/1/complete`,
     {
       method: 'POST',
-      headers: authHeader,
-      body: JSON.stringify({
-        completionData: {},
-        referenceId: 'test',
-      }),
+      headers: authHeader
     },
   );
   const completeData = await completeResponse.json();

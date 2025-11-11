@@ -24,7 +24,6 @@ export class DepositTaskHandler extends BaseTaskHandler {
 
   async validate(
     task: Task,
-    _completionData: Record<string, any>,
     userProgress?: UserTaskProgress,
   ): Promise<TaskValidationResult> {
     // 检查是否为首次充值
