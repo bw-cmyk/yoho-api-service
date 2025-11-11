@@ -298,7 +298,6 @@ export class CampaignService {
   async getUserCampaigns(userId: string): Promise<UserCampaignProgress[]> {
     return await this.userCampaignProgressRepository.find({
       where: { userId },
-      relations: ['campaign'],
       order: { createdAt: 'DESC' },
     });
   }
