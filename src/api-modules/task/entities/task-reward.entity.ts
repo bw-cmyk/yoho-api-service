@@ -36,6 +36,9 @@ export class TaskReward {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
+  @Column({ type: 'int', name: 'campaign_id', default: 1 })
+  campaignId: number;
+
   @Column({ type: 'int', name: 'task_id' })
   taskId: number;
 

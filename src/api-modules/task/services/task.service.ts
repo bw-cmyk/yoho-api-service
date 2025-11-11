@@ -136,4 +136,10 @@ export class TaskService {
   async deleteTaskReward(id: number): Promise<void> {
     await this.taskRewardRepository.delete(id);
   }
+
+  async getTaskRewards(campaignId: number): Promise<TaskReward[]> {
+    return await this.taskRewardRepository.find({
+      where: { campaignId },
+    });
+  }
 }
