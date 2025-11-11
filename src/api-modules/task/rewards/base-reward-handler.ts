@@ -30,7 +30,6 @@ export abstract class BaseRewardHandler {
   abstract calculate(
     reward: TaskReward,
     userProgress?: UserTaskProgress,
-    completionData?: Record<string, any>,
   ): Promise<RewardCalculationResult>;
 
   /**

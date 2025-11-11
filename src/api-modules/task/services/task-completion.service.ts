@@ -43,8 +43,6 @@ export class TaskCompletionService {
   async completeTask(
     userId: string,
     taskId: number,
-    completionData?: Record<string, any>,
-    referenceId?: string,
   ): Promise<{ progress: UserTaskProgress; rewardAmount: number }> {
     return await this.dataSource.transaction(async (manager) => {
       // 获取任务信息
@@ -106,11 +104,7 @@ export class TaskCompletionService {
       // 使用任务处理器进行验证
       const taskHandler = this.taskHandlerFactory.getHandlerForTask(task);
 
-      const validationResult = await taskHandler.validate(
-        task,
-        completionData || {},
-        progress,
-      );
+      const validationResult = await taskHandler.validate(task, progress);
 
       if (!validationResult.valid) {
         throw new BadRequestException(
@@ -126,16 +120,11 @@ export class TaskCompletionService {
         const rewardHandler = this.rewardHandlerFactory.getHandler(
           reward.grantType,
         );
-        const rewardResult = await rewardHandler.calculate(
-          reward,
-          progress,
-          completionData || {},
-        );
+        const rewardResult = await rewardHandler.calculate(reward, progress);
         rewardAmount = rewardResult.amount;
       }
 
       // 更新任务进度
-      console.log('accumulatedRewardAmount', progress);
       progress.completionCount += 1;
       progress.status = UserTaskStatus.COMPLETED;
       progress.accumulatedRewardAmount = new Decimal(
@@ -149,10 +138,6 @@ export class TaskCompletionService {
       }
       progress.lastCompletedAt = new Date();
 
-      if (completionData) {
-        progress.metadata = completionData;
-      }
-
       await manager.save(progress);
 
       // 创建完成记录
@@ -161,8 +146,6 @@ export class TaskCompletionService {
         taskId,
         campaignId,
         rewardAmount,
-        completionData,
-        referenceId,
         completedAt: new Date(),
       });
       await manager.save(completion);
@@ -297,13 +280,13 @@ export class TaskCompletionService {
    */
   async getTaskCompletions(
     userId: string,
-    taskId?: number,
+    campaignId?: number,
     limit = 20,
     offset = 0,
   ): Promise<{ completions: TaskCompletion[]; total: number }> {
     const where: any = { userId };
-    if (taskId) {
-      where.taskId = taskId;
+    if (campaignId) {
+      where.campaignId = campaignId;
     }
 
     const [completions, total] =

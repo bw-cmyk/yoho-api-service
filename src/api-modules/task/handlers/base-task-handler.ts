@@ -39,7 +39,6 @@ export abstract class BaseTaskHandler {
    */
   abstract validate(
     task: Task,
-    completionData: Record<string, any>,
     userProgress?: UserTaskProgress,
   ): Promise<TaskValidationResult>;
 
@@ -50,51 +49,51 @@ export abstract class BaseTaskHandler {
     return this.getSupportedTypes().includes(taskType);
   }
 
-  /**
-   * 验证基础条件（可以在子类中重写）
-   */
-  protected validateBaseConditions(
-    task: Task,
-    completionData: Record<string, any>,
-  ): TaskValidationResult {
-    const conditions = task.completionConditions || {};
+  // /**
+  //  * 验证基础条件（可以在子类中重写）
+  //  */
+  // protected validateBaseConditions(
+  //   task: Task,
+  //   completionData: Record<string, any>,
+  // ): TaskValidationResult {
+  //   const conditions = task.completionConditions || {};
 
-    // 检查最小金额
-    if (conditions.minAmount !== undefined) {
-      const amount = completionData.amount || 0;
-      if (amount < conditions.minAmount) {
-        return {
-          valid: false,
-          message: `Amount ${amount} is less than required ${conditions.minAmount}`,
-          errorCode: 'INSUFFICIENT_AMOUNT',
-        };
-      }
-    }
+  //   // 检查最小金额
+  //   if (conditions.minAmount !== undefined) {
+  //     const amount = completionData.amount || 0;
+  //     if (amount < conditions.minAmount) {
+  //       return {
+  //         valid: false,
+  //         message: `Amount ${amount} is less than required ${conditions.minAmount}`,
+  //         errorCode: 'INSUFFICIENT_AMOUNT',
+  //       };
+  //     }
+  //   }
 
-    // 检查币种
-    if (
-      conditions.coinType &&
-      completionData.coinType !== conditions.coinType
-    ) {
-      return {
-        valid: false,
-        message: `Coin type mismatch, expected ${conditions.coinType}, got ${completionData.coinType}`,
-        errorCode: 'COIN_TYPE_MISMATCH',
-      };
-    }
+  //   // 检查币种
+  //   if (
+  //     conditions.coinType &&
+  //     completionData.coinType !== conditions.coinType
+  //   ) {
+  //     return {
+  //       valid: false,
+  //       message: `Coin type mismatch, expected ${conditions.coinType}, got ${completionData.coinType}`,
+  //       errorCode: 'COIN_TYPE_MISMATCH',
+  //     };
+  //   }
 
-    // 检查目标ID
-    if (
-      conditions.targetId &&
-      completionData.targetId !== conditions.targetId
-    ) {
-      return {
-        valid: false,
-        message: `Target ID mismatch`,
-        errorCode: 'TARGET_ID_MISMATCH',
-      };
-    }
+  //   // 检查目标ID
+  //   if (
+  //     conditions.targetId &&
+  //     completionData.targetId !== conditions.targetId
+  //   ) {
+  //     return {
+  //       valid: false,
+  //       message: `Target ID mismatch`,
+  //       errorCode: 'TARGET_ID_MISMATCH',
+  //     };
+  //   }
 
-    return { valid: true };
-  }
+  //   return { valid: true };
+  // }
 }

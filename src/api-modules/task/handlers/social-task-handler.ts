@@ -14,37 +14,8 @@ export class SocialTaskHandler extends BaseTaskHandler {
 
   async validate(
     task: Task,
-    completionData: Record<string, any>,
     userProgress?: UserTaskProgress,
   ): Promise<TaskValidationResult> {
-    // 检查是否已经完成过（一次性任务）
-    if (userProgress && userProgress.completionCount > 0) {
-      return {
-        valid: false,
-        message: 'Social task already completed',
-        errorCode: 'ALREADY_COMPLETED',
-      };
-    }
-
-    // 基础条件验证（目标ID等）
-    const baseResult = this.validateBaseConditions(task, completionData);
-    if (!baseResult.valid) {
-      return baseResult;
-    }
-
-    // 检查目标ID是否匹配
-    const conditions = task.completionConditions || {};
-    if (
-      conditions.targetId &&
-      completionData.targetId !== conditions.targetId
-    ) {
-      return {
-        valid: false,
-        message: `Target ID mismatch, expected ${conditions.targetId}`,
-        errorCode: 'TARGET_ID_MISMATCH',
-      };
-    }
-
-    return { valid: true };
+    return { valid: false };
   }
 }

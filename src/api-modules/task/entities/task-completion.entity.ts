@@ -20,9 +20,11 @@ export class TaskCompletion {
   @Column({ type: 'varchar', length: 64, name: 'user_id' })
   userId: string; // 用户ID
 
+  @Index()
   @Column({ type: 'int', name: 'task_id' })
   taskId: number; // 任务ID
 
+  @Index()
   @Column({ type: 'int', name: 'campaign_id' })
   campaignId: number; // 活动ID（冗余字段）
 

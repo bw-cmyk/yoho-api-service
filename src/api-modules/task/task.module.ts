@@ -25,6 +25,7 @@ import { RewardHandlerFactory } from './rewards/reward-handler-factory';
 import { FixedRewardHandler } from './rewards/fixed-reward-handler';
 import { RandomRewardHandler } from './rewards/random-reward-handler';
 import { ProgressiveRewardHandler } from './rewards/progressive-reward-handler';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ProgressiveRewardHandler } from './rewards/progressive-reward-handler';
       TaskCompletion,
     ]),
     AssetsModule,
+    UserModule,
   ],
   providers: [
     CampaignService,

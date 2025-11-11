@@ -702,6 +702,23 @@ export class AssetService {
     return { transactions, total };
   }
 
+  async getTransactionHistoryByConditions(params: {
+    referenceId?: string;
+  }): Promise<Transaction[]> {
+    const query = this.transactionRepository.createQueryBuilder();
+
+    if (params.referenceId) {
+      query.andWhere('transaction.reference_id = :referenceId', {
+        referenceId: params.referenceId,
+      });
+    } else {
+      return [];
+    }
+
+    const transactions = await query.getMany();
+    return transactions;
+  }
+
   /**
    * 计算赠金金额（可以根据业务规则配置）
    */

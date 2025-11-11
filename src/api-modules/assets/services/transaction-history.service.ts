@@ -298,6 +298,22 @@ export class TransactionHistoryService {
     return transactions;
   }
 
+  async getOnChainTransactionByConditions(conditions: {
+    itype?: TransactionItype;
+  }): Promise<TransactionHistory[]> {
+    const queryBuilder =
+      this.transactionHistoryRepository.createQueryBuilder('tx');
+
+    if (conditions.itype) {
+      queryBuilder.andWhere('tx.itype = :itype', { itype: conditions.itype });
+    } else {
+      return [];
+    }
+
+    const transactions = await queryBuilder.getMany();
+    return transactions;
+  }
+
   /**
    * 计算 PnL
    */

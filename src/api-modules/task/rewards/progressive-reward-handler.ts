@@ -35,11 +35,10 @@ export class ProgressiveRewardHandler extends BaseRewardHandler {
 
         // 如果启用均值减半
         if (rule.meanHalf) {
-          const reductionFactor = Math.pow(
-            0.5,
-            Math.floor(accumulated / (rule.threshold || 1)),
-          );
-          randomAmount *= reductionFactor;
+          const meanHalf = 0.5 * (rule.threshold - accumulated);
+          if (meanHalf < max) {
+            randomAmount = meanHalf;
+          }
         }
 
         return {

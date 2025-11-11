@@ -14,10 +14,9 @@ export class DefaultTaskHandler extends BaseTaskHandler {
 
   async validate(
     task: Task,
-    completionData: Record<string, any>,
     _userProgress?: UserTaskProgress,
   ): Promise<TaskValidationResult> {
     // 默认处理器只做基础验证
-    return this.validateBaseConditions(task, completionData);
+    return { valid: true };
   }
 }

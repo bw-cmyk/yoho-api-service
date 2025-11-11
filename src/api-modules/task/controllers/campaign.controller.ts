@@ -48,9 +48,19 @@ export class CampaignController {
   @Get(':id')
   @ApiOperation({ summary: '获取活动详情' })
   @ApiResponse({ status: 200, description: '活动详情' })
-  async getCampaign(@Param('id', ParseIntPipe) id: number) {
+  @UseGuards(JwtAuthGuard)
+  async getCampaign(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: any,
+  ) {
     const campaign = await this.campaignService.getCampaignById(id, true);
-    return { campaign };
+    const userId = req.user.id;
+    const tasks = await this.taskService.getTasksByCampaignId(id);
+    const completions = await this.taskCompletionService.getTaskCompletions(
+      userId,
+      id,
+    );
+    return { campaign, tasks, completions };
   }
 
   // @Post()
@@ -199,14 +209,11 @@ export class CampaignController {
   async completeTask(
     @Request() req: any,
     @Param('taskId', ParseIntPipe) taskId: number,
-    @Body() completeTaskDto: CompleteTaskDto,
   ) {
     const userId = req.user.id;
     const result = await this.taskCompletionService.completeTask(
       userId,
       taskId,
-      completeTaskDto.completionData,
-      completeTaskDto.referenceId,
     );
     return { success: true, ...result };
   }

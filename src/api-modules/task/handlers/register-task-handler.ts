@@ -14,19 +14,8 @@ export class RegisterTaskHandler extends BaseTaskHandler {
 
   async validate(
     task: Task,
-    _completionData: Record<string, any>,
     userProgress?: UserTaskProgress,
   ): Promise<TaskValidationResult> {
-    // 注册任务只需要检查是否已经完成过（一次性任务）
-    if (userProgress && userProgress.completionCount > 0) {
-      return {
-        valid: false,
-        message: 'Registration task already completed',
-        errorCode: 'ALREADY_COMPLETED',
-      };
-    }
-
-    // 基础条件验证
-    return this.validateBaseConditions(task, _completionData);
+    return { valid: true };
   }
 }
