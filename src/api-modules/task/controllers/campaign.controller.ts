@@ -60,7 +60,8 @@ export class CampaignController {
       userId,
       id,
     );
-    return { campaign, tasks, completions };
+    const rewards = await this.userTaskRewardService.getUserTaskRewards(userId);
+    return { campaign, tasks, completions, rewards };
   }
 
   // @Post()
