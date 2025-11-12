@@ -23,6 +23,7 @@ import { TaskCompletionService } from '../services/task-completion.service';
 import { UserTaskRewardService } from '../services/user-task-reward.service';
 import { CreateCampaignDto, UpdateCampaignDto } from '../dto/campaign.dto';
 import { CreateTaskDto, UpdateTaskDto, CompleteTaskDto } from '../dto/task.dto';
+import { TaskRepeatType } from '../entities/task.entity';
 
 @ApiTags('Campaign & Task')
 @Controller('/api/v1/campaigns')
@@ -73,7 +74,10 @@ export class CampaignController {
     // 为每个任务添加 isCompletedToday 字段
     const tasksWithTodayStatus = tasks.map((task) => ({
       ...task,
-      isCompletedToday: todayCompletedMap.get(task.id) || false,
+      isCompletedToday:
+        task.repeatType === TaskRepeatType.DAILY
+          ? todayCompletedMap.get(task.id) || false
+          : undefined,
     }));
 
     return {
