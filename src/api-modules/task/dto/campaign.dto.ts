@@ -114,6 +114,7 @@ export class TaskResponseDto {
   sortOrder: number;
   isLocked: boolean;
   status: string;
+  isCompletedToday?: boolean; // 今天是否已完成（用于重复任务）
   rewards?: RewardResponseDto[];
 }
 

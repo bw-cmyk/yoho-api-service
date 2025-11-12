@@ -61,7 +61,27 @@ export class CampaignController {
       id,
     );
     const rewards = await this.taskService.getTaskRewards(id);
-    return { campaign, tasks, completions, rewards };
+
+    // 批量检查今天是否已完成每个任务
+    const taskIds = tasks.map((task) => task.id);
+    const todayCompletedMap =
+      await this.taskCompletionService.batchCheckTasksCompletedToday(
+        userId,
+        taskIds,
+      );
+
+    // 为每个任务添加 isCompletedToday 字段
+    const tasksWithTodayStatus = tasks.map((task) => ({
+      ...task,
+      isCompletedToday: todayCompletedMap.get(task.id) || false,
+    }));
+
+    return {
+      campaign,
+      tasks: tasksWithTodayStatus,
+      completions,
+      rewards,
+    };
   }
 
   // @Post()

@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, MoreThanOrEqual } from 'typeorm';
+import { Repository, DataSource, MoreThanOrEqual, In } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Task, TaskRepeatType } from '../entities/task.entity';
 import { RewardType, TaskReward } from '../entities/task-reward.entity';
@@ -299,5 +299,60 @@ export class TaskCompletionService {
       });
 
     return { completions, total };
+  }
+
+  /**
+   * 检查今天是否已完成某个任务
+   */
+  async isTaskCompletedToday(userId: string, taskId: number): Promise<boolean> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const count = await this.taskCompletionRepository.count({
+      where: {
+        userId,
+        taskId,
+        completedAt: MoreThanOrEqual(today),
+      },
+    });
+
+    return count > 0;
+  }
+
+  /**
+   * 批量检查多个任务今天是否已完成
+   */
+  async batchCheckTasksCompletedToday(
+    userId: string,
+    taskIds: number[],
+  ): Promise<Map<number, boolean>> {
+    if (taskIds.length === 0) {
+      return new Map();
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const completions = await this.taskCompletionRepository.find({
+      where: {
+        userId,
+        taskId: In(taskIds),
+        completedAt: MoreThanOrEqual(today),
+      },
+    });
+
+    const result = new Map<number, boolean>();
+    // 初始化所有任务为 false
+    taskIds.forEach((taskId) => result.set(taskId, false));
+    // 设置已完成的任务为 true
+    completions.forEach((completion) => {
+      result.set(completion.taskId, true);
+    });
+
+    return result;
   }
 }
