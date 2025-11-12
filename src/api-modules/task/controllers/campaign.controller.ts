@@ -168,7 +168,8 @@ export class CampaignController {
       userId,
       campaignId,
     );
-    return { progress };
+    const campaign = await this.campaignService.getCampaignById(campaignId);
+    return { progress, campaign };
   }
 
   @Post(':id/claim')
