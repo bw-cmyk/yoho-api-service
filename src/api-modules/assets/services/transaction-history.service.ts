@@ -16,6 +16,7 @@ import { UserService } from 'src/api-modules/user/service/user.service';
 import { Token } from 'src/api-modules/dex/token.entity';
 import redisClient from 'src/common-modules/redis/redis-client';
 
+const USDT_CONTRACT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
 export interface TransactionHistoryParams {
   address: string;
   chains: string;
@@ -186,9 +187,35 @@ export class TransactionHistoryService {
         const tokenContractAddress =
           params &&
           params.type === TransactionItype.SWAP &&
-          params.outputToken !== '0x55d398326f99059fF775485246999027B3197955'
+          params.outputToken !== USDT_CONTRACT_ADDRESS
             ? params?.outputToken
             : params?.inputToken;
+        let costBasis = 0;
+        if (params?.outputToken === USDT_CONTRACT_ADDRESS) {
+          costBasis = txData.amount;
+        } else if (params?.inputToken === USDT_CONTRACT_ADDRESS) {
+          costBasis = txData.amount;
+        } else {
+          const inputToken = params?.inputToken;
+          // find token
+          const token = await this.tokenRepository.findOne({
+            where: {
+              tokenContractAddress: inputToken,
+            },
+          });
+          if (token) {
+            costBasis = txData.amount.mul(token.currentPriceUsd);
+          }
+          const outputToken = params?.outputToken;
+          const token2 = await this.tokenRepository.findOne({
+            where: {
+              tokenContractAddress: outputToken,
+            },
+          });
+          if (token2) {
+            costBasis = txData.amount.mul(token2.currentPriceUsd);
+          }
+        }
         // 创建新记录
         const transaction = this.transactionHistoryRepository.create({
           address: address,
@@ -205,6 +232,7 @@ export class TransactionHistoryService {
             : tokenContractAddress,
           amount: txData.amount ? new Decimal(txData.amount) : null,
           symbol: txData.symbol,
+          costBasis: costBasis ? new Decimal(costBasis) : new Decimal(0),
           txFee: txData.txFee ? new Decimal(txData.txFee) : null,
           txStatus: txData.txStatus as TransactionStatus,
           hitBlacklist: txData.hitBlacklist || false,
