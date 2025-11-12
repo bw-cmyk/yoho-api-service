@@ -114,34 +114,38 @@ export class UserTaskRewardService {
     userId: string,
     rewardType: RewardType,
     amount: number,
-  ): Promise<UserTaskReward> {
-    return await this.dataSource.transaction(async (manager) => {
-      const userReward = await manager.findOne(UserTaskReward, {
-        where: { userId, rewardType },
-        lock: { mode: 'pessimistic_write' },
-      });
+  ): Promise<any> {
+    // return await this.dataSource.transaction(async (manager) => {
+    //   const userReward = await manager.findOne(UserTaskReward, {
+    //     where: { userId, rewardType },
+    //     lock: { mode: 'pessimistic_write' },
+    //   });
 
-      if (!userReward) {
-        throw new Error(`User task reward not found for user ${userId}`);
-      }
+    //   if (!userReward) {
+    //     throw new Error(`User task reward not found for user ${userId}`);
+    //   }
 
-      if (userReward.availableReward < amount) {
-        throw new Error(
-          `Insufficient available reward. Available: ${userReward.availableReward}, Requested: ${amount}`,
-        );
-      }
+    //   if (userReward.availableReward < amount) {
+    //     throw new Error(
+    //       `Insufficient available reward. Available: ${userReward.availableReward}, Requested: ${amount}`,
+    //     );
+    //   }
 
-      // 更新奖励金额
-      userReward.availableReward = new Decimal(userReward.availableReward)
-        .minus(amount)
-        .toNumber();
-      userReward.claimedReward = new Decimal(userReward.claimedReward)
-        .plus(amount)
-        .toNumber();
-      userReward.lastClaimAt = new Date();
+    //   // 更新奖励金额
+    //   userReward.availableReward = new Decimal(userReward.availableReward)
+    //     .minus(amount)
+    //     .toNumber();
+    //   userReward.claimedReward = new Decimal(userReward.claimedReward)
+    //     .plus(amount)
+    //     .toNumber();
+    //   userReward.lastClaimAt = new Date();
 
-      return await manager.save(userReward);
-    });
+    //   return await manager.save(userReward);
+    // });
+    return {
+      success: false,
+      message: 'Reward not found',
+    };
   }
 
   /**
