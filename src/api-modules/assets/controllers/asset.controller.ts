@@ -11,11 +11,15 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
 import { AssetService } from '../services/asset.service';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
+import { TransactionHistoryService } from '../services/transaction-history.service';
 
 @ApiTags('资产管理')
 @Controller('/api/v1/assets')
 export class AssetController {
-  constructor(private readonly assetService: AssetService) {}
+  constructor(
+    private readonly assetService: AssetService,
+    private readonly transactionHistoryService: TransactionHistoryService,
+  ) {}
 
   @Get('chain-assets')
   async getUserChainAssets(@Request() req: ExpressRequest) {
@@ -61,6 +65,21 @@ export class AssetController {
     return {
       user_id: userId,
       balanceHistory: balanceHistory,
+    };
+  }
+
+  @Get('/trading-volume')
+  @UseGuards(JwtAuthGuard)
+  async getTradingVolume(@Request() req: ExpressRequest) {
+    const { id: userId } = req.user as any;
+    const tradingVolume = await this.assetService.getTradingVolume(userId);
+    const onChainTradingVolume =
+      await this.transactionHistoryService.getTradingVolume(userId);
+    return {
+      user_id: userId,
+      tradingVolume: tradingVolume.toString(),
+      onChainTradingVolume: onChainTradingVolume.toString(),
+      totalTradingVolume: tradingVolume.plus(onChainTradingVolume).toString(),
     };
   }
 }

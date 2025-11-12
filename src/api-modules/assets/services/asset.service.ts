@@ -702,6 +702,18 @@ export class AssetService {
     return { transactions, total };
   }
 
+  async getTradingVolume(userId: string): Promise<Decimal> {
+    const query = this.transactionRepository
+      .createQueryBuilder('transaction')
+      .select('SUM(transaction."amount")', 'totalVolume')
+      .where('transaction.user_id = :userId', { userId })
+      .andWhere('transaction.type IN (:...types)', {
+        types: [TransactionType.GAME_BET, TransactionType.GAME_WIN],
+      });
+    const result = await query.getRawOne();
+    return new Decimal(result?.totalVolume || '0');
+  }
+
   async getTransactionHistoryByConditions(params: {
     referenceId?: string;
   }): Promise<Transaction[]> {
