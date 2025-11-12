@@ -708,7 +708,7 @@ export class AssetService {
       .select('SUM(transaction."amount")', 'totalVolume')
       .where('transaction.user_id = :userId', { userId })
       .andWhere('transaction.type IN (:...types)', {
-        types: [TransactionType.GAME_BET, TransactionType.GAME_WIN],
+        types: [TransactionType.GAME_BET],
       });
     const result = await query.getRawOne();
     return new Decimal(result?.totalVolume || '0');
