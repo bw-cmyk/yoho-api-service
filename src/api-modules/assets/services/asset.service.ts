@@ -720,8 +720,8 @@ export class AssetService {
     const query = this.transactionRepository.createQueryBuilder();
 
     if (params.referenceId) {
-      query.andWhere('reference_id = :referenceId and type =:type', {
-        types: TransactionType.GAME_BET,
+      query.andWhere('reference_id = :referenceId and type = :type', {
+        type: TransactionType.GAME_BET,
         referenceId: params.referenceId,
       });
     } else {
