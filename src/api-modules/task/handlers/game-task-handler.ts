@@ -19,19 +19,33 @@ export class GameTaskHandler extends BaseTaskHandler {
 
   async validate(
     task: Task,
-    _userProgress?: UserTaskProgress,
+    userProgress?: UserTaskProgress,
   ): Promise<TaskValidationResult> {
-    const transactions =
-      await this.assetService.getTransactionHistoryByConditions({
-        referenceId: 'BTC_PREDICTION',
-      });
-
-    if (transactions.length === 0) {
-      return {
-        valid: false,
-        message: 'No game record found',
-        errorCode: 'NO_GAME_RECORD_FOUND',
-      };
+    if (task.type === TaskType.PLAY_PREDICTION) {
+      const transactions =
+        await this.assetService.getTransactionHistoryByConditions({
+          referenceId: 'BTC_PREDICTION',
+        });
+      if (transactions.length === 0) {
+        return {
+          valid: false,
+          message: 'No game record found',
+          errorCode: 'NO_GAME_RECORD_FOUND',
+        };
+      }
+    }
+    if (task.type === TaskType.GAME_VOLUME) {
+      const completionConditions = task.completionConditions;
+      const gameTransactionVolume = await this.assetService.getTradingVolume(
+        userProgress.userId,
+      );
+      if (gameTransactionVolume.lt(completionConditions.minAmount)) {
+        return {
+          valid: false,
+          message: 'Game transaction volume is less than required',
+          errorCode: 'INSUFFICIENT_GAME_TRANSACTION_VOLUME',
+        };
+      }
     }
     return { valid: true };
   }
