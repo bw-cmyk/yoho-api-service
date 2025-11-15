@@ -19,57 +19,57 @@ const authHeader = {
 
 console.log(authHeader);
 
-// const run = async () => {
-//   const response = await fetch(`${endpoint}/api/v1/campaigns`, {
-//     method: 'GET',
-//     headers: authHeader,
-//   });
-//   const data = await response.json();
-//   console.log(data);
+const run = async () => {
+  const response = await fetch(`${endpoint}/api/v1/campaigns`, {
+    method: 'GET',
+    headers: authHeader,
+  });
+  const data = await response.json();
+  console.log(data);
 
-//   // get task by campaign id
-//   const taskResponse = await fetch(
-//     `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/tasks`,
-//     {
-//       method: 'GET',
-//       headers: authHeader,
-//     },
-//   );
-//   const taskData = await taskResponse.json();
-//   console.log(taskData);
+  // get task by campaign id
+  const taskResponse = await fetch(
+    `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/tasks`,
+    {
+      method: 'GET',
+      headers: authHeader,
+    },
+  );
+  const taskData = await taskResponse.json();
+  console.log(taskData);
 
-//   // participate campaign
-//   const participateResponse = await fetch(
-//     `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/participate`,
-//     {
-//       method: 'POST',
-//       headers: authHeader,
-//     },
-//   );
-//   const participateData = await participateResponse.json();
-//   console.log(participateData);
+  // participate campaign
+  const participateResponse = await fetch(
+    `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/participate`,
+    {
+      method: 'POST',
+      headers: authHeader,
+    },
+  );
+  const participateData = await participateResponse.json();
+  console.log(participateData);
 
-//   // complete task
-//   const completeResponse = await fetch(
-//     `${endpoint}/api/v1/campaigns/tasks/1/complete`,
-//     {
-//       method: 'POST',
-//       headers: authHeader
-//     },
-//   );
-//   const completeData = await completeResponse.json();
-//   console.log(completeData);
+  // complete task
+  const completeResponse = await fetch(
+    `${endpoint}/api/v1/campaigns/tasks/7/complete`,
+    {
+      method: 'POST',
+      headers: authHeader
+    },
+  );
+  const completeData = await completeResponse.json();
+  console.log(completeData);
 
-//   // get user task progress
-//   const userTaskProgressResponse = await fetch(
-//     `${endpoint}/api/v1/campaigns/1/progress`,
-//     {
-//       method: 'GET',
-//       headers: authHeader,
-//     },
-//   );
-//   const userTaskProgressData = await userTaskProgressResponse.json();
-//   console.log(userTaskProgressData);
-// };
+  // get user task progress
+  const userTaskProgressResponse = await fetch(
+    `${endpoint}/api/v1/campaigns/7/progress`,
+    {
+      method: 'GET',
+      headers: authHeader,
+    },
+  );
+  const userTaskProgressData = await userTaskProgressResponse.json();
+  console.log(userTaskProgressData);
+};
 
-// run();
+run();

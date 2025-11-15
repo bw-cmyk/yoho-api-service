@@ -24,6 +24,7 @@ export interface PaymentRequest {
   callbackUrl?: string;
   redirectUrl?: string;
   uid?: string;
+  language?: string;
   merchantOrderNo?: string; // 商户订单号，用于 Ramp 签名
 }
 

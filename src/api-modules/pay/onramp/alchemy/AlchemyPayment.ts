@@ -37,6 +37,11 @@ const AlchemyPaymentMethods = [
     code: '701',
     type: PayMethod.GOOGLE_PAY,
   },
+  {
+    name: 'UPI',
+    code: '90001',
+    type: PayMethod.UPI,
+  },
 ];
 
 export class AlchemyPayment extends BasePayment {
@@ -216,19 +221,23 @@ export class AlchemyPayment extends BasePayment {
       });
 
       if (response.success && response.data) {
+        console.log('response.data', response.data);
         // 提取支付方式代码
-        return response.data.map((item) => {
-          const type = AlchemyPaymentMethods.find(
-            (method) => method.code === item.payWayCode,
-          );
-          const payMethodInfo = PayMethodMap[type.type];
+        return response.data
+          .map((item) => {
+            const type = AlchemyPaymentMethods.find(
+              (method) => method.code === item.payWayCode,
+            );
+            console.log('type', type);
+            const payMethodInfo = PayMethodMap[type?.type];
 
-          if (payMethodInfo) {
-            return payMethodInfo.code;
-          }
+            if (payMethodInfo) {
+              return payMethodInfo.code;
+            }
 
-          return null;
-        });
+            return null;
+          })
+          .filter((t) => t !== null);
       }
     } catch (error) {
       console.error('Failed to get payment methods:', error);
@@ -295,6 +304,7 @@ export class AlchemyPayment extends BasePayment {
         fiatAmount: request.amount.toString(),
         network: request.network,
         timestamp: timestamp,
+        language: request.language || 'en',
       };
 
       // 如果有 merchantOrderNo，添加到参数中
@@ -310,6 +320,9 @@ export class AlchemyPayment extends BasePayment {
       }
       if (request.redirectUrl) {
         params.redirectUrl = request.redirectUrl;
+      }
+      if (params.language) {
+        params.language = params.language;
       }
       params.email = 'boelroy@live.com';
       const token = await this.getToken({ email: params.email });
