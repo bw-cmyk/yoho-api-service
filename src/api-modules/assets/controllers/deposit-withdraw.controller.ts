@@ -9,7 +9,6 @@ import {
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
 import { DepositWithdrawService } from '../services/deposit-withdraw.service';
-import { getAddress } from 'ethers';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 
 @ApiBearerAuth()
