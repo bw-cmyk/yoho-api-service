@@ -1,10 +1,9 @@
 import {
   Controller,
   Get,
-  Param,
+  Post,
   Query,
   Request,
-  ParseIntPipe,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -80,6 +79,14 @@ export class AssetController {
       tradingVolume: tradingVolume.toString(),
       onChainTradingVolume: onChainTradingVolume.toString(),
       totalTradingVolume: tradingVolume.plus(onChainTradingVolume).toString(),
+    };
+  }
+
+  @Get('/snapshot')
+  async getSnapshot(@Request() req: ExpressRequest) {
+    const snapshot = await this.assetService.createUserAssetSnapshots();
+    return {
+      success: true,
     };
   }
 }

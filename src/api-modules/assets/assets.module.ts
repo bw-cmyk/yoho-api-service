@@ -5,6 +5,7 @@ import { Transaction } from './entities/balance/transaction.entity';
 import { UserChainAsset } from './entities/onchain/user-chain-asset.entity';
 import { UserChainAssetSnapshot } from './entities/onchain/user-chain-asset-snapshot.entity';
 import { TransactionHistory } from './entities/onchain/transaction-onchain-history.entity';
+import { UserAssetSnapshot } from './entities/balance/user-asset-snapshot.entity';
 import { AssetService } from './services/asset.service';
 import { TransactionHistoryService } from './services/transaction-history.service';
 import { AssetController } from './controllers/asset.controller';
@@ -30,6 +31,7 @@ import { Order } from './entities/balance/order.entity';
       TransactionHistory,
       Token,
       Order,
+      UserAssetSnapshot,
     ]),
     UserModule,
     QueueModule,

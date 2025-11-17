@@ -500,11 +500,10 @@ export class TransactionHistoryService {
   private isBuyTransaction(tx: TransactionHistory): boolean {
     // // 这里需要根据具体的业务逻辑来判断
     // // 简单示例：根据交易类型和地址判断
-    // return (
-    //   tx.itype === TransactionItype.TOKEN_TRANSFER &&
-    //   tx.to.some((output) => output.address === tx.address)
-    // );
-    return false;
+    return (
+      tx.itype === TransactionItype.SWAP &&
+      tx.metadata?.inputToken === USDT_CONTRACT_ADDRESS
+    );
   }
 
   /**

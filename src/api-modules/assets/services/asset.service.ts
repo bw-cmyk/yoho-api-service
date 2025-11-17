@@ -9,20 +9,23 @@ import {
   TransactionSource,
   TransactionStatus,
 } from '../entities/balance/transaction.entity';
-import {
-  UserChainAsset,
-  ChainType,
-} from '../entities/onchain/user-chain-asset.entity';
+import { UserChainAsset } from '../entities/onchain/user-chain-asset.entity';
 import {
   UserChainAssetSnapshot,
   SnapshotType,
 } from '../entities/onchain/user-chain-asset-snapshot.entity';
+import {
+  UserAssetSnapshot,
+  AssetSnapshotBreakdownItem,
+} from '../entities/balance/user-asset-snapshot.entity';
 import { WalletService } from 'src/api-modules/user/service/wallet.service';
 import { OKXQueueService } from '../dex/okx-queue.service';
 import { OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID } from '../constants';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
 import redisClient from 'src/common-modules/redis/redis-client';
 import { Token } from 'src/api-modules/dex/token.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { UserService } from 'src/api-modules/user/service/user.service';
 
 export interface DepositRequest {
   userId: string;
@@ -80,6 +83,9 @@ export class AssetService {
     @InjectRepository(UserChainAssetSnapshot)
     private readonly userChainAssetSnapshotRepository: Repository<UserChainAssetSnapshot>,
 
+    @InjectRepository(UserAssetSnapshot)
+    private readonly userAssetSnapshotRepository: Repository<UserAssetSnapshot>,
+
     private readonly okxQueueService: OKXQueueService,
 
     private readonly dataSource: DataSource,
@@ -87,6 +93,8 @@ export class AssetService {
     private readonly walletService: WalletService,
 
     private readonly queueService: RedisQueueService,
+
+    private readonly userService: UserService,
   ) {
     this.queueService.registerCallbackFunction(
       OKX_ALL_CHAIN_ASSETS_CALLBACK_FUNCTION_ID,
@@ -846,13 +854,6 @@ export class AssetService {
   }
 
   /**
-   * 映射链类型
-   */
-  private mapChainType(): ChainType {
-    return ChainType.EVM;
-  }
-
-  /**
    * 获取用户链上资产
    */
   async getUserChainAssets(userId: string): Promise<UserChainAsset[]> {
@@ -870,10 +871,11 @@ export class AssetService {
 
     for (const asset of assets) {
       const token = tokens.find(
-        (token) => token.tokenSymbol === asset.tokenSymbol,
+        (item) => item.tokenSymbol === asset.tokenSymbol,
       );
-      // @ts-ignore
-      asset.token = token;
+      if (token) {
+        (asset as UserChainAsset & { token?: Token }).token = token;
+      }
     }
     return assets;
   }
@@ -887,6 +889,26 @@ export class AssetService {
       (total, asset) => total.plus(asset.usdValue),
       new Decimal(0),
     );
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async createChainAssetSnapshots() {
+    // get all user ids
+    const userIds = await this.userService.getAllUserIds();
+
+    for (const userId of userIds) {
+      await this.createChainAssetSnapshot(userId, SnapshotType.DAILY);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async createUserAssetSnapshots() {
+    // get all user ids
+    const userIds = await this.userService.getAllUserIds();
+
+    for (const userId of userIds) {
+      await this.snapshotUserAssets(userId, SnapshotType.DAILY);
+    }
   }
 
   /**
@@ -925,6 +947,124 @@ export class AssetService {
       `用户 ${userId} 创建链上资产快照完成，共快照 ${snapshots.length} 个资产`,
     );
     return snapshots;
+  }
+
+  /**
+   * 创建包含链上/链下资产的总资产快照
+   */
+  async snapshotUserAssets(
+    userId: string,
+    snapshotType: SnapshotType = SnapshotType.MANUAL,
+  ): Promise<UserAssetSnapshot> {
+    const [userAssets, chainAssets, previousSnapshot] = await Promise.all([
+      this.getUserAssets(userId),
+      this.getUserChainAssets(userId),
+      this.userAssetSnapshotRepository.findOne({
+        where: { userId },
+        order: {
+          snapshotDate: 'DESC',
+          createdAt: 'DESC',
+        },
+      }),
+    ]);
+
+    // sleep 3 seconds
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    const offchainTotal = userAssets.reduce(
+      (total, asset) => total.plus(asset.totalBalance),
+      new Decimal(0),
+    );
+    const onchainTotal = chainAssets.reduce(
+      (total, asset) => total.plus(asset.usdValue),
+      new Decimal(0),
+    );
+    const totalAssets = offchainTotal.plus(onchainTotal);
+
+    const previousTotals = {
+      total: previousSnapshot?.totalAssetsUsd ?? new Decimal(0),
+      offchain: previousSnapshot?.offchainAssetsUsd ?? new Decimal(0),
+      onchain: previousSnapshot?.onchainAssetsUsd ?? new Decimal(0),
+    };
+
+    const previousBreakdownMap = new Map<string, AssetSnapshotBreakdownItem>();
+    if (previousSnapshot?.assetBreakdown) {
+      for (const item of previousSnapshot.assetBreakdown) {
+        previousBreakdownMap.set(item.key, item);
+      }
+    }
+
+    const breakdown: AssetSnapshotBreakdownItem[] = [];
+
+    for (const asset of userAssets) {
+      const key = `OFFCHAIN:${asset.currency}`;
+      const currentValue = asset.totalBalance;
+      const previousItem = previousBreakdownMap.get(key);
+      const previousValue = previousItem
+        ? new Decimal(previousItem.currentValueUsd || '0')
+        : new Decimal(0);
+      previousBreakdownMap.delete(key);
+
+      breakdown.push({
+        key,
+        type: 'OFFCHAIN',
+        label: `${asset.currency} balance`,
+        currency: asset.currency,
+        currentValueUsd: currentValue.toString(),
+        previousValueUsd: previousValue.toString(),
+        differenceUsd: currentValue.minus(previousValue).toString(),
+      });
+    }
+
+    for (const asset of chainAssets) {
+      const key = `ONCHAIN:${asset.tokenSymbol}`;
+      const currentValue = asset.usdValue || new Decimal(0);
+      const previousItem = previousBreakdownMap.get(key);
+      const previousValue = previousItem
+        ? new Decimal(previousItem.currentValueUsd || '0')
+        : new Decimal(0);
+      previousBreakdownMap.delete(key);
+
+      breakdown.push({
+        key,
+        type: 'ONCHAIN',
+        label: `${asset.tokenSymbol} (${asset.tokenName || 'Unknown'})`,
+        tokenSymbol: asset.tokenSymbol,
+        tokenName: asset.tokenName,
+        currentValueUsd: currentValue.toString(),
+        previousValueUsd: previousValue.toString(),
+        differenceUsd: currentValue.minus(previousValue).toString(),
+      });
+    }
+
+    for (const [, previousItem] of previousBreakdownMap) {
+      const previousValue = new Decimal(previousItem.currentValueUsd || '0');
+      breakdown.push({
+        ...previousItem,
+        currentValueUsd: '0',
+        previousValueUsd: previousValue.toString(),
+        differenceUsd: previousValue.negated().toString(),
+      });
+    }
+
+    const snapshot = this.userAssetSnapshotRepository.create({
+      userId,
+      snapshotType,
+      snapshotDate: new Date(),
+      totalAssetsUsd: totalAssets,
+      offchainAssetsUsd: offchainTotal,
+      onchainAssetsUsd: onchainTotal,
+      totalChangeUsd: totalAssets.minus(previousTotals.total),
+      offchainChangeUsd: offchainTotal.minus(previousTotals.offchain),
+      onchainChangeUsd: onchainTotal.minus(previousTotals.onchain),
+      assetBreakdown: breakdown,
+    });
+
+    const savedSnapshot = await this.userAssetSnapshotRepository.save(snapshot);
+    this.logger.log(
+      `用户 ${userId} 创建资产快照完成，总资产 ${totalAssets.toString()} USD`,
+    );
+    return savedSnapshot;
   }
 
   /**
@@ -1031,7 +1171,9 @@ export class AssetService {
       redisClient.set(key, 'locked', 'EX', 60 * 5, 'NX', (err, result) => {
         if (err) {
           reject(err);
+          return;
         }
+        resolve(result === 'OK');
       });
     });
   }

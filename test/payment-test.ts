@@ -25,7 +25,7 @@ const main = async () => {
     currency: 'INR',
     amount: 1250,
     payMethod: 'UPI' as any, // 添加必需的 payMethod 参数
-    language: 'vi',
+    // language: 'vi',
   };
   // const queryString = new URLSearchParams(query).toString();
   // const response = await fetch(

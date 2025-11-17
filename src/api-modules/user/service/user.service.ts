@@ -72,6 +72,13 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  public async getAllUserIds(): Promise<string[]> {
+    const users = await this.userRepository.find({
+      select: ['id'],
+    });
+    return users.map((user) => user.id);
+  }
+
   public async getUser(uid: string): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({
       where: { id: uid },
