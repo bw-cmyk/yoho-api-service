@@ -1067,6 +1067,15 @@ export class AssetService {
     return savedSnapshot;
   }
 
+  async getUserAssetSnapshots(
+    userId: string,
+    snapshotDate: Date,
+  ): Promise<UserAssetSnapshot[]> {
+    return this.userAssetSnapshotRepository.find({
+      where: { userId, snapshotDate },
+    });
+  }
+
   /**
    * 获取用户链上资产快照历史
    */

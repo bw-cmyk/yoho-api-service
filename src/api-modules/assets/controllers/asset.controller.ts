@@ -40,6 +40,12 @@ export class AssetController {
     const { id: userId } = req.user as any;
     const assets = await this.assetService.getUserAssets(userId);
     const onchainAssets = await this.assetService.getUserChainAssets(userId);
+    // get yesterday's snapshot
+    const yesterdaySnapshot = await this.assetService.getUserAssetSnapshots(
+      userId,
+      new Date(Date.now() - 24 * 60 * 60 * 1000),
+    );
+    console.log('yesterdaySnapshot', yesterdaySnapshot);
     return {
       user_id: userId,
       assets: assets.map((asset) => ({
@@ -50,6 +56,7 @@ export class AssetController {
         tokenSymbol: asset.tokenSymbol,
         ...asset.getAssetDetails(),
       })),
+      yesterdayAssets: yesterdaySnapshot,
     };
   }
 
