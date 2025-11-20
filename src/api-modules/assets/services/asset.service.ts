@@ -1150,28 +1150,33 @@ export class AssetService {
   }
 
   async updateUserChainAssetsCallback(result: any, requestParams: any) {
-    const tokens = result[0]?.tokenAssets;
-    const userAddress = requestParams.queryParams.address;
+    try {
+      const tokens = result[0]?.tokenAssets;
+      const userAddress = requestParams.queryParams.address;
 
-    const lockKey = `update-user-chain-assets-lock:${userAddress}`;
-    const lock = await this.getRedisLock(lockKey);
-    if (!lock) {
-      return;
-    }
+      const lockKey = `update-user-chain-assets-lock:${userAddress}`;
+      const lock = await this.getRedisLock(lockKey);
+      if (!lock) {
+        return;
+      }
 
-    // get user id
-    const user = await this.walletService.getUserByAddress(userAddress);
-    if (!tokens || !user) {
-      return;
-    }
-    for (const token of tokens) {
-      await this.updateOrCreateChainAsset(user.id, {
-        tokenType: token.symbol,
-        price: token.tokenPrice,
-        amount: token.balance,
-        amountInUSD: parseFloat(token.balance) * parseFloat(token.tokenPrice),
-        decimals: token.decimals,
-      });
+      // get user id
+      const user = await this.walletService.getUserByAddress(userAddress);
+      if (!tokens || !user) {
+        return;
+      }
+      for (const token of tokens) {
+        await this.updateOrCreateChainAsset(user.id, {
+          tokenType: token.symbol,
+          price: token.tokenPrice,
+          amount: token.balance,
+          amountInUSD: parseFloat(token.balance) * parseFloat(token.tokenPrice),
+          decimals: token.decimals,
+        });
+      }
+    } catch (error) {
+      this.logger.error(`更新用户链上资产回调失败:`, error);
+      throw new BadRequestException('更新用户链上资产回调失败');
     }
   }
 
@@ -1187,4 +1192,3 @@ export class AssetService {
     });
   }
 }
-
