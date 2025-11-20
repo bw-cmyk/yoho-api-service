@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource, In, MoreThan } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { UserAsset, Currency } from '../entities/balance/user-asset.entity';
 import {
@@ -1072,7 +1072,7 @@ export class AssetService {
     snapshotDate: Date,
   ): Promise<UserAssetSnapshot> {
     return this.userAssetSnapshotRepository.findOne({
-      where: { userId, snapshotDate: GreaterThan(snapshotDate) },
+      where: { userId, snapshotDate: MoreThan(snapshotDate) },
     });
   }
 
@@ -1186,8 +1186,5 @@ export class AssetService {
       });
     });
   }
-}
-function GreaterThan(snapshotDate: Date): Date | import("typeorm").FindOperator<Date> {
-  throw new Error('Function not implemented.');
 }
 
