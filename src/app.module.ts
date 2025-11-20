@@ -58,7 +58,10 @@ export class AppModule {
 
   configure(consumer: MiddlewareConsumer) {
     this.idService.init();
-    consumer.apply(HttpLoggerMiddleware).forRoutes('api/');
+    consumer
+      .apply(HttpLoggerMiddleware)
+      .exclude('/api/v1/tokens')
+      .forRoutes('api/');
     consumer.apply(AuthMiddleware).forRoutes('api/v1/inner');
   }
 }
