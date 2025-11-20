@@ -1070,9 +1070,9 @@ export class AssetService {
   async getUserAssetSnapshots(
     userId: string,
     snapshotDate: Date,
-  ): Promise<UserAssetSnapshot[]> {
-    return this.userAssetSnapshotRepository.find({
-      where: { userId, snapshotDate },
+  ): Promise<UserAssetSnapshot> {
+    return this.userAssetSnapshotRepository.findOne({
+      where: { userId, snapshotDate: GreaterThan(snapshotDate) },
     });
   }
 
@@ -1187,3 +1187,7 @@ export class AssetService {
     });
   }
 }
+function GreaterThan(snapshotDate: Date): Date | import("typeorm").FindOperator<Date> {
+  throw new Error('Function not implemented.');
+}
+
