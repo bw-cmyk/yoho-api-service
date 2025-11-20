@@ -224,8 +224,7 @@ export class RedisQueueService {
           callbackFn(result, requestParams);
         } catch (callbackError) {
           this.logger.error(
-            `Callback error for request ${item.id}:`,
-            callbackError,
+            `Callback error for request ${item.id}: ${callbackError} ${callbackError.stack}`,
           );
         }
       }
@@ -274,8 +273,7 @@ export class RedisQueueService {
           callbackFn(null, error);
         } catch (callbackError) {
           this.logger.error(
-            `Error callback error for request ${item.id}:`,
-            callbackError,
+            `Error callback error for request ${item.id}: ${callbackError} ${callbackError.stack}`,
           );
         }
       }
