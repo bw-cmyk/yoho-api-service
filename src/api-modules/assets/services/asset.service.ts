@@ -1176,7 +1176,6 @@ export class AssetService {
       }
     } catch (error) {
       this.logger.error(`更新用户链上资产回调失败:`, error);
-      throw new BadRequestException('更新用户链上资产回调失败');
     }
   }
 
