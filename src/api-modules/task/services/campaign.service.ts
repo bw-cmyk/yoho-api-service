@@ -109,13 +109,17 @@ export class CampaignService {
     }
 
     // 检查参与条件
-    await this.checkParticipationConditions(userId, campaign);
+    const meta = await this.checkParticipationConditions(userId, campaign);
 
     // 创建参与记录
     const progress = this.userCampaignProgressRepository.create({
       userId,
       campaignId,
       status: UserCampaignStatus.PARTICIPATED,
+      metadata: {
+        rewardConfig: campaign.rewardConfig,
+        ...(meta ? meta : {}),
+      },
     });
 
     return await this.userCampaignProgressRepository.save(progress);
@@ -127,13 +131,15 @@ export class CampaignService {
   private async checkParticipationConditions(
     userId: string,
     campaign: Campaign,
-  ): Promise<void> {
+  ): Promise<any> {
     const conditions = campaign.participationConditions || {};
 
     // 检查用户范围（这里简化处理，实际可能需要查询用户信息）
     if (conditions.userScope) {
       // TODO: 实现用户范围检查逻辑
       // 例如：检查是否为新用户、现有用户等
+      if (conditions.userScope === 'NO_FIRST_DEPOSIT') {
+      }
     }
 
     // 检查时间范围

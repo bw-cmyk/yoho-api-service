@@ -53,7 +53,7 @@ export class Campaign {
   @Column({ type: 'json', nullable: true, name: 'participation_conditions' })
   participationConditions: {
     // 参与条件
-    userScope?: 'ALL' | 'NEW' | 'EXISTING' | string[]; // 用户范围
+    userScope?: 'ALL' | 'NEW' | 'EXISTING' | 'NO_FIRST_DEPOSIT' | string[]; // 用户范围
     minLevel?: number; // 最小等级
     [key: string]: any;
   };

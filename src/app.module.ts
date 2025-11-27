@@ -17,6 +17,7 @@ import { QueueModule } from './common-modules/queue/queue.module';
 import { GameModule } from './websocket-modules/btc-prediction/game.module';
 import { DexModule } from './api-modules/dex/dex.module';
 import { TaskModule } from './api-modules/task/task.module';
+import { EcommerceModule } from './api-modules/ecommerce/ecommerce.module';
 
 const ENV = process.env.NODE_ENV || 'development';
 const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
@@ -48,6 +49,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     QueueModule,
     DexModule,
     TaskModule,
+    EcommerceModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),
     ...(process.env.IS_GAME_MODULE !== 'false' ? [GameModule] : []),
   ],
