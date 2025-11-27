@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Product, ProductSpecification, ProductReview } from '../entities';
 import { ProductType, ProductStatus } from '../enums/ecommerce.enums';
@@ -13,6 +13,8 @@ import {
   UpdateProductDto,
   QueryProductsDto,
 } from '../dto/product.dto';
+
+const EMPTY_PRODUCT_ID = -1;
 
 @Injectable()
 export class ProductService {
@@ -161,9 +163,17 @@ export class ProductService {
   async findById(id: number): Promise<Product> {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['specifications', 'reviews'],
     });
 
+    const specifications = await this.specificationRepository.find({
+      where: { productId: id },
+    });
+    product.specifications = specifications;
+
+    const reviews = await this.reviewRepository.find({
+      where: { productId: id },
+    });
+    product.reviews = reviews;
     if (!product) {
       throw new NotFoundException(`商品不存在: ${id}`);
     }
@@ -188,7 +198,7 @@ export class ProductService {
 
     const [items, total] = await this.productRepository.findAndCount({
       where,
-      relations: ['specifications'],
+      // relations: ['specifications'],
       order: { priority: 'DESC', createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -220,7 +230,6 @@ export class ProductService {
         saleStartTime: LessThanOrEqual(now),
         saleEndTime: MoreThanOrEqual(now),
       },
-      relations: ['specifications'],
       order: { priority: 'DESC' },
     });
 
@@ -233,9 +242,24 @@ export class ProductService {
         saleStartTime: LessThanOrEqual(now),
         saleEndTime: MoreThanOrEqual(now),
       },
-      relations: ['specifications'],
       order: { priority: 'DESC' },
       take: 2,
+    });
+
+    const specifications = await this.specificationRepository.find({
+      where: {
+        productId: In(
+          luckyDraws
+            .map((product) => product.id)
+            .concat(instantBuy?.id || EMPTY_PRODUCT_ID),
+        ),
+      },
+    });
+    console.log(specifications);
+    [instantBuy, ...luckyDraws].forEach((product) => {
+      product.specifications = specifications.filter(
+        (spec) => spec.productId === product.id,
+      );
     });
 
     return {

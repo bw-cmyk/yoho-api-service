@@ -175,4 +175,11 @@ export class ShippingAddressService {
       }
     }
   }
+
+  // find by address id
+  async findById(id: number): Promise<ShippingAddress> {
+    return await this.addressRepository.findOne({
+      where: { id },
+    });
+  }
 }

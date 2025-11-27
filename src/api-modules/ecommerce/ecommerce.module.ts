@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ScheduleModule } from '@nestjs/schedule';
 import { AssetsModule } from '../assets/assets.module';
 import {
   Product,
@@ -29,7 +28,6 @@ import { ShippingAddressController } from './controllers/shipping-address.contro
       ShippingAddress,
     ]),
     AssetsModule,
-    ScheduleModule,
   ],
   providers: [
     ProductService,

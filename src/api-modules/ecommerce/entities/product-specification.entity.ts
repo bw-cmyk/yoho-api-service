@@ -17,12 +17,6 @@ export class ProductSpecification {
   @Column({ type: 'int', name: 'product_id' })
   productId: number;
 
-  @ManyToOne(() => Product, (product) => product.specifications, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'product_id' })
-  product: Product;
-
   @Column({ type: 'varchar', length: 64 })
   key: string; // 规格键，如 color, size, capacity
 

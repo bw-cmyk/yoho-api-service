@@ -9,8 +9,9 @@ import {
   ValidateNested,
   Min,
   Max,
+  IsNumberString,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ProductType, ProductStatus } from '../enums/ecommerce.enums';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -311,13 +312,13 @@ export class QueryProductsDto {
 
   @ApiPropertyOptional({ description: '页码', default: 1 })
   @IsOptional()
-  @IsNumber()
+  @Transform(({ value }) => parseInt(value))
   @Min(1)
   page?: number;
 
   @ApiPropertyOptional({ description: '每页数量', default: 20 })
   @IsOptional()
-  @IsNumber()
+  @Transform(({ value }) => parseInt(value))
   @Min(1)
   limit?: number;
 }

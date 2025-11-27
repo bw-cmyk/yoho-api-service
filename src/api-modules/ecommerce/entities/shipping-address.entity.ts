@@ -47,9 +47,6 @@ export class ShippingAddress {
   @Column({ type: 'boolean', default: false, name: 'is_default' })
   isDefault: boolean; // 是否为默认地址
 
-  @OneToMany(() => Order, (order) => order.shippingAddress)
-  orders: Order[];
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -19,12 +19,6 @@ export class LogisticsTimeline {
   @Column({ type: 'int', name: 'order_id' })
   orderId: number;
 
-  @ManyToOne(() => Order, (order) => order.logisticsTimelines, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'order_id' })
-  order: Order;
-
   @Column({
     type: 'enum',
     enum: LogisticsNodeKey,

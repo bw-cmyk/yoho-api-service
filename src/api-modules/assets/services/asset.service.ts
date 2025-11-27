@@ -41,6 +41,7 @@ export interface BetRequest {
   currency: Currency;
   amount: Decimal;
   game_id: string;
+  type?: TransactionType;
   description?: string;
   metadata?: Record<string, any>;
 }
@@ -288,9 +289,9 @@ export class AssetService {
   ): Promise<{ asset: UserAsset; transaction: Transaction }> {
     const { userId, currency, amount, game_id, description, metadata } =
       request;
-
+    console.log('bet request', request);
     if (amount.lte(0)) {
-      throw new BadRequestException('下注金额必须大于0');
+      throw new BadRequestException('金额必须大于0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -310,22 +311,8 @@ export class AssetService {
         );
       }
 
-      // 计算扣款策略：优先扣赠金，不足部分扣真实余额
-      const { realAmount, bonusAmount } = this.calculateBetDeduction(
-        asset,
-        amount,
-      );
-
       const balanceBefore = asset.balanceReal;
-      const bonusBefore = asset.balanceBonus;
-
-      // 扣款
-      if (realAmount.gt(0)) {
-        asset.balanceReal = asset.balanceReal.minus(realAmount);
-      }
-      if (bonusAmount.gt(0)) {
-        asset.balanceBonus = asset.balanceBonus.minus(bonusAmount);
-      }
+      asset.balanceReal = asset.balanceReal.minus(amount);
 
       try {
         await manager.save(asset);
@@ -347,34 +334,25 @@ export class AssetService {
         transaction_id: Transaction.generateTransactionId(),
         userId,
         currency,
-        type: TransactionType.GAME_BET,
-        source: bonusAmount.gt(0)
-          ? TransactionSource.BONUS
-          : TransactionSource.REAL,
+        type: request.type || TransactionType.GAME_BET,
+        source: TransactionSource.REAL,
         status: TransactionStatus.SUCCESS,
         amount,
-        balance_before: bonusAmount.gt(0) ? bonusBefore : balanceBefore,
-        balance_after: bonusAmount.gt(0)
-          ? asset.balanceBonus
-          : asset.balanceReal,
+        balance_before: balanceBefore,
+        balance_after: asset.balanceReal,
         reference_id: game_id,
         description: description || `游戏下注 ${amount} ${currency}`,
         metadata: {
           ...metadata,
           game_id,
-          real_amount: realAmount.toString(),
-          bonus_amount: bonusAmount.toString(),
+          amount: amount.toString(),
         },
         processed_at: new Date(),
       });
 
-      console.log('transaction: ', transaction);
-
       await manager.save(transaction);
 
-      this.logger.log(
-        `用户 ${userId} 下注成功: ${amount} ${currency} (真实: ${realAmount}, 赠金: ${bonusAmount})`,
-      );
+      this.logger.log(`用户 ${userId} 下注成功: ${amount} ${currency}`);
 
       return { asset, transaction };
     });
@@ -464,6 +442,78 @@ export class AssetService {
           targetSource === TransactionSource.BONUS ? '赠金' : '真实'
         }账户)`,
       );
+
+      return { asset, transaction };
+    });
+  }
+
+  async orderPayment(
+    request: BetRequest,
+  ): Promise<{ asset: UserAsset; transaction: Transaction }> {
+    const { userId, currency, amount, game_id, description, metadata } =
+      request;
+
+    if (amount.lte(0)) {
+      throw new BadRequestException('金额必须大于0');
+    }
+
+    return await this.dataSource.transaction(async (manager) => {
+      // 使用悲观锁获取用户资产，防止并发修改
+      const asset = await manager.findOne(UserAsset, {
+        where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!asset) {
+        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+      }
+
+      if (!asset.hasEnoughBalance(amount)) {
+        throw new BadRequestException(
+          `余额不足，需要 ${amount} ${currency}，可用余额 ${asset.availableBalance} ${currency}`,
+        );
+      }
+
+      const balanceBefore = asset.balanceReal;
+
+      try {
+        await manager.save(asset);
+      } catch (error) {
+        // 处理乐观锁冲突
+        if (error.code === '23505' || error.message.includes('version')) {
+          this.logger.warn(
+            `Optimistic lock conflict for bet user ${userId} currency ${currency}`,
+          );
+          throw new BadRequestException(
+            'Concurrent update detected during bet, please retry',
+          );
+        }
+        throw error;
+      }
+
+      // 创建下注交易记录
+      const transaction = manager.create(Transaction, {
+        transaction_id: Transaction.generateTransactionId(),
+        userId,
+        currency,
+        type: TransactionType.ORDER_PAYMENT,
+        source: TransactionSource.REAL,
+        status: TransactionStatus.SUCCESS,
+        amount,
+        balance_before: balanceBefore,
+        balance_after: asset.balanceReal,
+        reference_id: game_id,
+        description: description || `游戏下注 ${amount} ${currency}`,
+        metadata: {
+          ...metadata,
+          game_id,
+        },
+        processed_at: new Date(),
+      });
+
+      await manager.save(transaction);
+
+      this.logger.log(`用户 ${userId} 下注成功: ${amount} ${currency}`);
 
       return { asset, transaction };
     });
@@ -789,7 +839,6 @@ export class AssetService {
     try {
       // get user address
       const userAddress = await this.walletService.getAAWallet(userId);
-      console.log('userAddress: ', userAddress);
       await this.okxQueueService.getAllChainAssets(
         {
           address: userAddress,

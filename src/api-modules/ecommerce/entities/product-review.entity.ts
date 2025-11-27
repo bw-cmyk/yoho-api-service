@@ -19,16 +19,20 @@ export class ProductReview {
   @Column({ type: 'int', name: 'product_id' })
   productId: number;
 
-  @ManyToOne(() => Product, (product) => product.reviews, {
-    onDelete: 'CASCADE',
+  @Column({
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+    name: 'reviewer_name',
   })
-  @JoinColumn({ name: 'product_id' })
-  product: Product;
-
-  @Column({ type: 'varchar', length: 128, nullable: true })
   reviewerName: string; // 评价人昵称
 
-  @Column({ type: 'varchar', length: 512, nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 512,
+    nullable: true,
+    name: 'reviewer_avatar',
+  })
   reviewerAvatar: string; // 评价人头像
 
   @Column({

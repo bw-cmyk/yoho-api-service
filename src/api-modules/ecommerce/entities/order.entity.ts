@@ -23,7 +23,7 @@ import { LogisticsTimeline } from './logistics-timeline.entity';
 @Entity('yoho_ecommerce_orders')
 @Index(['userId', 'createdAt'])
 @Index(['orderNumber'], { unique: true })
-@Index(['type', 'status'])
+@Index(['type', 'paymentStatus'])
 export class Order {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -99,14 +99,8 @@ export class Order {
   @Column({ type: 'int', nullable: true, name: 'shipping_address_id' })
   shippingAddressId: number | null; // 收货地址ID
 
-  @ManyToOne(() => ShippingAddress, { nullable: true })
-  @JoinColumn({ name: 'shipping_address_id' })
   shippingAddress: ShippingAddress; // 收货地址
 
-  @OneToMany(() => LogisticsTimeline, (timeline) => timeline.order, {
-    cascade: true,
-    eager: false,
-  })
   logisticsTimelines: LogisticsTimeline[]; // 物流时间线
 
   @Column({ type: 'timestamp', nullable: true, name: 'refund_requested_at' })
@@ -131,7 +125,7 @@ export class Order {
     scale: 2,
     nullable: true,
     transformer: {
-      to: (value: Decimal) => value.toString(),
+      to: (value: Decimal) => (value ? value.toString() : null),
       from: (value: string) => (value ? new Decimal(value) : null),
     },
     name: 'lucky_draw_price_per_spot',

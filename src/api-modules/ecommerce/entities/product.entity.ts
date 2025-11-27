@@ -55,6 +55,7 @@ export class Product {
       to: (value: Decimal) => value.toString(),
       from: (value: string) => new Decimal(value || '0'),
     },
+    name: 'original_price',
   })
   originalPrice: Decimal; // 原价
 
@@ -66,13 +67,14 @@ export class Product {
       to: (value: Decimal) => value.toString(),
       from: (value: string) => new Decimal(value || '0'),
     },
+    name: 'sale_price',
   })
   salePrice: Decimal; // 售价，用户购买实际需支付价格
 
-  @Column({ type: 'int', default: 0 })
+  @Column({ type: 'int', default: 0, name: 'stock' })
   stock: number; // 库存，配置总库存即可
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true, name: 'daily_sales_range' })
   dailySalesRange: number; // 日销量范围值，如1000个，用于模拟数据
 
   @Column({ type: 'json', nullable: true, default: [] })
@@ -116,16 +118,8 @@ export class Product {
   })
   status: ProductStatus; // 商品状态
 
-  @OneToMany(() => ProductSpecification, (spec) => spec.product, {
-    cascade: true,
-    eager: false,
-  })
   specifications: ProductSpecification[]; // 商品规格
 
-  @OneToMany(() => ProductReview, (review) => review.product, {
-    cascade: true,
-    eager: false,
-  })
   reviews: ProductReview[]; // 商品评价
 
   @CreateDateColumn({ name: 'created_at' })

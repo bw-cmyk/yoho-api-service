@@ -1,4 +1,4 @@
-import { registerEnumType } from '@nestjs/graphql';
+// import { registerEnumType } from '@nestjs/graphql';
 
 export enum ProductType {
   INSTANT_BUY = 'INSTANT_BUY',
@@ -66,14 +66,14 @@ export enum LogisticsNodeKey {
 }
 
 // Optional GraphQL enum exposure (won't affect REST usage)
-try {
-  registerEnumType(ProductType, { name: 'ProductType' });
-  registerEnumType(ProductStatus, { name: 'ProductStatus' });
-  registerEnumType(OrderType, { name: 'OrderType' });
-  registerEnumType(InstantBuyOrderStatus, { name: 'InstantBuyOrderStatus' });
-  registerEnumType(LuckyDrawOrderStatus, { name: 'LuckyDrawOrderStatus' });
-  registerEnumType(PaymentStatus, { name: 'PaymentStatus' });
-  registerEnumType(LogisticsNodeKey, { name: 'LogisticsNodeKey' });
-} catch (err) {
-  // ignore register errors when GraphQL module not loaded
-}
+// try {
+//   registerEnumType(ProductType, { name: 'ProductType' });
+//   registerEnumType(ProductStatus, { name: 'ProductStatus' });
+//   registerEnumType(OrderType, { name: 'OrderType' });
+//   registerEnumType(InstantBuyOrderStatus, { name: 'InstantBuyOrderStatus' });
+//   registerEnumType(LuckyDrawOrderStatus, { name: 'LuckyDrawOrderStatus' });
+//   registerEnumType(PaymentStatus, { name: 'PaymentStatus' });
+//   registerEnumType(LogisticsNodeKey, { name: 'LogisticsNodeKey' });
+// } catch (err) {
+//   // ignore register errors when GraphQL module not loaded
+// }

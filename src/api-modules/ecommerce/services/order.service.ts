@@ -26,6 +26,7 @@ import {
 import { ProductService } from './product.service';
 import { ShippingAddressService } from './shipping-address.service';
 import { LogisticsService } from './logistics.service';
+import { TransactionType } from 'src/api-modules/assets/entities/balance/transaction.entity';
 
 @Injectable()
 export class OrderService {
@@ -146,7 +147,7 @@ export class OrderService {
       const savedOrder = await manager.save(order);
 
       // 扣款
-      await this.assetService.bet({
+      await this.assetService.orderPayment({
         userId,
         currency: Currency.USD,
         amount: paymentAmount,
@@ -243,6 +244,7 @@ export class OrderService {
       await this.assetService.bet({
         userId,
         currency: Currency.USD,
+        type: TransactionType.LUCKY_DRAW,
         amount: paymentAmount,
         game_id: `ORDER_${savedOrder.orderNumber}`,
         description: `参与抽奖: ${product.name} x ${dto.spots}`,
@@ -276,12 +278,19 @@ export class OrderService {
   async findById(id: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['shippingAddress', 'logisticsTimelines'],
+      // relations: ['shippingAddress', 'logisticsTimelines'],
     });
 
-    if (!order) {
-      throw new NotFoundException(`订单不存在: ${id}`);
+    if (order.shippingAddressId) {
+      const shippingAddress = await this.addressService.findById(
+        order.shippingAddressId,
+      );
+      order.shippingAddress = shippingAddress;
     }
+
+    const logisticsTimelines =
+      await this.logisticsService.getOrderLogisticsTimeline(order.id);
+    order.logisticsTimelines = logisticsTimelines;
 
     return order;
   }
@@ -292,7 +301,6 @@ export class OrderService {
   async findByOrderNumber(orderNumber: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { orderNumber },
-      relations: ['shippingAddress', 'logisticsTimelines'],
     });
 
     if (!order) {
@@ -316,7 +324,6 @@ export class OrderService {
 
     const [items, total] = await this.orderRepository.findAndCount({
       where,
-      relations: ['shippingAddress'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
