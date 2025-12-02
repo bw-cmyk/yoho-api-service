@@ -177,6 +177,12 @@ export class Token {
   isActive: boolean;
 
   @Column({
+    name: 'token_index',
+    default: 100,
+  })
+  tokenIndex: number;
+
+  @Column({
     name: 'last_price_update',
     type: 'timestamp',
     nullable: true,

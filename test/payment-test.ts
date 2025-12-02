@@ -3,6 +3,7 @@ import { Wallet } from 'ethers';
 import * as jwt from 'jsonwebtoken';
 
 const endpoint = 'http://localhost:3000';
+// const endpoint = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com/'
 const token = jwt.sign(
   {
     sub: '358801635322889216',

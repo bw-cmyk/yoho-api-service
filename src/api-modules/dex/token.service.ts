@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Token } from './token.entity';
 import { OKXDEX } from '../assets/dex/okx';
@@ -114,8 +114,8 @@ export class TokenService {
       isActive = true,
       page = 1,
       limit = 20,
-      sortBy = 'createdAt',
-      sortOrder = 'ASC',
+      sortBy = 'priceChangePercentage24h',
+      sortOrder = 'DESC',
     } = query;
 
     const queryBuilder = this.tokenRepository
@@ -133,7 +133,10 @@ export class TokenService {
     }
 
     // 排序
-    queryBuilder.orderBy(`token.${sortBy}`, sortOrder);
+    queryBuilder.orderBy({
+      'token.tokenIndex': 'DESC',
+      [`token.${sortBy}`]: sortOrder,
+    });
 
     // 分页
     const [tokens, total] = await queryBuilder
