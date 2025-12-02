@@ -51,7 +51,7 @@ export class FirstDepositScopeChecker extends BaseUserScopeChecker {
         valid: true,
         meta: {
           ...this.getMeta(),
-          firstDepositAmount: result[0].amount,
+          firstDepositAmount: result[0].amount.toNumber(),
         },
       };
     }

@@ -11,6 +11,10 @@ import { Request as ExpressRequest } from 'express';
 import { AssetService } from '../services/asset.service';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 import { TransactionHistoryService } from '../services/transaction-history.service';
+import { USDT_CONTRACT_ADDRESS } from 'src/constants';
+import { formatUnits } from 'ethers';
+import { TransactionItype } from '../entities/onchain/transaction-onchain-history.entity';
+import { UserService } from 'src/api-modules/user/service/user.service';
 
 @ApiTags('资产管理')
 @Controller('/api/v1/assets')
@@ -18,6 +22,7 @@ export class AssetController {
   constructor(
     private readonly assetService: AssetService,
     private readonly transactionHistoryService: TransactionHistoryService,
+    private readonly userService: UserService,
   ) {}
 
   @Get('chain-assets')
@@ -81,11 +86,28 @@ export class AssetController {
     const tradingVolume = await this.assetService.getTradingVolume(userId);
     const onChainTradingVolume =
       await this.transactionHistoryService.getTradingVolume(userId);
+
+    const userInfo = await this.userService.getUser(userId);
+    const result =
+      await this.transactionHistoryService.getOnChainTransactionByConditions({
+        address: userInfo.evmAAWallet,
+        order: 'ASC',
+        itype: TransactionItype.TOKEN_TRANSFER,
+      });
+
+    let firstDepositAmount = 0;
+    for (const transaction of result) {
+      if (transaction.tokenContractAddress === USDT_CONTRACT_ADDRESS) {
+        firstDepositAmount = transaction.amount.toNumber();
+        break;
+      }
+    }
     return {
       user_id: userId,
       tradingVolume: tradingVolume.toString(),
       onChainTradingVolume: onChainTradingVolume.toString(),
       totalTradingVolume: tradingVolume.plus(onChainTradingVolume).toString(),
+      firstDepositAmount: firstDepositAmount,
     };
   }
 

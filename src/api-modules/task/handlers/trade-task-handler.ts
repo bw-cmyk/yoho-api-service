@@ -5,6 +5,7 @@ import { BaseTaskHandler, TaskValidationResult } from './base-task-handler';
 import { TransactionHistoryService } from 'src/api-modules/assets/services/transaction-history.service';
 import { AssetService } from 'src/api-modules/assets/services/asset.service';
 import { UserCampaignProgress } from '../entities/user-campaign-progress.entity';
+import Decimal from 'decimal.js';
 
 /**
  * 交易任务处理器（BTC交易、交易流水等）
@@ -49,17 +50,13 @@ export class TradeTaskHandler extends BaseTaskHandler {
         };
       }
     }
+    const requiredTradeVolume =
+      firstDepositAmount * completionConditions.tradeVolumeMultiple * 150;
     if (completionConditions.tradeVolumeMultiple) {
-      if (
-        totalTransactionVolume.lt(
-          firstDepositAmount.mul(completionConditions.tradeVolumeMultiple),
-        )
-      ) {
+      if (totalTransactionVolume.lt(new Decimal(requiredTradeVolume))) {
         return {
           valid: false,
-          message: `Total transaction volume is less than required trade volume ${firstDepositAmount.mul(
-            completionConditions.tradeVolumeMultiple,
-          )}`,
+          message: `Total transaction volume is less than required trade volume ${requiredTradeVolume}`,
           errorCode: 'INSUFFICIENT_TRANSACTION_VOLUME',
         };
       }

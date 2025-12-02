@@ -106,7 +106,11 @@ export class TaskCompletionService {
       // 使用任务处理器进行验证
       const taskHandler = this.taskHandlerFactory.getHandlerForTask(task);
 
-      const validationResult = await taskHandler.validate(task, progress);
+      const validationResult = await taskHandler.validate(
+        task,
+        progress,
+        campaignProgress,
+      );
 
       if (!validationResult.valid) {
         throw new BadRequestException(

@@ -29,7 +29,7 @@ const run = async () => {
 
   // get task by campaign id
   const taskResponse = await fetch(
-    `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/tasks`,
+    `${endpoint}/api/v1/campaigns/${data.campaigns[1].id}/tasks`,
     {
       method: 'GET',
       headers: authHeader,
@@ -40,7 +40,7 @@ const run = async () => {
 
   // participate campaign
   const participateResponse = await fetch(
-    `${endpoint}/api/v1/campaigns/${data.campaigns[0].id}/participate`,
+    `${endpoint}/api/v1/campaigns/${data.campaigns[1].id}/participate`,
     {
       method: 'POST',
       headers: authHeader,
@@ -49,27 +49,38 @@ const run = async () => {
   const participateData = await participateResponse.json();
   console.log(participateData);
 
-  // complete task
-  const completeResponse = await fetch(
-    `${endpoint}/api/v1/campaigns/tasks/7/complete`,
-    {
-      method: 'POST',
-      headers: authHeader
-    },
-  );
-  const completeData = await completeResponse.json();
-  console.log(completeData);
+  // // complete task
+  // const completeResponse = await fetch(
+  //   `${endpoint}/api/v1/campaigns/tasks/7/complete`,
+  //   {
+  //     method: 'POST',
+  //     headers: authHeader
+  //   },
+  // );
+  // const completeData = await completeResponse.json();
+  // console.log(completeData);
 
-  // get user task progress
-  const userTaskProgressResponse = await fetch(
-    `${endpoint}/api/v1/campaigns/7/progress`,
+  // // get user task progress
+  // const userTaskProgressResponse = await fetch(
+  //   `${endpoint}/api/v1/campaigns/7/progress`,
+  //   {
+  //     method: 'GET',
+  //     headers: authHeader,
+  //   },
+  // );
+  // const userTaskProgressData = await userTaskProgressResponse.json();
+  // console.log(userTaskProgressData);
+
+  // /api/v1/assets/trading-volume
+  const tradingVolumeResponse = await fetch(
+    `${endpoint}/api/v1/assets/trading-volume`,
     {
       method: 'GET',
       headers: authHeader,
     },
   );
-  const userTaskProgressData = await userTaskProgressResponse.json();
-  console.log(userTaskProgressData);
+  const tradingVolumeData = await tradingVolumeResponse.json();
+  console.log(tradingVolumeData);
 };
 
 run();
