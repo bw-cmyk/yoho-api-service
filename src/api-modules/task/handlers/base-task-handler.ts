@@ -1,4 +1,5 @@
 import { Task, TaskType } from '../entities/task.entity';
+import { UserCampaignProgress } from '../entities/user-campaign-progress.entity';
 import { UserTaskProgress } from '../entities/user-task-progress.entity';
 
 /**
@@ -40,6 +41,7 @@ export abstract class BaseTaskHandler {
   abstract validate(
     task: Task,
     userProgress?: UserTaskProgress,
+    campaignProgress?: UserCampaignProgress,
   ): Promise<TaskValidationResult>;
 
   /**

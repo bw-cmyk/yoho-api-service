@@ -15,6 +15,7 @@ import { Task } from '../entities/task.entity';
 import { Decimal } from 'decimal.js';
 import { AssetService } from '../../assets/services/asset.service';
 import { Currency } from '../../assets/entities/balance/user-asset.entity';
+import { UserScopeCheckerFactory } from '../scopes/user-scope-checker-factory';
 
 @Injectable()
 export class CampaignService {
@@ -29,6 +30,7 @@ export class CampaignService {
     private taskRepository: Repository<Task>,
     private assetService: AssetService,
     private dataSource: DataSource,
+    private userScopeCheckerFactory: UserScopeCheckerFactory,
   ) {}
 
   /**
@@ -54,7 +56,7 @@ export class CampaignService {
   /**
    * 获取活动详情（包含任务列表）
    */
-  async getCampaignById(id: number, includeTasks = true): Promise<Campaign> {
+  async getCampaignById(id: number, includeTasks?: boolean): Promise<Campaign> {
     const campaign = await this.campaignRepository.findOne({
       where: { id },
     });
@@ -133,12 +135,37 @@ export class CampaignService {
     campaign: Campaign,
   ): Promise<any> {
     const conditions = campaign.participationConditions || {};
+    const meta: any = {};
 
-    // 检查用户范围（这里简化处理，实际可能需要查询用户信息）
+    // 检查用户范围
     if (conditions.userScope) {
-      // TODO: 实现用户范围检查逻辑
-      // 例如：检查是否为新用户、现有用户等
-      if (conditions.userScope === 'NO_FIRST_DEPOSIT') {
+      // 处理 userScope 可能是 string 或 string[] 的情况
+      const userScopes = Array.isArray(conditions.userScope)
+        ? conditions.userScope
+        : [conditions.userScope];
+
+      // 检查用户是否满足任一条件（如果多个条件，满足一个即可）
+      let isValid = false;
+      let scopeMeta: any = null;
+
+      for (const scope of userScopes) {
+        if (typeof scope === 'string') {
+          const checker = this.userScopeCheckerFactory.getChecker(scope);
+          if (checker) {
+            const result = await checker.check(userId);
+            if (result.valid) {
+              isValid = true;
+              scopeMeta = result.meta;
+              Object.assign(meta, scopeMeta);
+            }
+          }
+        }
+      }
+
+      if (!isValid) {
+        throw new BadRequestException(
+          scopeMeta?.message || 'User does not meet participation conditions',
+        );
       }
     }
 
@@ -150,6 +177,8 @@ export class CampaignService {
     if (campaign.endTime && now > campaign.endTime) {
       throw new BadRequestException('Campaign has ended');
     }
+
+    return meta;
   }
 
   /**

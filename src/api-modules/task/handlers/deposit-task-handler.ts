@@ -5,6 +5,7 @@ import { BaseTaskHandler, TaskValidationResult } from './base-task-handler';
 import { TransactionHistoryService } from 'src/api-modules/assets/services/transaction-history.service';
 import { TransactionItype } from 'src/api-modules/assets/entities/onchain/transaction-onchain-history.entity';
 import { UserService } from 'src/api-modules/user/service/user.service';
+import { UserCampaignProgress } from '../entities/user-campaign-progress.entity';
 
 /**
  * 充值任务处理器
@@ -35,12 +36,12 @@ export class DepositTaskHandler extends BaseTaskHandler {
       };
     }
 
+    const user = await this.userService.getUser(userProgress.userId);
     const transactions =
       await this.transactionHistoryService.getOnChainTransactionByConditions({
         itype: TransactionItype.TOKEN_TRANSFER,
+        address: user.evmAAWallet,
       });
-
-    const user = await this.userService.getUser(userProgress.userId);
 
     for (const transaction of transactions) {
       if (transaction.to.some((t) => t.address === user.evmAAWallet)) {

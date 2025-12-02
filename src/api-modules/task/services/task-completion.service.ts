@@ -73,6 +73,8 @@ export class TaskCompletionService {
 
       // 确保用户已参与活动
       await this.campaignService.participateCampaign(userId, campaignId);
+      const campaignProgress =
+        await this.campaignService.getUserCampaignProgress(userId, campaignId);
 
       // 获取或创建用户任务进度
       let progress = await manager.findOne(UserTaskProgress, {

@@ -26,6 +26,12 @@ import { FixedRewardHandler } from './rewards/fixed-reward-handler';
 import { RandomRewardHandler } from './rewards/random-reward-handler';
 import { ProgressiveRewardHandler } from './rewards/progressive-reward-handler';
 import { UserModule } from '../user/user.module';
+import { User } from '../user/entity/user.entity';
+import { AllUserScopeChecker } from './scopes/all-user-scope-checker';
+import { NewUserScopeChecker } from './scopes/new-user-scope-checker';
+import { ExistingUserScopeChecker } from './scopes/existing-user-scope-checker';
+import { FirstDepositScopeChecker } from './scopes/first-deposit-scope-checker';
+import { UserScopeCheckerFactory } from './scopes/user-scope-checker-factory';
 
 @Module({
   imports: [
@@ -37,6 +43,7 @@ import { UserModule } from '../user/user.module';
       UserTaskProgress,
       UserTaskReward,
       TaskCompletion,
+      User,
     ]),
     AssetsModule,
     UserModule,
@@ -62,6 +69,13 @@ import { UserModule } from '../user/user.module';
     ProgressiveRewardHandler,
     // 奖励处理器工厂
     RewardHandlerFactory,
+    // 用户范围检查器
+    AllUserScopeChecker,
+    NewUserScopeChecker,
+    ExistingUserScopeChecker,
+    FirstDepositScopeChecker,
+    // 用户范围检查器工厂
+    UserScopeCheckerFactory,
   ],
   controllers: [CampaignController],
   exports: [

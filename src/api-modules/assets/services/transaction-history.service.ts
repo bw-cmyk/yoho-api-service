@@ -15,8 +15,7 @@ import { extractParamsFromTxByTopic } from '../dex/bsc/pancakeParser';
 import { UserService } from 'src/api-modules/user/service/user.service';
 import { Token } from 'src/api-modules/dex/token.entity';
 import redisClient from 'src/common-modules/redis/redis-client';
-
-const USDT_CONTRACT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
+import { USDT_CONTRACT_ADDRESS } from 'src/constants';
 export interface TransactionHistoryParams {
   address: string;
   chains: string;
@@ -327,6 +326,8 @@ export class TransactionHistoryService {
   }
 
   async getOnChainTransactionByConditions(conditions: {
+    address?: string;
+    order?: 'ASC' | 'DESC';
     itype?: TransactionItype;
   }): Promise<TransactionHistory[]> {
     const queryBuilder =
@@ -336,6 +337,16 @@ export class TransactionHistoryService {
       queryBuilder.andWhere('tx.itype = :itype', { itype: conditions.itype });
     } else {
       return [];
+    }
+
+    if (conditions.address) {
+      queryBuilder.andWhere('tx.address = :address', {
+        address: conditions.address,
+      });
+    }
+
+    if (conditions.order) {
+      queryBuilder.orderBy('tx.txTime', conditions.order);
     }
 
     const transactions = await queryBuilder.getMany();

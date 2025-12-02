@@ -78,6 +78,7 @@ export class Task {
     currency?: string; // 货币类型
     coinType?: string; // 币种（如BTC）
     targetId?: string; // 目标ID（如botim账号ID）
+    tradeVolumeMultiple?: number; // 交易流水倍数
     [key: string]: any;
   };
 
