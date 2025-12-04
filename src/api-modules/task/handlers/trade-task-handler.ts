@@ -33,6 +33,21 @@ export class TradeTaskHandler extends BaseTaskHandler {
     campaignProgress?: UserCampaignProgress,
   ): Promise<TaskValidationResult> {
     const completionConditions = task.completionConditions;
+    if (task.type === TaskType.TRADE_BTC) {
+      const onChainTransactionVolume =
+        await this.transactionHistoryService.getOnChainTradingVolumeByTokenAddress(
+          userProgress.userId,
+          completionConditions.tokenAddress,
+        );
+      if (onChainTransactionVolume.lt(completionConditions.minAmount)) {
+        return {
+          valid: false,
+          message: 'On chain transaction volume is less than required',
+          errorCode: 'INSUFFICIENT_ON_CHAIN_TRANSACTION_VOLUME',
+        };
+      }
+    }
+
     const gameTransactionVolume = await this.assetService.getTradingVolume(
       userProgress.userId,
     );

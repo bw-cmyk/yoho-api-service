@@ -666,6 +666,20 @@ export class TransactionHistoryService {
     return new Decimal(result?.totalVolume || '0');
   }
 
+  public async getOnChainTradingVolumeByTokenAddress(
+    userId: string,
+    tokenAddress: string,
+  ): Promise<Decimal> {
+    const user = await this.userService.getUser(userId);
+    const queryBuilder = this.transactionHistoryRepository
+      .createQueryBuilder('tx')
+      .select('SUM(tx."costBasis")', 'totalVolume')
+      .where('tx.address = :address', { address: user.evmAAWallet })
+      .andWhere('tx.tokenContractAddress = :tokenAddress', { tokenAddress });
+    const result = await queryBuilder.getRawOne();
+    return new Decimal(result?.totalVolume || '0');
+  }
+
   private async getRedisLock(key: string): Promise<boolean> {
     return new Promise((resolve, reject) => {
       redisClient.set(key, 'locked', 'EX', 60 * 5, 'NX', (err, result) => {
