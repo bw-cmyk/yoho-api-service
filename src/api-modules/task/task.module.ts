@@ -32,6 +32,7 @@ import { NewUserScopeChecker } from './scopes/new-user-scope-checker';
 import { ExistingUserScopeChecker } from './scopes/existing-user-scope-checker';
 import { FirstDepositScopeChecker } from './scopes/first-deposit-scope-checker';
 import { UserScopeCheckerFactory } from './scopes/user-scope-checker-factory';
+import { PercentageRewardHandler } from './rewards/percentage-reward-handler';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { UserScopeCheckerFactory } from './scopes/user-scope-checker-factory';
     FixedRewardHandler,
     RandomRewardHandler,
     ProgressiveRewardHandler,
+    PercentageRewardHandler,
     // 奖励处理器工厂
     RewardHandlerFactory,
     // 用户范围检查器

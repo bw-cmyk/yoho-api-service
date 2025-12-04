@@ -8,14 +8,20 @@ import {
   Order,
   LogisticsTimeline,
   ShippingAddress,
+  DrawRound,
+  DrawParticipation,
+  DrawResult,
 } from './entities';
 import { ProductService } from './services/product.service';
 import { OrderService } from './services/order.service';
 import { ShippingAddressService } from './services/shipping-address.service';
 import { LogisticsService } from './services/logistics.service';
+import { DrawService } from './services/draw.service';
+import { BlockchainService } from './services/blockchain.service';
 import { ProductController } from './controllers/product.controller';
 import { OrderController } from './controllers/order.controller';
 import { ShippingAddressController } from './controllers/shipping-address.controller';
+import { DrawController } from './controllers/draw.controller';
 
 @Module({
   imports: [
@@ -26,6 +32,9 @@ import { ShippingAddressController } from './controllers/shipping-address.contro
       Order,
       LogisticsTimeline,
       ShippingAddress,
+      DrawRound,
+      DrawParticipation,
+      DrawResult,
     ]),
     AssetsModule,
   ],
@@ -34,13 +43,22 @@ import { ShippingAddressController } from './controllers/shipping-address.contro
     OrderService,
     ShippingAddressService,
     LogisticsService,
+    DrawService,
+    BlockchainService,
   ],
-  controllers: [ProductController, OrderController, ShippingAddressController],
+  controllers: [
+    ProductController,
+    OrderController,
+    ShippingAddressController,
+    DrawController,
+  ],
   exports: [
     ProductService,
     OrderService,
     ShippingAddressService,
     LogisticsService,
+    DrawService,
+    BlockchainService,
   ],
 })
 export class EcommerceModule {}

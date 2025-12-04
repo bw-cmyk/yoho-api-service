@@ -4,3 +4,6 @@ export * from './product-review.entity';
 export * from './order.entity';
 export * from './logistics-timeline.entity';
 export * from './shipping-address.entity';
+export * from './draw-round.entity';
+export * from './draw-participation.entity';
+export * from './draw-result.entity';
