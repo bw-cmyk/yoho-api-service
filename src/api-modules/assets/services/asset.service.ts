@@ -64,6 +64,15 @@ export interface WithdrawRequest {
   metadata?: Record<string, any>;
 }
 
+export interface BonusGrantRequest {
+  userId: string;
+  currency: Currency;
+  amount: Decimal;
+  game_id: string;
+  description?: string;
+  metadata?: Record<string, any>;
+}
+
 @Injectable()
 export class AssetService {
   private readonly logger = new Logger(AssetService.name);
@@ -731,6 +740,47 @@ export class AssetService {
       await manager.save(transaction);
 
       return asset;
+    });
+  }
+
+  /**
+   * BONUS_GRANT
+   */
+  async bonusGrant(request: BonusGrantRequest): Promise<void> {
+    const { userId, currency, amount, game_id, description, metadata } =
+      request;
+
+    if (amount.lte(0)) {
+      throw new BadRequestException('奖励金额必须大于0');
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      // 使用悲观锁获取用户资产，防止并发修改
+      const asset = await manager.findOne(UserAsset, {
+        where: { userId: userId, currency },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      const transaction = manager.create(Transaction, {
+        transaction_id: Transaction.generateTransactionId(),
+        userId: userId,
+        currency,
+        type: TransactionType.BONUS_GRANT,
+        status: TransactionStatus.SUCCESS,
+        amount,
+        balance_before: asset.balanceBonus,
+        balance_after: asset.balanceBonus,
+        reference_id: game_id,
+        description: description || `奖励发放 ${amount} ${currency}`,
+        metadata: {
+          game_id,
+          ...metadata,
+        },
+        source: TransactionSource.BONUS,
+      });
+      await manager.save(transaction);
+
+      return { asset, transaction };
     });
   }
 
