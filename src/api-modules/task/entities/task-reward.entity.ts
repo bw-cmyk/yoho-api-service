@@ -25,6 +25,7 @@ export enum RewardGrantType {
   FIXED = 'FIXED', // 固定金额
   RANDOM = 'RANDOM', // 随机金额
   PROGRESSIVE = 'PROGRESSIVE', // 渐进式（如签到奖励）
+  FIRST_DEPOSIT = 'FIRST_DEPOSIT', // 首次充值
 }
 
 /**

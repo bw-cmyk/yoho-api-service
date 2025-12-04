@@ -1,4 +1,6 @@
+import { Campaign } from '../entities/campaign.entity';
 import { TaskReward, RewardGrantType } from '../entities/task-reward.entity';
+import { UserCampaignProgress } from '../entities/user-campaign-progress.entity';
 import { UserTaskProgress } from '../entities/user-task-progress.entity';
 
 /**
@@ -11,6 +13,10 @@ export interface RewardCalculationResult {
   metadata?: Record<string, any>;
 }
 
+export interface RewardCalculationContext {
+  campaign?: Campaign;
+  campaignProgress?: UserCampaignProgress;
+}
 /**
  * 奖励处理器抽象基类
  */
@@ -30,6 +36,7 @@ export abstract class BaseRewardHandler {
   abstract calculate(
     reward: TaskReward,
     userProgress?: UserTaskProgress,
+    context?: RewardCalculationContext,
   ): Promise<RewardCalculationResult>;
 
   /**
@@ -37,5 +44,20 @@ export abstract class BaseRewardHandler {
    */
   supports(grantType: RewardGrantType): boolean {
     return this.getSupportedGrantTypes().includes(grantType);
+  }
+
+  /**
+   * 发放奖励
+   * @param reward 奖励配置
+   * @param userProgress 用户任务进度
+   * @param context 计算上下文
+   * @returns 奖励发放结果
+   */
+  grantReward(
+    reward: TaskReward,
+    userProgress?: UserTaskProgress,
+    context?: RewardCalculationContext,
+  ): Promise<void> {
+    return Promise.resolve();
   }
 }

@@ -20,7 +20,11 @@ export class TradeTaskHandler extends BaseTaskHandler {
   }
 
   getSupportedTypes(): TaskType[] {
-    return [TaskType.TRADE_BTC, TaskType.TRADE_VOLUME];
+    return [
+      TaskType.TRADE_BTC,
+      TaskType.TRADE_VOLUME,
+      TaskType.TRADE_VOLUME_FIRST_DEPOSIT,
+    ];
   }
 
   async validate(
@@ -39,7 +43,6 @@ export class TradeTaskHandler extends BaseTaskHandler {
     const totalTransactionVolume = gameTransactionVolume.plus(
       onChainTransactionVolume,
     );
-    const firstDepositAmount = campaignProgress?.metadata?.firstDepositAmount;
 
     if (completionConditions.minAmount) {
       if (totalTransactionVolume.lt(completionConditions.minAmount)) {
@@ -50,9 +53,14 @@ export class TradeTaskHandler extends BaseTaskHandler {
         };
       }
     }
+
+    const rewardAmount = campaignProgress?.metadata?.rewardAmount;
     const requiredTradeVolume =
-      firstDepositAmount * completionConditions.tradeVolumeMultiple * 150;
-    if (completionConditions.tradeVolumeMultiple) {
+      rewardAmount * completionConditions.tradeVolumeMultiple * 150;
+    if (
+      completionConditions.tradeVolumeMultiple &&
+      completionConditions.requireFirstDeposit
+    ) {
       if (totalTransactionVolume.lt(new Decimal(requiredTradeVolume))) {
         return {
           valid: false,

@@ -108,6 +108,7 @@ export class AssetController {
       onChainTradingVolume: onChainTradingVolume.toString(),
       totalTradingVolume: tradingVolume.plus(onChainTradingVolume).toString(),
       firstDepositAmount: firstDepositAmount,
+      firstDepositRewardAmount: Math.min(firstDepositAmount * 2.5, 120),
     };
   }
 

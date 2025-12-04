@@ -52,6 +52,7 @@ export class FirstDepositScopeChecker extends BaseUserScopeChecker {
         meta: {
           ...this.getMeta(),
           firstDepositAmount: result[0].amount.toNumber(),
+          rewardAmount: Math.min(result[0].amount.toNumber() * 2.5, 120),
         },
       };
     }

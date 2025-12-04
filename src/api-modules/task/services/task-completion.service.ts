@@ -75,7 +75,7 @@ export class TaskCompletionService {
       await this.campaignService.participateCampaign(userId, campaignId);
       const campaignProgress =
         await this.campaignService.getUserCampaignProgress(userId, campaignId);
-
+      const campaign = await this.campaignService.getCampaignById(campaignId);
       // 获取或创建用户任务进度
       let progress = await manager.findOne(UserTaskProgress, {
         where: { userId, taskId },
@@ -126,8 +126,13 @@ export class TaskCompletionService {
         const rewardHandler = this.rewardHandlerFactory.getHandler(
           reward.grantType,
         );
-        const rewardResult = await rewardHandler.calculate(reward, progress);
+        const rewardResult = await rewardHandler.calculate(reward, progress, {
+          campaign,
+        });
         rewardAmount = rewardResult.amount;
+        await rewardHandler.grantReward(reward, progress, {
+          campaign,
+        });
       }
 
       // 更新任务进度

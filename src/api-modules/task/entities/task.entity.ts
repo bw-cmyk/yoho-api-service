@@ -22,6 +22,7 @@ export enum TaskType {
   TRADE_VOLUME = 'TRADE_VOLUME', // 交易流水
   GAME_VOLUME = 'GAME_VOLUME', // 游戏流水
   CUSTOM = 'CUSTOM', // 自定义任务
+  TRADE_VOLUME_FIRST_DEPOSIT = 'TRADE_VOLUME_FIRST_DEPOSIT', // 交易流水首次充值
 }
 
 /**
