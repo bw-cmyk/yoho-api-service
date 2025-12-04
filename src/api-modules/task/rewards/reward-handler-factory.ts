@@ -4,6 +4,7 @@ import { BaseRewardHandler } from './base-reward-handler';
 import { FixedRewardHandler } from './fixed-reward-handler';
 import { RandomRewardHandler } from './random-reward-handler';
 import { ProgressiveRewardHandler } from './progressive-reward-handler';
+import { PercentageRewardHandler } from './percentage-reward-handler';
 
 /**
  * 奖励处理器工厂
@@ -16,9 +17,15 @@ export class RewardHandlerFactory {
     private fixedHandler: FixedRewardHandler,
     private randomHandler: RandomRewardHandler,
     private progressiveHandler: ProgressiveRewardHandler,
+    private percentageHandler: PercentageRewardHandler,
   ) {
     // 注册所有奖励处理器
-    this.handlers = [fixedHandler, randomHandler, progressiveHandler];
+    this.handlers = [
+      fixedHandler,
+      randomHandler,
+      progressiveHandler,
+      percentageHandler,
+    ];
   }
 
   /**
