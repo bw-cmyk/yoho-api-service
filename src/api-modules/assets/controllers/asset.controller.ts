@@ -28,7 +28,6 @@ export class AssetController {
   @Get('chain-assets')
   async getUserChainAssets(@Request() req: ExpressRequest) {
     const userId = req.query.userId;
-    console.log('userId', userId);
     const assets = await this.assetService.updateUserChainAssets(
       userId as string,
     );
@@ -50,17 +49,19 @@ export class AssetController {
       userId,
       new Date(Date.now() - 24 * 60 * 60 * 1000),
     );
-    console.log('yesterdaySnapshot', yesterdaySnapshot);
     return {
       user_id: userId,
       assets: assets.map((asset) => ({
         currency: asset.currency,
         ...asset.getBalanceDetails(),
       })),
-      onchainAssets: onchainAssets.map((asset) => ({
-        tokenSymbol: asset.tokenSymbol,
-        ...asset.getAssetDetails(),
-      })),
+      onchainAssets: onchainAssets
+        .filter((asset) => asset.token !== undefined)
+        .map((asset) => ({
+          tokenSymbol: asset.tokenSymbol,
+          ...asset.getAssetDetails(),
+          tokenInfo: asset.token,
+        })),
       yesterdayAssets: yesterdaySnapshot,
     };
   }

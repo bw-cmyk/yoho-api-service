@@ -955,7 +955,9 @@ export class AssetService {
   /**
    * 获取用户链上资产
    */
-  async getUserChainAssets(userId: string): Promise<UserChainAsset[]> {
+  async getUserChainAssets(
+    userId: string,
+  ): Promise<(UserChainAsset & { token?: Partial<Token> })[]> {
     this.updateUserChainAssets(userId);
     const assets = await this.userChainAssetRepository.find({
       where: { userId },
@@ -972,8 +974,16 @@ export class AssetService {
       const token = tokens.find(
         (item) => item.tokenSymbol === asset.tokenSymbol,
       );
+      console.log('token', token);
       if (token) {
-        (asset as UserChainAsset & { token?: Token }).token = token;
+        (asset as UserChainAsset & { token?: Partial<Token> }).token = {
+          tokenName: token.tokenName,
+          tokenSymbol: token.tokenSymbol,
+          tokenLogoUrl: token.tokenLogoUrl,
+          tokenContractAddress: token.tokenContractAddress,
+          decimals: token.decimals,
+          currentPriceUsd: token.currentPriceUsd,
+        };
       }
     }
     return assets;
