@@ -215,10 +215,7 @@ export class ProductService {
   /**
    * 获取首页展示的商品
    */
-  async getHomepageProducts(): Promise<{
-    instantBuy?: Product;
-    luckyDraws: Product[];
-  }> {
+  async getHomepageProducts() {
     const now = new Date();
 
     // Instant Buy: 优先级最高的一个可售卖商品
@@ -255,7 +252,7 @@ export class ProductService {
         ),
       },
     });
-    console.log(specifications);
+
     [instantBuy, ...luckyDraws].forEach((product) => {
       product.specifications = specifications.filter(
         (spec) => spec.productId === product.id,
@@ -263,8 +260,16 @@ export class ProductService {
     });
 
     return {
-      instantBuy: instantBuy || undefined,
-      luckyDraws,
+      instantBuy: instantBuy
+        ? {
+            ...instantBuy,
+            discountPercentage: instantBuy.discountPercentage,
+          }
+        : undefined,
+      luckyDraws: luckyDraws.map((product) => ({
+        ...product,
+        discountPercentage: product.discountPercentage,
+      })),
     };
   }
 
