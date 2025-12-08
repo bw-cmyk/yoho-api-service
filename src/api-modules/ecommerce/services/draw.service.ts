@@ -21,6 +21,7 @@ import { AssetService } from '../../assets/services/asset.service';
 import { Currency } from '../../assets/entities/balance/user-asset.entity';
 import { BlockchainService } from './blockchain.service';
 import { TransactionType } from 'src/api-modules/assets/entities/balance/transaction.entity';
+import redisClient from 'src/common-modules/redis/redis-client';
 
 @Injectable()
 export class DrawService {
@@ -68,6 +69,13 @@ export class DrawService {
         order: { roundNumber: 'DESC' },
       });
 
+      const isLocked = await this.getLock(productId);
+      if (isLocked) {
+        throw new BadRequestException(
+          'Another instance is processing the product, please try again later',
+        );
+      }
+
       const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
 
       // 计算总号码数（默认溢价10%）
@@ -111,7 +119,7 @@ export class DrawService {
     orderNumber: string;
   }> {
     if (quantity < 1) {
-      throw new BadRequestException('购买数量至少为1');
+      throw new BadRequestException('Quantity must be at least 1');
     }
 
     // 获取或创建当前期次
@@ -119,13 +127,13 @@ export class DrawService {
 
     // 检查期次是否可以购买
     if (!drawRound.canPurchase()) {
-      throw new BadRequestException('当前期次不可购买');
+      throw new BadRequestException('The round is not available for purchase');
     }
 
     // 检查剩余号码数
     if (drawRound.remainingSpots < quantity) {
       throw new BadRequestException(
-        `剩余号码不足，仅剩 ${drawRound.remainingSpots} 个`,
+        `The remaining number is not enough, only ${drawRound.remainingSpots} left`,
       );
     }
 
@@ -136,7 +144,9 @@ export class DrawService {
     const userAssets = await this.assetService.getUserAssets(userId);
     const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
     if (!usdAsset || !usdAsset.hasEnoughBalance(totalAmount)) {
-      throw new BadRequestException('游戏余额不足，请先充值');
+      throw new BadRequestException(
+        'The game balance is not enough, please recharge',
+      );
     }
 
     // 在事务中处理购买
@@ -148,12 +158,14 @@ export class DrawService {
       });
 
       if (!lockedRound.canPurchase()) {
-        throw new BadRequestException('期次状态已变更，无法购买');
+        throw new BadRequestException(
+          'The round status has changed, cannot purchase',
+        );
       }
 
       if (lockedRound.remainingSpots < quantity) {
         throw new BadRequestException(
-          `剩余号码不足，仅剩 ${lockedRound.remainingSpots} 个`,
+          `The remaining number is not enough, only ${lockedRound.remainingSpots} left`,
         );
       }
 
@@ -231,15 +243,16 @@ export class DrawService {
   async processDraw(drawRoundId: number): Promise<DrawResult> {
     const drawRound = await this.drawRoundRepository.findOne({
       where: { id: drawRoundId },
-      relations: ['participations', 'product'],
     });
 
     if (!drawRound) {
-      throw new NotFoundException(`期次 ${drawRoundId} 不存在`);
+      throw new NotFoundException(`Round ${drawRoundId} not found`);
     }
 
     if (drawRound.status !== DrawRoundStatus.COMPLETED) {
-      throw new BadRequestException('期次尚未满员，无法开奖');
+      throw new BadRequestException(
+        'The round is not completed, cannot process the draw',
+      );
     }
 
     // 检查是否已经开奖
@@ -335,13 +348,16 @@ export class DrawService {
       await manager.save(drawRound);
 
       this.logger.log(
-        `期次 ${drawRound.roundNumber} 开奖完成，中奖号码: ${winningNumber}`,
+        `Round ${drawRound.roundNumber} draw completed, winning number: ${winningNumber}`,
       );
 
       // 发放奖品
       if (winningParticipation) {
         this.distributePrize(drawResult, drawRound).catch((error) => {
-          this.logger.error(`期次 ${drawRound.id} 奖品发放失败`, error);
+          this.logger.error(
+            `Failed to distribute prize for round ${drawRound.id}`,
+            error,
+          );
         });
       }
 
@@ -349,7 +365,7 @@ export class DrawService {
       if (drawRound.autoCreateNext) {
         this.getOrCreateCurrentRound(drawRound.productId).catch((error) => {
           this.logger.error(
-            `创建下一期次失败: 商品 ${drawRound.productId}`,
+            `Failed to create next round for product ${drawRound.productId}`,
             error,
           );
         });
@@ -371,7 +387,7 @@ export class DrawService {
     }
 
     if (!drawResult.winnerUserId) {
-      this.logger.warn(`期次 ${drawRound.id} 无中奖用户`);
+      this.logger.warn(`Round ${drawRound.id} has no winning user`);
       return;
     }
 
@@ -387,7 +403,7 @@ export class DrawService {
           currency: Currency.USD,
           amount: drawResult.prizeValue,
           reference_id: `DRAW_${drawRound.roundNumber}`,
-          description: `抽奖中奖: ${drawRound.product.name} 第${drawRound.roundNumber}期`,
+          description: `Draw winning: ${drawRound.product.name} Round ${drawRound.roundNumber}`,
           metadata: {
             drawRoundId: drawRound.id,
             roundNumber: drawRound.roundNumber,
@@ -402,18 +418,21 @@ export class DrawService {
         await this.drawResultRepository.save(drawResult);
 
         this.logger.log(
-          `奖品已发放: 用户 ${drawResult.winnerUserId}, 金额 ${drawResult.prizeValue}`,
+          `Prize distributed to user ${drawResult.winnerUserId}, amount ${drawResult.prizeValue}`,
         );
       } else if (drawResult.prizeType === PrizeType.PHYSICAL) {
         // 实物奖品：标记为待领取，需要用户联系客服
         // 这里可以发送通知，引导用户联系客服
         this.logger.log(
-          `实物奖品待领取: 用户 ${drawResult.winnerUserId}, 商品 ${drawRound.product.name}`,
+          `Physical prize pending for user ${drawResult.winnerUserId}, product ${drawRound.product.name}`,
         );
         // 实物奖品暂不自动发放，需要人工处理
       }
     } catch (error) {
-      this.logger.error(`发放奖品失败: 期次 ${drawRound.id}`, error);
+      this.logger.error(
+        `Failed to distribute prize for round ${drawRound.id}`,
+        error,
+      );
       throw error;
     }
   }
@@ -431,11 +450,10 @@ export class DrawService {
   }> {
     const drawRound = await this.drawRoundRepository.findOne({
       where: { id: drawRoundId },
-      relations: ['product'],
     });
 
     if (!drawRound) {
-      throw new NotFoundException(`期次 ${drawRoundId} 不存在`);
+      throw new NotFoundException(`Round ${drawRoundId} not found`);
     }
 
     // 获取参与记录
@@ -496,7 +514,6 @@ export class DrawService {
 
     const [items, total] = await this.participationRepository.findAndCount({
       where,
-      relations: ['drawRound', 'drawRound.product'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -520,7 +537,7 @@ export class DrawService {
       try {
         await this.processDraw(round.id);
       } catch (error) {
-        this.logger.error(`处理期次 ${round.id} 失败`, error);
+        this.logger.error(`Failed to process round ${round.id}`, error);
       }
     }
   }
@@ -534,7 +551,6 @@ export class DrawService {
       where: {
         prizeStatus: PrizeStatus.PENDING,
       },
-      relations: ['drawRound', 'drawRound.product'],
     });
 
     for (const result of pendingResults) {
@@ -544,7 +560,10 @@ export class DrawService {
         });
         await this.distributePrize(result, drawRound);
       } catch (error) {
-        this.logger.error(`发放奖品失败: 期次 ${result.drawRoundId}`, error);
+        this.logger.error(
+          `Failed to distribute prize for round ${result.drawRoundId}`,
+          error,
+        );
       }
     }
   }
@@ -578,5 +597,22 @@ export class DrawService {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `DRAW${timestamp}${random}`;
+  }
+
+  private async getLock(productId: number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      redisClient.set(
+        `product-draw-${productId}`,
+        'locked',
+        'EX',
+        60 * 5,
+        'NX',
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+        },
+      );
+    });
   }
 }

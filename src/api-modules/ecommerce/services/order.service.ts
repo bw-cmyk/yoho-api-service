@@ -27,6 +27,8 @@ import { ProductService } from './product.service';
 import { ShippingAddressService } from './shipping-address.service';
 import { LogisticsService } from './logistics.service';
 import { TransactionType } from 'src/api-modules/assets/entities/balance/transaction.entity';
+import { UserService } from 'src/api-modules/user/service/user.service';
+import { User } from '@sentry/node';
 
 @Injectable()
 export class OrderService {
@@ -43,6 +45,7 @@ export class OrderService {
     private readonly productService: ProductService,
     private readonly addressService: ShippingAddressService,
     private readonly logisticsService: LogisticsService,
+    private readonly userService: UserService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -485,6 +488,27 @@ export class OrderService {
         );
       }
     }
+  }
+
+  async getProductPurchased(id: number) {
+    const orders = await this.orderRepository.find({
+      where: { productId: id, paymentStatus: PaymentStatus.PAID },
+      select: ['orderNumber', 'quantity', 'createdAt', 'userId', 'productInfo'],
+      order: { createdAt: 'DESC' },
+    });
+    const uids = orders.map((order) => order.userId);
+    const users = await this.userService.getUsersByUids(uids);
+    const userMap = new Map(users.map((user) => [user.id, user]));
+
+    return orders.map((order) => {
+      const user = userMap.get(order.userId);
+      return {
+        orderQuantity: order.quantity,
+        productInfo: order.productInfo,
+        username: user?.nickname || user?.username || user.botimName,
+        avatar: user?.botimAvatar,
+      };
+    });
   }
 
   /**

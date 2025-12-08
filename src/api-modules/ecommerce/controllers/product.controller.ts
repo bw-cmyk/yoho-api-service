@@ -20,12 +20,28 @@ import {
   UpdateProductDto,
   QueryProductsDto,
 } from '../dto/product.dto';
+import { OrderService } from '../services/order.service';
 
 @ApiTags('商品管理')
 @ApiBearerAuth()
 @Controller('/api/v1/ecommerce/products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly orderService: OrderService,
+  ) {}
+
+  @Get(':id/reviews')
+  @ApiOperation({ summary: '获取商品详情' })
+  async getProdutcReview(@Param('id', ParseIntPipe) id: number) {
+    return await this.productService.getProductReviews(id);
+  }
+
+  @Get(':id/purchased')
+  @ApiOperation({ summary: '获取商品已购人数' })
+  async getProductPurchased(@Param('id', ParseIntPipe) id: number) {
+    return await this.orderService.getProductPurchased(id);
+  }
 
   @Get('homepage')
   @ApiOperation({ summary: '获取首页商品' })

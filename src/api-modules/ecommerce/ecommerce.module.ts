@@ -22,6 +22,7 @@ import { ProductController } from './controllers/product.controller';
 import { OrderController } from './controllers/order.controller';
 import { ShippingAddressController } from './controllers/shipping-address.controller';
 import { DrawController } from './controllers/draw.controller';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { DrawController } from './controllers/draw.controller';
       DrawResult,
     ]),
     AssetsModule,
+    UserModule,
   ],
   providers: [
     ProductService,

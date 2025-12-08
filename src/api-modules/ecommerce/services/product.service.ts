@@ -269,7 +269,7 @@ export class ProductService {
   }
 
   /**
-   * 获取商品详情（包含模拟数据）
+   * 获取商品详情
    */
   async getProductDetail(id: number): Promise<
     Product & {
@@ -317,6 +317,13 @@ export class ProductService {
       estimatedDeliveryDays: number;
       remainingSaleTime: number;
     };
+  }
+
+  async getProductReviews(id: number): Promise<ProductReview[]> {
+    const reviews = await this.reviewRepository.find({
+      where: { productId: id },
+    });
+    return reviews;
   }
 
   /**

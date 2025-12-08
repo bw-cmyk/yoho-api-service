@@ -13,14 +13,14 @@ const token = jwt.sign(
 );
 
 const authHeader = {
-  Authorization: `Bearer ${token}`,
+  Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNTg4MDE2MzUzMjI4ODkyMTYiLCJuaWNrbmFtZSI6IkppbGxpYW4iLCJpYXQiOjE3NjQ4NjI0NjgsImV4cCI6MTc2NTQ2NzI2OH0.milxD0zKDHdLQtpSAJX_o_4PvLgsbOGftsSx4F0dqEs`,
   'Content-Type': 'application/json',
 };
 
 console.log(authHeader);
 
 const run = async () => {
-  const response = await fetch(`${endpoint}/api/v1/campaigns`, {
+  const response = await fetch(`${endpoint}/api/v1/campaigns/2`, {
     method: 'GET',
     headers: authHeader,
   });
@@ -28,26 +28,26 @@ const run = async () => {
   console.log(data);
 
   // get task by campaign id
-  const taskResponse = await fetch(
-    `${endpoint}/api/v1/campaigns/${data.campaigns[1].id}/tasks`,
-    {
-      method: 'GET',
-      headers: authHeader,
-    },
-  );
-  const taskData = await taskResponse.json();
-  console.log(taskData);
+  // const taskResponse = await fetch(
+  //   `${endpoint}/api/v1/campaigns/${data.campaigns[1].id}/tasks`,
+  //   {
+  //     method: 'GET',
+  //     headers: authHeader,
+  //   },
+  // );
+  // const taskData = await taskResponse.json();
+  // console.log(taskData);
 
-  // participate campaign
-  const participateResponse = await fetch(
-    `${endpoint}/api/v1/campaigns/${data.campaigns[1].id}/participate`,
-    {
-      method: 'POST',
-      headers: authHeader,
-    },
-  );
-  const participateData = await participateResponse.json();
-  console.log(participateData);
+  // // participate campaign
+  // const participateResponse = await fetch(
+  //   `${endpoint}/api/v1/campaigns/${data.campaigns[1].id}/participate`,
+  //   {
+  //     method: 'POST',
+  //     headers: authHeader,
+  //   },
+  // );
+  // const participateData = await participateResponse.json();
+  // console.log(participateData);
 
   // // complete task
   // const completeResponse = await fetch(
@@ -62,7 +62,7 @@ const run = async () => {
 
   // // get user task progress
   // const userTaskProgressResponse = await fetch(
-  //   `${endpoint}/api/v1/campaigns/7/progress`,
+  //   `${endpoint}/api/v1/campaigns/10/progress`,
   //   {
   //     method: 'GET',
   //     headers: authHeader,
@@ -72,15 +72,15 @@ const run = async () => {
   // console.log(userTaskProgressData);
 
   // /api/v1/assets/trading-volume
-  const tradingVolumeResponse = await fetch(
-    `${endpoint}/api/v1/assets/trading-volume`,
-    {
-      method: 'GET',
-      headers: authHeader,
-    },
-  );
-  const tradingVolumeData = await tradingVolumeResponse.json();
-  console.log(tradingVolumeData);
+  // const tradingVolumeResponse = await fetch(
+  //   `${endpoint}/api/v1/assets/trading-volume`,
+  //   {
+  //     method: 'GET',
+  //     headers: authHeader,
+  //   },
+  // );
+  // const tradingVolumeData = await tradingVolumeResponse.json();
+  // console.log(tradingVolumeData);
 };
 
 run();
