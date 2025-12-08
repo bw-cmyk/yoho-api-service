@@ -796,6 +796,7 @@ export class AssetService {
     const query = this.transactionRepository
       .createQueryBuilder('transaction')
       .where('transaction.user_id = :userId', { userId })
+      .andWhere('transaction.type != :type', { type: TransactionType.UNLOCK })
       .orderBy('transaction.created_at', 'DESC');
 
     if (currency) {
