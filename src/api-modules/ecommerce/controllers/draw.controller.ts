@@ -71,7 +71,12 @@ export class DrawController {
   ) {
     // 这里可以通过drawRoundId获取参与记录
     // 暂时返回空，可以根据需要实现
-    return { items: [], total: 0, page: query.page || 1, limit: query.limit || 20 };
+    return {
+      items: [],
+      total: 0,
+      page: query.page || 1,
+      limit: query.limit || 20,
+    };
   }
 
   @Get('participations/me')
@@ -97,5 +102,11 @@ export class DrawController {
     // 注意：这里应该添加管理员权限检查
     return await this.drawService.processDraw(id);
   }
-}
 
+  @Post('results/:id/convert-to-cash')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '将物理奖品转换成 Cash 奖品' })
+  async convertPhysicalPrizeToCashPrize(@Param('id', ParseIntPipe) id: number) {
+    return await this.drawService.convertPhysicalPrizeToCashPrize(id);
+  }
+}

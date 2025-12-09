@@ -52,6 +52,7 @@ export interface WinRequest {
   amount: Decimal;
   game_id: string;
   description?: string;
+  type?: TransactionType;
   metadata?: Record<string, any>;
 }
 
@@ -425,7 +426,7 @@ export class AssetService {
         transaction_id: Transaction.generateTransactionId(),
         userId: userId,
         currency,
-        type: TransactionType.GAME_WIN,
+        type: request.type || TransactionType.GAME_WIN,
         source: targetSource,
         status: TransactionStatus.SUCCESS,
         amount,

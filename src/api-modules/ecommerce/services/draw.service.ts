@@ -438,6 +438,70 @@ export class DrawService {
   }
 
   /**
+   * 如果用户获奖，可以将物理奖品转换成 Cash 奖品，并发放到用户账户
+   */
+  async convertPhysicalPrizeToCashPrize(drawResultId: number): Promise<void> {
+    // 使用事务包裹整个操作，确保原子性
+    return await this.dataSource.transaction(async (manager) => {
+      // 在事务内使用悲观锁重新查询，确保状态检查的准确性
+      const drawResult = await manager.findOne(DrawResult, {
+        where: { id: drawResultId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!drawResult) {
+        throw new NotFoundException(`Draw result ${drawResultId} not found`);
+      }
+
+      if (
+        drawResult.prizeType !== PrizeType.PHYSICAL ||
+        !drawResult.winnerUserId
+      ) {
+        return;
+      }
+
+      // check if the prize has already been distributed
+      // 在事务内重新检查状态，防止并发重复发放
+      if (drawResult.prizeStatus !== PrizeStatus.PENDING) {
+        return;
+      }
+
+      const drawRound = await manager.findOne(DrawRound, {
+        where: { id: drawResult.drawRoundId },
+      });
+
+      if (!drawRound) {
+        throw new NotFoundException(
+          `Draw round ${drawResult.drawRoundId} not found`,
+        );
+      }
+
+      // 将物理奖品转换成 Cash 奖品，并发放到用户账户
+      // 注意：assetService.win 内部也有事务，这里需要确保嵌套事务的正确处理
+      await this.assetService.win({
+        userId: drawResult.winnerUserId,
+        currency: Currency.USD,
+        amount: drawResult.prizeValue,
+        type: TransactionType.LUCKY_DRAW,
+        game_id: `LUCKY_DRAW`,
+        description: `Draw winning: ${drawRound.product.name} Round ${drawRound.roundNumber}`,
+        metadata: {
+          drawRoundId: drawRound.id,
+          roundNumber: drawRound.roundNumber,
+          winningNumber: drawResult.winningNumber,
+          prizeType: drawResult.prizeType,
+        },
+      });
+
+      // 更新奖品状态（在事务内更新，确保原子性）
+      drawResult.prizeValue = drawRound.prizeValue;
+      drawResult.prizeStatus = PrizeStatus.DISTRIBUTED;
+      drawResult.prizeDistributedAt = new Date();
+      await manager.save(drawResult);
+    });
+  }
+
+  /**
    * 获取期次详情
    */
   async getRoundDetail(
