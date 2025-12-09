@@ -797,6 +797,7 @@ export class AssetService {
       .createQueryBuilder('transaction')
       .where('transaction.user_id = :userId', { userId })
       .andWhere('transaction.type != :type', { type: TransactionType.UNLOCK })
+      .andWhere('transaction.type != :type', { type: TransactionType.LOCK })
       .orderBy('transaction.created_at', 'DESC');
 
     if (currency) {
