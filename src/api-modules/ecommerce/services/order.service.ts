@@ -228,7 +228,7 @@ export class OrderService {
           name: product.name,
           thumbnail: product.thumbnail,
           images: product.images || [],
-          specifications: [],
+          specifications: product.specifications,
           originalPrice: product.originalPrice.toString(),
           salePrice: product.salePrice.toString(),
         },
