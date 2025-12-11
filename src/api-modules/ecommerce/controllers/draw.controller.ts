@@ -59,6 +59,12 @@ export class DrawController {
     return await this.drawService.getAllOngoingRounds();
   }
 
+  @Get('rounds/ongoing/detail')
+  @ApiOperation({ summary: '获取当前期次' })
+  async getOngoingRoundDetail(@Query() query: QueryDrawRoundsDto) {
+    return await this.drawService.getOngoingRoundDetail(query.productId);
+  }
+
   @Get('rounds/:id')
   @ApiOperation({ summary: '获取期次详情' })
   async getRoundDetail(

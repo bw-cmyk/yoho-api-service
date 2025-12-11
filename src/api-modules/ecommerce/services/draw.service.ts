@@ -116,6 +116,14 @@ export class DrawService {
   }
 
   /**
+   * 获取当前期次详情
+   */
+  async getOngoingRoundDetail(productId: number): Promise<DrawRound> {
+    return await this.drawRoundRepository.findOne({
+      where: { productId, status: DrawRoundStatus.ONGOING },
+    });
+  }
+  /**
    * 购买抽奖号码
    */
   async purchaseSpots(
