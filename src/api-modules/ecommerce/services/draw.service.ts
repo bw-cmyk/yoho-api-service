@@ -60,7 +60,7 @@ export class DrawService {
       const product = await this.productService.findById(productId);
 
       if (product.type !== 'LUCKY_DRAW') {
-        throw new BadRequestException('商品类型不匹配');
+        throw new BadRequestException('Product type does not match');
       }
 
       // 获取最新期次号
@@ -104,6 +104,15 @@ export class DrawService {
     }
 
     return currentRound;
+  }
+
+  /**
+   * 获取当前期次
+   */
+  async getAllOngoingRounds(): Promise<DrawRound[]> {
+    return await this.drawRoundRepository.find({
+      where: { status: DrawRoundStatus.ONGOING },
+    });
   }
 
   /**

@@ -61,12 +61,12 @@ export class OrderService {
 
     // 检查商品是否可售卖
     if (!product.isAvailableForSale()) {
-      throw new BadRequestException('商品不可售卖');
+      throw new BadRequestException('Product is not available for sale');
     }
 
     // 检查库存
     if (product.stock < dto.quantity) {
-      throw new BadRequestException('库存不足');
+      throw new BadRequestException('Stock is not enough');
     }
 
     // 检查购买上限
@@ -80,8 +80,12 @@ export class OrderService {
         },
       });
       if (userOrders + dto.quantity > product.purchaseLimit) {
-        throw new BadRequestException('超过购买上限');
+        throw new BadRequestException('You have reached the purchase limit');
       }
+    }
+
+    if (!dto.specifications || dto.specifications.length === 0) {
+      throw new BadRequestException('Please select at least one specification');
     }
 
     // 验证规格
@@ -111,7 +115,7 @@ export class OrderService {
     }
 
     if (!shippingAddress) {
-      throw new BadRequestException('请选择收货地址');
+      throw new BadRequestException('Please select a shipping address');
     }
 
     // 计算支付金额
@@ -121,7 +125,7 @@ export class OrderService {
     const userAssets = await this.assetService.getUserAssets(userId);
     const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
     if (!usdAsset || !usdAsset.hasEnoughBalance(paymentAmount)) {
-      throw new BadRequestException('余额不足');
+      throw new BadRequestException('Balance is not enough');
     }
 
     // 在事务中创建订单并扣款
@@ -180,100 +184,100 @@ export class OrderService {
     });
   }
 
-  /**
-   * 创建 Lucky Draw 订单
-   */
-  async createLuckyDrawOrder(
-    userId: string,
-    dto: CreateLuckyDrawOrderDto,
-  ): Promise<Order> {
-    // 获取商品信息
-    const product = await this.productService.findById(dto.productId);
+  // /**
+  //  * 创建 Lucky Draw 订单
+  //  */
+  // async createLuckyDrawOrder(
+  //   userId: string,
+  //   dto: CreateLuckyDrawOrderDto,
+  // ): Promise<Order> {
+  //   // 获取商品信息
+  //   const product = await this.productService.findById(dto.productId);
 
-    // 检查商品类型
-    if (product.type !== 'LUCKY_DRAW') {
-      throw new BadRequestException('商品类型不匹配');
-    }
+  //   // 检查商品类型
+  //   if (product.type !== 'LUCKY_DRAW') {
+  //     throw new BadRequestException('商品类型不匹配');
+  //   }
 
-    // 检查商品是否可售卖
-    if (!product.isAvailableForSale()) {
-      throw new BadRequestException('商品不可售卖');
-    }
+  //   // 检查商品是否可售卖
+  //   if (!product.isAvailableForSale()) {
+  //     throw new BadRequestException('商品不可售卖');
+  //   }
 
-    // 检查库存
-    if (product.stock < dto.spots) {
-      throw new BadRequestException('库存不足');
-    }
+  //   // 检查库存
+  //   if (product.stock < dto.spots) {
+  //     throw new BadRequestException('库存不足');
+  //   }
 
-    // 计算支付金额（假设每份价格为售价）
-    const pricePerSpot = product.salePrice;
-    const paymentAmount = pricePerSpot.times(dto.spots);
+  //   // 计算支付金额（假设每份价格为售价）
+  //   const pricePerSpot = product.salePrice;
+  //   const paymentAmount = pricePerSpot.times(dto.spots);
 
-    // 检查用户余额
-    const userAssets = await this.assetService.getUserAssets(userId);
-    const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
-    if (!usdAsset || !usdAsset.hasEnoughBalance(paymentAmount)) {
-      throw new BadRequestException('余额不足');
-    }
+  //   // 检查用户余额
+  //   const userAssets = await this.assetService.getUserAssets(userId);
+  //   const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
+  //   if (!usdAsset || !usdAsset.hasEnoughBalance(paymentAmount)) {
+  //     throw new BadRequestException('余额不足');
+  //   }
 
-    // 在事务中创建订单并扣款
-    return await this.dataSource.transaction(async (manager) => {
-      // 创建订单
-      const order = manager.create(Order, {
-        orderNumber: Order.generateOrderNumber(),
-        userId,
-        type: OrderType.LUCKY_DRAW,
-        productId: product.id,
-        productInfo: {
-          name: product.name,
-          thumbnail: product.thumbnail,
-          images: product.images || [],
-          specifications: product.specifications,
-          originalPrice: product.originalPrice.toString(),
-          salePrice: product.salePrice.toString(),
-        },
-        quantity: dto.spots,
-        paymentAmount,
-        paymentStatus: PaymentStatus.UNPAID,
-        luckyDrawStatus: LuckyDrawOrderStatus.ONGOING,
-        luckyDrawSpots: dto.spots,
-        luckyDrawPricePerSpot: pricePerSpot,
-        luckyDrawWon: null,
-      });
+  //   // 在事务中创建订单并扣款
+  //   return await this.dataSource.transaction(async (manager) => {
+  //     // 创建订单
+  //     const order = manager.create(Order, {
+  //       orderNumber: Order.generateOrderNumber(),
+  //       userId,
+  //       type: OrderType.LUCKY_DRAW,
+  //       productId: product.id,
+  //       productInfo: {
+  //         name: product.name,
+  //         thumbnail: product.thumbnail,
+  //         images: product.images || [],
+  //         specifications: product.specifications,
+  //         originalPrice: product.originalPrice.toString(),
+  //         salePrice: product.salePrice.toString(),
+  //       },
+  //       quantity: dto.spots,
+  //       paymentAmount,
+  //       paymentStatus: PaymentStatus.UNPAID,
+  //       luckyDrawStatus: LuckyDrawOrderStatus.ONGOING,
+  //       luckyDrawSpots: dto.spots,
+  //       luckyDrawPricePerSpot: pricePerSpot,
+  //       luckyDrawWon: null,
+  //     });
 
-      const savedOrder = await manager.save(order);
+  //     const savedOrder = await manager.save(order);
 
-      // 扣款
-      await this.assetService.bet({
-        userId,
-        currency: Currency.USD,
-        type: TransactionType.LUCKY_DRAW,
-        amount: paymentAmount,
-        game_id: `ORDER_${savedOrder.orderNumber}`,
-        description: `参与抽奖: ${product.name} x ${dto.spots}`,
-        metadata: {
-          orderId: savedOrder.id,
-          orderNumber: savedOrder.orderNumber,
-          productId: product.id,
-          productName: product.name,
-          spots: dto.spots,
-        },
-      });
+  //     // 扣款
+  //     await this.assetService.bet({
+  //       userId,
+  //       currency: Currency.USD,
+  //       type: TransactionType.LUCKY_DRAW,
+  //       amount: paymentAmount,
+  //       game_id: `ORDER_${savedOrder.orderNumber}`,
+  //       description: `参与抽奖: ${product.name} x ${dto.spots}`,
+  //       metadata: {
+  //         orderId: savedOrder.id,
+  //         orderNumber: savedOrder.orderNumber,
+  //         productId: product.id,
+  //         productName: product.name,
+  //         spots: dto.spots,
+  //       },
+  //     });
 
-      // 更新订单支付状态
-      savedOrder.paymentStatus = PaymentStatus.PAID;
-      await manager.save(savedOrder);
+  //     // 更新订单支付状态
+  //     savedOrder.paymentStatus = PaymentStatus.PAID;
+  //     await manager.save(savedOrder);
 
-      // 减少库存
-      await this.productService.decreaseStock(product.id, dto.spots);
+  //     // 减少库存
+  //     await this.productService.decreaseStock(product.id, dto.spots);
 
-      this.logger.log(
-        `用户 ${userId} 创建抽奖订单成功: ${savedOrder.orderNumber}`,
-      );
+  //     this.logger.log(
+  //       `用户 ${userId} 创建抽奖订单成功: ${savedOrder.orderNumber}`,
+  //     );
 
-      return savedOrder;
-    });
-  }
+  //     return savedOrder;
+  //   });
+  // }
 
   /**
    * 根据ID查找订单
@@ -348,22 +352,28 @@ export class OrderService {
 
     // 验证订单归属
     if (order.userId !== userId) {
-      throw new BadRequestException('无权操作此订单');
+      throw new BadRequestException(
+        'You are not authorized to operate this order',
+      );
     }
 
     // 检查订单类型
     if (order.type !== OrderType.INSTANT_BUY) {
-      throw new BadRequestException('只有 Instant Buy 订单可以申请退款');
+      throw new BadRequestException('Only Instant Buy orders can be refunded');
     }
 
     // 检查是否可以申请退款
     if (!order.canRequestRefund()) {
-      throw new BadRequestException('订单未超过15天，无法申请退款');
+      throw new BadRequestException(
+        'Order is not over 15 days, cannot request refund',
+      );
     }
 
     // 检查是否已经申请过退款
     if (order.refundRequestedAt) {
-      throw new BadRequestException('退款已申请，请勿重复申请');
+      throw new BadRequestException(
+        'Refund has already been requested, please do not request again',
+      );
     }
 
     // 在事务中处理退款
@@ -377,11 +387,12 @@ export class OrderService {
       await this.logisticsService.handleDeliveryStopped(order);
 
       // 退款到余额
-      await this.assetService.deposit({
+      await this.assetService.win({
         userId: order.userId,
         currency: Currency.USD,
         amount: order.paymentAmount,
-        reference_id: order.orderNumber,
+        type: TransactionType.ORDER_REFUND,
+        game_id: `ORDER_${order.orderNumber}`,
         description: `订单退款: ${order.orderNumber}`,
         metadata: {
           orderId: order.id,
@@ -527,7 +538,7 @@ export class OrderService {
 
     // 验证订单归属
     if (order.userId !== userId) {
-      throw new BadRequestException('无权查看此订单');
+      throw new BadRequestException('You are not authorized to view this order');
     }
 
     // 推进物流进度

@@ -338,7 +338,7 @@ export class ProductService {
     const product = await this.findById(id);
 
     if (product.stock < quantity) {
-      throw new BadRequestException('库存不足');
+      throw new BadRequestException('Stock is not enough');
     }
 
     product.stock -= quantity;

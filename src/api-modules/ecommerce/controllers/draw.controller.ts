@@ -53,6 +53,12 @@ export class DrawController {
     throw new Error('请提供商品ID');
   }
 
+  @Get('rounds/ongoing')
+  @ApiOperation({ summary: '获取当前期次' })
+  async getAllOngoingRounds() {
+    return await this.drawService.getAllOngoingRounds();
+  }
+
   @Get('rounds/:id')
   @ApiOperation({ summary: '获取期次详情' })
   async getRoundDetail(

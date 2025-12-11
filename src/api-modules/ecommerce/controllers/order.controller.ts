@@ -37,16 +37,16 @@ export class OrderController {
     return await this.orderService.createInstantBuyOrder(userId, dto);
   }
 
-  @Post('lucky-draw')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '创建 Lucky Draw 订单' })
-  async createLuckyDrawOrder(
-    @Request() req: ExpressRequest,
-    @Body() dto: CreateLuckyDrawOrderDto,
-  ) {
-    const { id: userId } = req.user as any;
-    return await this.orderService.createLuckyDrawOrder(userId, dto);
-  }
+  // @Post('lucky-draw')
+  // @UseGuards(JwtAuthGuard)
+  // @ApiOperation({ summary: '创建 Lucky Draw 订单' })
+  // async createLuckyDrawOrder(
+  //   @Request() req: ExpressRequest,
+  //   @Body() dto: CreateLuckyDrawOrderDto,
+  // ) {
+  //   const { id: userId } = req.user as any;
+  //   return await this.orderService.createLuckyDrawOrder(userId, dto);
+  // }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)

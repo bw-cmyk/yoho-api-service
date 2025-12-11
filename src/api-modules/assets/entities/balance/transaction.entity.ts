@@ -14,6 +14,7 @@ export enum TransactionType {
   LUCKY_DRAW = 'LUCKY_DRAW', // 抽奖
   ORDER_PAYMENT = 'ORDER_PAYMENT', // 订单支付
   ORDER_PAYMENT_CANCEL = 'ORDER_PAYMENT_CANCEL', // 订单支付取消
+  ORDER_REFUND = 'ORDER_REFUND', // 订单退款
   GAME_BET = 'GAME_BET', // 游戏下注
   GAME_WIN = 'GAME_WIN', // 游戏中奖
   GAME_REFUND = 'GAME_REFUND', // 游戏退款

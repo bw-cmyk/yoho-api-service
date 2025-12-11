@@ -158,7 +158,7 @@ export class AssetService {
       request;
 
     if (amount.lte(0)) {
-      throw new BadRequestException('充值金额必须大于0');
+      throw new BadRequestException('Deposit amount must be greater than 0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -301,7 +301,7 @@ export class AssetService {
       request;
     console.log('bet request', request);
     if (amount.lte(0)) {
-      throw new BadRequestException('金额必须大于0');
+      throw new BadRequestException('Amount must be greater than 0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -312,7 +312,9 @@ export class AssetService {
       });
 
       if (!asset) {
-        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+        throw new BadRequestException(
+          `User asset not found: ${userId} ${currency}`,
+        );
       }
 
       if (!asset.hasEnoughBalance(amount)) {
@@ -378,7 +380,7 @@ export class AssetService {
       request;
 
     if (amount.lte(0)) {
-      throw new BadRequestException('中奖金额必须大于0');
+      throw new BadRequestException('Win amount must be greater than 0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -389,7 +391,9 @@ export class AssetService {
       });
 
       if (!asset) {
-        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+        throw new BadRequestException(
+          `User asset not found: ${userId} ${currency}`,
+        );
       }
 
       // 根据策略决定收益进入哪个账户（这里使用保守策略：优先进入赠金账户）
@@ -464,7 +468,7 @@ export class AssetService {
       request;
 
     if (amount.lte(0)) {
-      throw new BadRequestException('金额必须大于0');
+      throw new BadRequestException('Amount must be greater than 0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -475,7 +479,9 @@ export class AssetService {
       });
 
       if (!asset) {
-        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+        throw new BadRequestException(
+          `User asset not found: ${userId} ${currency}`,
+        );
       }
 
       if (!asset.hasEnoughBalance(amount)) {
@@ -539,7 +545,7 @@ export class AssetService {
       request;
 
     if (amount.lte(0)) {
-      throw new BadRequestException('提现金额必须大于0');
+      throw new BadRequestException('Withdraw amount must be greater than 0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -550,12 +556,14 @@ export class AssetService {
       });
 
       if (!asset) {
-        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+        throw new BadRequestException(
+          `User asset not found: ${userId} ${currency}`,
+        );
       }
 
       if (!asset.balanceLocked.gte(amount)) {
         throw new BadRequestException(
-          `可提现余额不足，需要 ${amount} ${currency}，可提现余额 ${asset.balanceLocked} ${currency}`,
+          `Withdrawable balance is not enough, need ${amount} ${currency}, withdrawable balance ${asset.balanceLocked} ${currency}`,
         );
       }
 
@@ -612,7 +620,7 @@ export class AssetService {
     reference_id: string,
   ): Promise<UserAsset> {
     if (amount.lte(0)) {
-      throw new BadRequestException('锁定金额必须大于0');
+      throw new BadRequestException('Lock amount must be greater than 0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -623,12 +631,14 @@ export class AssetService {
       });
 
       if (!asset) {
-        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+        throw new BadRequestException(
+          `User asset not found: ${userId} ${currency}`,
+        );
       }
 
       if (!asset.hasEnoughWithdrawableBalance(amount)) {
         throw new BadRequestException(
-          `真实余额不足，无法锁定 ${amount} ${currency}，真实余额 ${asset.balanceReal} ${currency}`,
+          `Real balance is not enough, cannot lock ${amount} ${currency}, real balance ${asset.balanceReal} ${currency}`,
         );
       }
 
@@ -683,7 +693,7 @@ export class AssetService {
     reference_id: string,
   ): Promise<UserAsset> {
     if (amount.lte(0)) {
-      throw new BadRequestException('解锁金额必须大于0');
+      throw new BadRequestException('Unlock amount must be greater than 0');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -694,12 +704,14 @@ export class AssetService {
       });
 
       if (!asset) {
-        throw new BadRequestException(`用户资产不存在: ${userId} ${currency}`);
+        throw new BadRequestException(
+          `User asset not found: ${userId} ${currency}`,
+        );
       }
 
       if (asset.balanceLocked.lt(amount)) {
         throw new BadRequestException(
-          `锁定余额不足，无法解锁 ${amount} ${currency}，锁定余额 ${asset.balanceLocked} ${currency}`,
+          `Locked balance is not enough, cannot unlock ${amount} ${currency}, locked balance ${asset.balanceLocked} ${currency}`,
         );
       }
 
@@ -752,7 +764,7 @@ export class AssetService {
       request;
 
     if (amount.lte(0)) {
-      throw new BadRequestException('奖励金额必须大于0');
+      throw new BadRequestException('Bonus amount must be greater than 0');
     }
 
     await this.dataSource.transaction(async (manager) => {
@@ -905,7 +917,7 @@ export class AssetService {
       return [];
     } catch (error) {
       this.logger.error(`更新用户 ${userId} 链上资产失败:`, error);
-      throw new BadRequestException('更新链上资产失败');
+      throw new BadRequestException('Update chain assets failed');
     }
   }
 

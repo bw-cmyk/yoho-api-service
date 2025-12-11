@@ -1,6 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 
-const endpoint = 'http://localhost:3000';
+// const endpoint = 'http://localhost:3000';
+const endpoint = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com';
 
 // 生成 JWT Token（请根据实际情况修改用户ID和密钥）
 const userId = '373358274021780480'; // 替换为实际的用户ID
@@ -98,63 +99,64 @@ async function testShippingAddressAPIs() {
 
   try {
     // 1. 创建收货地址
-    console.log('1. 创建收货地址...');
-    const createAddressData = {
-      recipientName: 'John Doe',
-      phoneNumber: '+1234567890',
-      country: 'United States',
-      state: 'California',
-      city: 'San Francisco',
-      streetAddress: '123 Main St',
-      apartment: 'Apt 4B',
-      zipCode: '94102',
-      isDefault: true,
-    };
+    // console.log('1. 创建收货地址...');
+    // const createAddressData = {
+    //   recipientName: 'John Doe',
+    //   phoneNumber: '+1234567890',
+    //   country: 'United States',
+    //   state: 'California',
+    //   city: 'San Francisco',
+    //   streetAddress: '123 Main St',
+    //   apartment: 'Apt 4B',
+    //   zipCode: '94102',
+    //   isDefault: true,
+    // };
 
-    const createAddressResponse = await fetch(
-      `${endpoint}/api/v1/ecommerce/shipping-addresses`,
-      {
-        method: 'POST',
-        headers: authHeader,
-        body: JSON.stringify(createAddressData),
-      },
-    );
-    const createdAddress = await createAddressResponse.json();
-    console.log('创建的地址:', JSON.stringify(createdAddress, null, 2));
-    console.log('\n');
+    // const createAddressResponse = await fetch(
+    //   `${endpoint}/api/v1/ecommerce/shipping-addresses`,
+    //   {
+    //     method: 'POST',
+    //     headers: authHeader,
+    //     body: JSON.stringify(createAddressData),
+    //   },
+    // );
+    // const createdAddress = await createAddressResponse.json();
+    // console.log('创建的地址:', JSON.stringify(createdAddress, null, 2));
+    // console.log('\n');
 
-    const addressId = createdAddress.id;
+    // const addressId = createdAddress.id;
 
-    // 2. 获取我的收货地址列表
-    console.log('2. 获取我的收货地址列表...');
-    const addressesResponse = await fetch(
-      `${endpoint}/api/v1/ecommerce/shipping-addresses/me`,
-      {
-        method: 'GET',
-        headers: authHeader,
-      },
-    );
-    const addressesData = await addressesResponse.json();
-    console.log('地址列表:', JSON.stringify(addressesData, null, 2));
-    console.log('\n');
+    // // 2. 获取我的收货地址列表
+    // console.log('2. 获取我的收货地址列表...');
+    // const addressesResponse = await fetch(
+    //   `${endpoint}/api/v1/ecommerce/shipping-addresses/me`,
+    //   {
+    //     method: 'GET',
+    //     headers: authHeader,
+    //   },
+    // );
+    // const addressesData = await addressesResponse.json();
+    // console.log('地址列表:', JSON.stringify(addressesData, null, 2));
+    // console.log('\n');
 
-    // 3. 获取默认收货地址
-    console.log('3. 获取默认收货地址...');
-    const defaultAddressResponse = await fetch(
-      `${endpoint}/api/v1/ecommerce/shipping-addresses/default`,
-      {
-        method: 'GET',
-        headers: authHeader,
-      },
-    );
-    const defaultAddressData = await defaultAddressResponse.json();
-    console.log('默认地址:', JSON.stringify(defaultAddressData, null, 2));
-    console.log('\n');
+    // // 3. 获取默认收货地址
+    // console.log('3. 获取默认收货地址...');
+    // const defaultAddressResponse = await fetch(
+    //   `${endpoint}/api/v1/ecommerce/shipping-addresses/default`,
+    //   {
+    //     method: 'GET',
+    //     headers: authHeader,
+    //   },
+    // );
+    // const defaultAddressData = await defaultAddressResponse.json();
+    // console.log('默认地址:', JSON.stringify(defaultAddressData, null, 2));
+    // console.log('\n');
 
+    const addressId = 3;
     // 4. 更新收货地址
     console.log(`4. 更新收货地址 (ID: ${addressId})...`);
     const updateAddressData = {
-      recipientName: 'Jane Doe',
+      recipientName: 'Jane Doe4',
       phoneNumber: '+0987654321',
     };
 
@@ -171,22 +173,22 @@ async function testShippingAddressAPIs() {
     console.log('\n');
 
     // 5. 设置默认地址（如果还有其他地址）
-    if (addressesData.length > 1) {
-      const secondAddressId = addressesData[1].id;
-      console.log(`5. 设置默认地址 (ID: ${secondAddressId})...`);
-      const setDefaultResponse = await fetch(
-        `${endpoint}/api/v1/ecommerce/shipping-addresses/${secondAddressId}/set-default`,
-        {
-          method: 'POST',
-          headers: authHeader,
-        },
-      );
-      const setDefaultData = await setDefaultResponse.json();
-      console.log('设置默认地址结果:', JSON.stringify(setDefaultData, null, 2));
-      console.log('\n');
-    }
+    // if (addressesData.length > 1) {
+    //   const secondAddressId = addressesData[1].id;
+    //   console.log(`5. 设置默认地址 (ID: ${secondAddressId})...`);
+    //   const setDefaultResponse = await fetch(
+    //     `${endpoint}/api/v1/ecommerce/shipping-addresses/${secondAddressId}/set-default`,
+    //     {
+    //       method: 'POST',
+    //       headers: authHeader,
+    //     },
+    //   );
+    //   const setDefaultData = await setDefaultResponse.json();
+    //   console.log('设置默认地址结果:', JSON.stringify(setDefaultData, null, 2));
+    //   console.log('\n');
+    // }
 
-    return addressId; // 返回地址ID供后续测试使用
+    // return addressId; // 返回地址ID供后续测试使用
   } catch (error) {
     console.error('收货地址 API 测试失败:', error);
     return null;
@@ -364,10 +366,10 @@ async function run() {
     // const productId = await testProductAPIs();
 
     // // 2. 测试收货地址 API
-    // const shippingAddressId = await testShippingAddressAPIs();
+    const shippingAddressId = await testShippingAddressAPIs();
 
     // 3. 测试订单 API（需要商品ID和地址ID）
-    await testOrderAPIs(1, 3);
+    // await testOrderAPIs(1, 3);
 
     // 4. 清理测试数据（可选，取消注释以启用）
     // if (shippingAddressId) {
