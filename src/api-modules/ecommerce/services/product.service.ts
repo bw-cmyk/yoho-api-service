@@ -235,9 +235,7 @@ export class ProductService {
       where: {
         type: ProductType.LUCKY_DRAW,
         status: ProductStatus.ACTIVE,
-        stock: MoreThanOrEqual(1),
-        saleStartTime: LessThanOrEqual(now),
-        saleEndTime: MoreThanOrEqual(now),
+        // stock: MoreThanOrEqual(1),
       },
       order: { priority: 'DESC' },
       take: 2,
