@@ -639,6 +639,10 @@ export class DrawService {
     const resultMap = new Map(results.map((item) => [item.drawRoundId, item]));
     items.forEach((item) => {
       item.drawRound.drawResult = resultMap.get(item.drawRoundId);
+      // @ts-ignore
+      item.isWinner =
+        item.drawRound.drawResult?.winningNumber >= item.startNumber &&
+        item.drawRound.drawResult?.winningNumber <= item.endNumber;
     });
 
     return { items, total, page, limit };
