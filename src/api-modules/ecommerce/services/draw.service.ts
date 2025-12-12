@@ -625,6 +625,7 @@ export class DrawService {
       where: {
         id: In(roundIds),
       },
+      relations: ['product'],
     });
     const drawRoundMap = new Map(drawRounds.map((item) => [item.id, item]));
     items.forEach((item) => {
