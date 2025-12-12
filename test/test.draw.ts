@@ -267,29 +267,29 @@ async function testFullFlow() {
     }
 
     // 4. 购买抽奖号码（购买1个）
-    console.log('--- 测试购买1个号码 ---\n');
-    const purchaseResult1 = await purchaseSpots(productId, 1);
-    if (purchaseResult1) {
-      console.log('购买1个号码成功，分配的号码范围:', {
-        startNumber: purchaseResult1.participation.startNumber,
-        endNumber: purchaseResult1.participation.endNumber,
-      });
-      console.log('\n');
-    }
+    // console.log('--- 测试购买1个号码 ---\n');
+    // const purchaseResult1 = await purchaseSpots(productId, 1);
+    // if (purchaseResult1) {
+    //   console.log('购买1个号码成功，分配的号码范围:', {
+    //     startNumber: purchaseResult1.participation.startNumber,
+    //     endNumber: purchaseResult1.participation.endNumber,
+    //   });
+    //   console.log('\n');
+    // }
 
     // 等待一下，避免并发问题
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // 5. 购买抽奖号码（购买5个）
-    console.log('--- 测试购买5个号码 ---\n');
-    const purchaseResult2 = await purchaseSpots(productId, 5);
-    if (purchaseResult2) {
-      console.log('购买5个号码成功，分配的号码范围:', {
-        startNumber: purchaseResult2.participation.startNumber,
-        endNumber: purchaseResult2.participation.endNumber,
-      });
-      console.log('\n');
-    }
+    // // 5. 购买抽奖号码（购买5个）
+    // console.log('--- 测试购买5个号码 ---\n');
+    // const purchaseResult2 = await purchaseSpots(productId, 5);
+    // if (purchaseResult2) {
+    //   console.log('购买5个号码成功，分配的号码范围:', {
+    //     startNumber: purchaseResult2.participation.startNumber,
+    //     endNumber: purchaseResult2.participation.endNumber,
+    //   });
+    //   console.log('\n');
+    // }
 
     // 6. 再次获取期次详情，查看进度
     if (drawRoundId) {

@@ -22,6 +22,9 @@ export class DrawParticipation {
   @Column({ type: 'int', name: 'draw_round_id' })
   drawRoundId: number; // 期次ID
 
+  @Column({ type: 'int', name: 'product_id', nullable: true })
+  productId: number; // 商品ID
+
   @Column({ type: 'varchar', length: 64, name: 'user_id' })
   userId: string; // 用户ID
 

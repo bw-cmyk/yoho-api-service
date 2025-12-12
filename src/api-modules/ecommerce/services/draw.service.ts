@@ -194,6 +194,7 @@ export class DrawService {
       const participation = manager.create(DrawParticipation, {
         drawRoundId: lockedRound.id,
         userId,
+        productId,
         quantity,
         startNumber,
         endNumber,
@@ -588,13 +589,12 @@ export class DrawService {
     page: number;
     limit: number;
   }> {
-    const where: any = { userId };
-    if (productId) {
-      where.drawRound = { productId };
-    }
 
     const [items, total] = await this.participationRepository.findAndCount({
-      where,
+      where: {
+        userId,
+        productId: productId ? productId : undefined,
+      },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
