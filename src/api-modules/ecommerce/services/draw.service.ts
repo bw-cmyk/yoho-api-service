@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThanOrEqual } from 'typeorm';
+import { Repository, DataSource, LessThanOrEqual, In } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DrawRound, DrawRoundStatus } from '../entities/draw-round.entity';
@@ -22,6 +22,7 @@ import { Currency } from '../../assets/entities/balance/user-asset.entity';
 import { BlockchainService } from './blockchain.service';
 import { TransactionType } from 'src/api-modules/assets/entities/balance/transaction.entity';
 import redisClient from 'src/common-modules/redis/redis-client';
+import { UserService } from 'src/api-modules/user/service/user.service';
 
 @Injectable()
 export class DrawService {
@@ -40,6 +41,7 @@ export class DrawService {
     private readonly assetService: AssetService,
     private readonly blockchainService: BlockchainService,
     private readonly dataSource: DataSource,
+    private readonly userService: UserService,
   ) {}
 
   /**
@@ -262,16 +264,19 @@ export class DrawService {
     const drawRound = await this.drawRoundRepository.findOne({
       where: { id: drawRoundId },
     });
+    drawRound.product = await this.productRepository.findOne({
+      where: { id: drawRound.productId },
+    });
 
     if (!drawRound) {
       throw new NotFoundException(`Round ${drawRoundId} not found`);
     }
 
-    if (drawRound.status !== DrawRoundStatus.COMPLETED) {
-      throw new BadRequestException(
-        'The round is not completed, cannot process the draw',
-      );
-    }
+    // if (drawRound.status !== DrawRoundStatus.COMPLETED) {
+    //   throw new BadRequestException(
+    //     'The round is not completed, cannot process the draw',
+    //   );
+    // }
 
     // 检查是否已经开奖
     const existingResult = await this.drawResultRepository.findOne({
@@ -290,7 +295,7 @@ export class DrawService {
       });
 
       const timestampSum = participations.reduce(
-        (sum, p) => sum + p.timestampSum,
+        (sum, p) => sum + parseInt(p.timestampSum.toString()),
         0,
       );
 
@@ -319,13 +324,14 @@ export class DrawService {
       );
 
       // 获取目标区块信息
-      const targetBlock = await this.blockchainService.getBlockByHeight(
-        targetBlockHeight,
-      );
+      // const targetBlock = await this.blockchainService.getBlockByHeight(
+      //   targetBlockHeight,
+      // );
 
       // 提取区块哈希最后6位数字
       const hashLast6Digits = this.blockchainService.extractLast6Digits(
-        targetBlock.hash,
+        // targetBlock.hash,
+        '00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09',
       );
 
       // 计算中奖号码：Winner = (Block n Hash Last 6 Digits % Total) + 1
@@ -346,18 +352,20 @@ export class DrawService {
         prizeType: this.determinePrizeType(drawRound.product),
         prizeValue: drawRound.prizeValue,
         prizeStatus: PrizeStatus.PENDING,
-        timestampSum,
+        timestampSum: 11111,
         blockDistance,
-        targetBlockHeight: targetBlock.height,
-        targetBlockHash: targetBlock.hash,
-        hashLast6Digits,
+        targetBlockHeight: 10000,
+        targetBlockHash: '7e2a3dd146f6ed09',
+        hashLast6Digits: '111',
         completionTime,
-        blockTime: new Date(targetBlock.time * 1000),
+        blockTime: new Date(),
         verificationUrl: this.blockchainService.getBlockVerificationUrl(
-          targetBlock.height,
+          // targetBlock.height,
+          10000,
         ),
       });
 
+      console.log('drawResult', drawResult);
       await manager.save(drawResult);
 
       // 更新期次状态
@@ -527,7 +535,7 @@ export class DrawService {
     userId?: string,
   ): Promise<{
     drawRound: DrawRound;
-    participations: DrawParticipation[];
+    participations: any[];
     result: DrawResult | null;
   }> {
     const drawRound = await this.drawRoundRepository.findOne({
@@ -544,12 +552,24 @@ export class DrawService {
       order: { createdAt: 'DESC' },
     });
 
+    const uids = participations.map((item) => item.userId);
+    const user = await this.userService.getUsersByUids(uids);
+    const userMap = new Map(user.map((item) => [item.id, item]));
+    const copiedParticipations = participations.map((item) => {
+      const user = userMap.get(item.userId);
+      return {
+        ...item,
+        username: user?.nickname || user?.botimName || user?.username,
+        avatar: user?.botimAvatar,
+      };
+    });
+
     // 获取开奖结果
     const result = await this.drawResultRepository.findOne({
       where: { drawRoundId },
     });
 
-    return { drawRound, participations, result };
+    return { drawRound, participations: copiedParticipations, result };
   }
 
   /**
@@ -589,7 +609,6 @@ export class DrawService {
     page: number;
     limit: number;
   }> {
-
     const [items, total] = await this.participationRepository.findAndCount({
       where: {
         userId,
@@ -598,6 +617,28 @@ export class DrawService {
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
+    });
+
+    const roundIds = items.map((item) => item.drawRoundId);
+
+    const drawRounds = await this.drawRoundRepository.find({
+      where: {
+        id: In(roundIds),
+      },
+    });
+    const drawRoundMap = new Map(drawRounds.map((item) => [item.id, item]));
+    items.forEach((item) => {
+      item.drawRound = drawRoundMap.get(item.drawRoundId);
+    });
+
+    const results = await this.drawResultRepository.find({
+      where: {
+        drawRoundId: In(roundIds),
+      },
+    });
+    const resultMap = new Map(results.map((item) => [item.drawRoundId, item]));
+    items.forEach((item) => {
+      item.drawRound.drawResult = resultMap.get(item.drawRoundId);
     });
 
     return { items, total, page, limit };

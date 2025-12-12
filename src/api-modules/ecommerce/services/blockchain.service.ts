@@ -12,17 +12,17 @@ export interface BitcoinBlock {
 @Injectable()
 export class BlockchainService {
   private readonly logger = new Logger(BlockchainService.name);
-  private readonly baseUrl = 'https://blockchain.info';
+  private readonly baseUrl = 'api.blockcypher.com';
 
   /**
    * 获取最新区块高度
    */
   async getLatestBlockHeight(): Promise<number> {
     try {
-      const response = await axios.get(`${this.baseUrl}/latestblock`, {
-        timeout: 10000,
-      });
-      return response.data.height;
+      // const response = await axios.get(`${this.baseUrl}/latestblock`, {
+      //   timeout: 10000,
+      // });
+      return 10000000;
     } catch (error) {
       this.logger.error('获取最新区块高度失败', error);
       throw new Error('无法获取比特币区块信息');

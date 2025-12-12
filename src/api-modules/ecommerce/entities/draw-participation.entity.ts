@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { DrawRound } from './draw-round.entity';
+import { DrawResult } from './draw-result.entity';
 
 @Entity('yoho_ecommerce_draw_participations')
 @Index(['drawRoundId', 'startNumber'])
@@ -60,6 +61,8 @@ export class DrawParticipation {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  drawRound: DrawRound;
 
   /**
    * 获取购买的号码列表

@@ -77,6 +77,8 @@ export class DrawRound {
   })
   status: DrawRoundStatus; // 期次状态
 
+  drawResult: DrawResult;
+
   @Column({ type: 'timestamp', nullable: true, name: 'completed_at' })
   completedAt: Date | null; // 满员时间（所有号码售完）
 

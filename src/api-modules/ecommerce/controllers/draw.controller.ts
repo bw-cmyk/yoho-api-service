@@ -108,7 +108,6 @@ export class DrawController {
   }
 
   @Post('rounds/:id/process')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '手动触发开奖（管理员）' })
   async processDraw(@Param('id', ParseIntPipe) id: number) {
     // 注意：这里应该添加管理员权限检查

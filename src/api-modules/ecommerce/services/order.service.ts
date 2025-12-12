@@ -518,6 +518,7 @@ export class OrderService {
         productInfo: order.productInfo,
         username: user?.nickname || user?.username || user.botimName,
         avatar: user?.botimAvatar,
+        createdAt: order.createdAt,
       };
     });
   }
