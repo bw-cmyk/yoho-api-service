@@ -22,7 +22,7 @@ export enum TransactionStatus {
   PENDING = 'pending',
 }
 
-@Entity('yoho_transaction_history')
+@Entity('yoho_transaction_history_onchain')
 @Index(['address', 'chainIndex', 'txTime'])
 @Index(['txHash'], { unique: true })
 @Index(['tokenContractAddress', 'txTime'])
