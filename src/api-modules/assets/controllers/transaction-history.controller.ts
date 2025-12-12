@@ -12,6 +12,8 @@ import {
 import { TransactionHistoryService } from '../services/transaction-history.service';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 import { Request as ExpressRequest } from 'express';
+import { AssetService } from '../services/asset.service';
+import { UserService } from 'src/api-modules/user/service/user.service';
 
 export interface GetTransactionHistoryQuery {
   address: string;
@@ -37,45 +39,30 @@ export class TransactionHistoryController {
   private readonly logger = new Logger(TransactionHistoryController.name);
 
   constructor(
+    private readonly assetService: AssetService,
     private readonly transactionHistoryService: TransactionHistoryService,
+    private readonly userService: UserService,
   ) {}
 
   /**
-   * 获取交易历史（队列化请求）
+   * 获取 win 的信息
    */
-  @Post('fetch')
-  async fetchTransactionHistory(
-    @Body() params: GetTransactionHistoryQuery,
-    @Request() req: any,
-  ): Promise<{
-    success: boolean;
-    requestId: string;
-    message: string;
-  }> {
-    try {
-      // this.logger.log(
-      //   `User ${req.user.id} requesting transaction history for address: ${params.address}`,
-      // );
-
-      const requestId =
-        await this.transactionHistoryService.getTransactionHistory(
-          params,
-          5, // 高优先级
-        );
-
+  @Get('win')
+  @UseGuards(JwtAuthGuard)
+  async getRecentWinningHistory() {
+    const result = await this.assetService.getRecentWinningHistory();
+    const uids = result.map((item) => item.userId);
+    const users = await this.userService.getUsersByUids(uids);
+    return result.map((tx) => {
+      const userInfo = users.find((item) => item.id === tx.userId);
       return {
-        success: true,
-        requestId,
-        message: 'Transaction history request queued successfully',
+        userId: tx.userId,
+        username: userInfo.nickname || userInfo.botimName || userInfo.username,
+        amount: tx.amount,
+        createdAt: tx.created_at,
+        gameId: tx.reference_id,
       };
-    } catch (error) {
-      this.logger.error('Failed to queue transaction history request:', error);
-      return {
-        success: false,
-        requestId: '',
-        message: 'Failed to queue transaction history request',
-      };
-    }
+    });
   }
 
   /**
@@ -205,72 +192,6 @@ export class TransactionHistoryController {
       };
     }
   }
-
-  /**
-   * 获取代币持仓
-   */
-  @Get('positions/:address')
-  async getTokenPositions(
-    @Param('address') address: string,
-    @Request() req: any,
-    @Query('chainIndex') chainIndex?: string,
-  ): Promise<{
-    success: boolean;
-    data: {
-      positions: Array<{
-        tokenContractAddress: string;
-        symbol: string;
-        chainIndex: string;
-        totalAmount: string;
-        averageCostBasis: string;
-        currentPrice: string;
-        currentValue: string;
-        unrealizedPnl: string;
-        realizedPnl: string;
-        totalPnl: string;
-        pnlPercentage: string;
-      }>;
-    };
-  }> {
-    try {
-      this.logger.log(
-        `User ${req.user.id} requesting token positions for address: ${address}`,
-      );
-
-      const positions = await this.transactionHistoryService.getTokenPositions(
-        address,
-        chainIndex,
-      );
-
-      return {
-        success: true,
-        data: {
-          positions: positions.map((pos) => ({
-            tokenContractAddress: pos.tokenContractAddress,
-            symbol: pos.symbol,
-            chainIndex: pos.chainIndex,
-            totalAmount: pos.totalAmount.toString(),
-            averageCostBasis: pos.averageCostBasis.toString(),
-            currentPrice: pos.currentPrice.toString(),
-            currentValue: pos.currentValue.toString(),
-            unrealizedPnl: pos.unrealizedPnl.toString(),
-            realizedPnl: pos.realizedPnl.toString(),
-            totalPnl: pos.totalPnl.toString(),
-            pnlPercentage: pos.pnlPercentage.toString(),
-          })),
-        },
-      };
-    } catch (error) {
-      this.logger.error('Failed to get token positions:', error);
-      return {
-        success: false,
-        data: {
-          positions: [],
-        },
-      };
-    }
-  }
-
   /**
    * 获取交易统计
    */
@@ -327,58 +248,6 @@ export class TransactionHistoryController {
           totalVolume: '0',
           totalFees: '0',
         },
-      };
-    }
-  }
-
-  /**
-   * 获取队列状态
-   */
-  @Get('queue/status')
-  async getQueueStatus(): Promise<{
-    success: boolean;
-    data: any;
-  }> {
-    try {
-      const status = await this.transactionHistoryService[
-        'okxQueueService'
-      ].getQueueStatus();
-
-      return {
-        success: true,
-        data: status,
-      };
-    } catch (error) {
-      this.logger.error('Failed to get queue status:', error);
-      return {
-        success: false,
-        data: null,
-      };
-    }
-  }
-
-  /**
-   * 获取队列中的所有项目
-   */
-  @Get('queue/items')
-  async getQueueItems(): Promise<{
-    success: boolean;
-    data: any[];
-  }> {
-    try {
-      const items = await this.transactionHistoryService[
-        'okxQueueService'
-      ].getQueueItems();
-
-      return {
-        success: true,
-        data: items,
-      };
-    } catch (error) {
-      this.logger.error('Failed to get queue items:', error);
-      return {
-        success: false,
-        data: [],
       };
     }
   }

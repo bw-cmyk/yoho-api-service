@@ -38,7 +38,7 @@ export enum TransactionStatus {
   CANCELLED = 'CANCELLED', // 已取消
 }
 
-@Entity('yoho_transactions')
+@Entity('yoho_off_transactions')
 @Index(['userId', 'created_at'])
 @Index(['transaction_id'], { unique: true })
 @Index(['type', 'status'])

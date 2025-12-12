@@ -989,7 +989,7 @@ export class AssetService {
       const token = tokens.find(
         (item) => item.tokenSymbol === asset.tokenSymbol,
       );
-      console.log('token', token);
+
       if (token) {
         (asset as UserChainAsset & { token?: Partial<Token> }).token = {
           tokenName: token.tokenName,
@@ -1313,5 +1313,13 @@ export class AssetService {
         resolve(result === 'OK');
       });
     });
+  }
+  async getRecentWinningHistory(): Promise<Transaction[]> {
+    const transactions = await this.transactionRepository.find({
+      where: { type: TransactionType.GAME_WIN },
+      order: { created_at: 'DESC' },
+      take: 5,
+    });
+    return transactions;
   }
 }
