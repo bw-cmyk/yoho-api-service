@@ -14,7 +14,6 @@ import { Decimal } from 'decimal.js';
 import {
   OrderType,
   InstantBuyOrderStatus,
-  LuckyDrawOrderStatus,
   PaymentStatus,
 } from '../enums/ecommerce.enums';
 import { ShippingAddress } from './shipping-address.entity';
@@ -87,14 +86,6 @@ export class Order {
   })
   instantBuyStatus: InstantBuyOrderStatus | null; // Instant Buy订单状态
 
-  // Lucky Draw 订单状态
-  @Column({
-    type: 'enum',
-    enum: LuckyDrawOrderStatus,
-    nullable: true,
-    name: 'lucky_draw_status',
-  })
-  luckyDrawStatus: LuckyDrawOrderStatus | null; // Lucky Draw订单状态
 
   @Column({ type: 'int', nullable: true, name: 'shipping_address_id' })
   shippingAddressId: number | null; // 收货地址ID
@@ -131,18 +122,6 @@ export class Order {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `ORD${timestamp}${random}`;
-  }
-
-  /**
-   * 获取订单状态（根据订单类型返回相应状态）
-   */
-  getStatus(): InstantBuyOrderStatus | LuckyDrawOrderStatus | null {
-    if (this.type === OrderType.INSTANT_BUY) {
-      return this.instantBuyStatus;
-    } else if (this.type === OrderType.LUCKY_DRAW) {
-      return this.luckyDrawStatus;
-    }
-    return null;
   }
 
   /**

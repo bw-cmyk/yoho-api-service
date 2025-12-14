@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 
-// const endpoint = 'http://localhost:3000';
-const endpoint = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com';
+const endpoint = 'http://localhost:3000';
+// const endpoint = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com';
 
 // 生成 JWT Token（请根据实际情况修改用户ID和密钥）
 const userId = '373358274021780480'; // 替换为实际的用户ID
@@ -204,124 +204,135 @@ async function testOrderAPIs(productId = 1, shippingAddressId = 2) {
   try {
     // 1. 创建 Instant Buy 订单
     console.log('1. 创建 Instant Buy 订单...');
-    const createInstantBuyOrderData = {
-      productId: productId,
-      quantity: 1,
-      specifications: [
-        { key: 'Color', value: 'Natural Titanium' },
-        { key: 'Storage', value: '256GB' },
-      ],
-      shippingAddressId: shippingAddressId,
-    };
+    // const createInstantBuyOrderData = {
+    //   productId: productId,
+    //   quantity: 1,
+    //   specifications: [
+    //     { key: 'Color', value: 'Natural Titanium' },
+    //     { key: 'Storage', value: '256GB' },
+    //   ],
+    //   shippingAddressId: shippingAddressId,
+    // };
 
-    const createOrderResponse = await fetch(
-      `${endpoint}/api/v1/ecommerce/orders/instant-buy`,
-      {
-        method: 'POST',
-        headers: authHeader,
-        body: JSON.stringify(createInstantBuyOrderData),
-      },
-    );
+    // const createOrderResponse = await fetch(
+    //   `${endpoint}/api/v1/ecommerce/orders/instant-buy`,
+    //   {
+    //     method: 'POST',
+    //     headers: authHeader,
+    //     body: JSON.stringify(createInstantBuyOrderData),
+    //   },
+    // );
 
-    if (!createOrderResponse.ok) {
-      const errorText = await createOrderResponse.text();
-      console.error('创建订单失败:', createOrderResponse.status, errorText);
-      console.log('\n');
-    } else {
-      const createdOrder = await createOrderResponse.json();
-      console.log('创建的订单:', JSON.stringify(createdOrder, null, 2));
-      console.log('\n');
-
-      const orderId = createdOrder.id;
-
-      // 2. 获取我的订单列表
-      console.log('2. 获取我的订单列表...');
-      const ordersResponse = await fetch(
-        `${endpoint}/api/v1/ecommerce/orders/me?type=INSTANT_BUY&page=1&limit=10`,
-        {
-          method: 'GET',
-          headers: authHeader,
-        },
-      );
-      const ordersData = await ordersResponse.json();
-      console.log('订单列表:', JSON.stringify(ordersData, null, 2));
-      console.log('\n');
-
-      // 3. 获取订单详情
-      console.log(`3. 获取订单详情 (ID: ${orderId})...`);
-      const orderDetailResponse = await fetch(
-        `${endpoint}/api/v1/ecommerce/orders/${orderId}`,
-        {
-          method: 'GET',
-          headers: authHeader,
-        },
-      );
-      const orderDetailData = await orderDetailResponse.json();
-      console.log('订单详情:', JSON.stringify(orderDetailData, null, 2));
-      console.log('\n');
-
-      // 4. 申请退款（注意：需要订单创建后超过15天才能申请）
-      console.log(`4. 申请退款 (ID: ${orderId})...`);
-      console.log('注意：订单需要创建后超过15天才能申请退款');
-      const refundResponse = await fetch(
-        `${endpoint}/api/v1/ecommerce/orders/${orderId}/refund`,
-        {
-          method: 'POST',
-          headers: authHeader,
-        },
-      );
-
-      if (!refundResponse.ok) {
-        const errorText = await refundResponse.text();
-        console.log('申请退款失败（可能是订单未超过15天）:', refundResponse.status, errorText);
-      } else {
-        const refundData = await refundResponse.json();
-        console.log('退款结果:', JSON.stringify(refundData, null, 2));
-      }
-      console.log('\n');
-    }
-
-    // 5. 创建 Lucky Draw 订单
-    console.log('5. 创建 Lucky Draw 订单...');
-    // 首先查找一个 LUCKY_DRAW 类型的商品
-    const luckyDrawProductsResponse = await fetch(
-      `${endpoint}/api/v1/ecommerce/products?type=LUCKY_DRAW&status=ACTIVE&page=1&limit=1`,
+    const ordersResponse = await fetch(
+      `${endpoint}/api/v1/ecommerce/orders/me?type=INSTANT_BUY&page=1&limit=10`,
       {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeader,
       },
     );
-    const luckyDrawProductsData = await luckyDrawProductsResponse.json();
-
-    if (luckyDrawProductsData.items && luckyDrawProductsData.items.length > 0) {
-      const luckyDrawProductId = luckyDrawProductsData.items[0].id;
-      const createLuckyDrawOrderData = {
-        productId: luckyDrawProductId,
-        spots: 5,
-      };
-
-      const createLuckyDrawResponse = await fetch(
-        `${endpoint}/api/v1/ecommerce/orders/lucky-draw`,
-        {
-          method: 'POST',
-          headers: authHeader,
-          body: JSON.stringify(createLuckyDrawOrderData),
-        },
-      );
-
-      if (!createLuckyDrawResponse.ok) {
-        const errorText = await createLuckyDrawResponse.text();
-        console.error('创建抽奖订单失败:', createLuckyDrawResponse.status, errorText);
-      } else {
-        const luckyDrawOrder = await createLuckyDrawResponse.json();
-        console.log('创建的抽奖订单:', JSON.stringify(luckyDrawOrder, null, 2));
-      }
-    } else {
-      console.log('没有找到可用的抽奖商品');
-    }
+    const ordersData = await ordersResponse.json();
+    console.log('订单列表:', JSON.stringify(ordersData, null, 2));
     console.log('\n');
+
+    // if (!createOrderResponse.ok) {
+    //   const errorText = await createOrderResponse.text();
+    //   console.error('创建订单失败:', createOrderResponse.status, errorText);
+    //   console.log('\n');
+    // } else {
+    //   const createdOrder = await createOrderResponse.json();
+    //   console.log('创建的订单:', JSON.stringify(createdOrder, null, 2));
+    //   console.log('\n');
+
+    //   const orderId = createdOrder.id;
+
+    //   // 2. 获取我的订单列表
+    //   console.log('2. 获取我的订单列表...');
+    //   const ordersResponse = await fetch(
+    //     `${endpoint}/api/v1/ecommerce/orders/me?type=INSTANT_BUY&page=1&limit=10`,
+    //     {
+    //       method: 'GET',
+    //       headers: authHeader,
+    //     },
+    //   );
+    //   const ordersData = await ordersResponse.json();
+    //   console.log('订单列表:', JSON.stringify(ordersData, null, 2));
+    //   console.log('\n');
+
+    //   // 3. 获取订单详情
+    //   console.log(`3. 获取订单详情 (ID: ${orderId})...`);
+    //   const orderDetailResponse = await fetch(
+    //     `${endpoint}/api/v1/ecommerce/orders/${orderId}`,
+    //     {
+    //       method: 'GET',
+    //       headers: authHeader,
+    //     },
+    //   );
+    //   const orderDetailData = await orderDetailResponse.json();
+    //   console.log('订单详情:', JSON.stringify(orderDetailData, null, 2));
+    //   console.log('\n');
+
+    //   // 4. 申请退款（注意：需要订单创建后超过15天才能申请）
+    //   console.log(`4. 申请退款 (ID: ${orderId})...`);
+    //   console.log('注意：订单需要创建后超过15天才能申请退款');
+    //   const refundResponse = await fetch(
+    //     `${endpoint}/api/v1/ecommerce/orders/${orderId}/refund`,
+    //     {
+    //       method: 'POST',
+    //       headers: authHeader,
+    //     },
+    //   );
+
+    //   if (!refundResponse.ok) {
+    //     const errorText = await refundResponse.text();
+    //     console.log('申请退款失败（可能是订单未超过15天）:', refundResponse.status, errorText);
+    //   } else {
+    //     const refundData = await refundResponse.json();
+    //     console.log('退款结果:', JSON.stringify(refundData, null, 2));
+    //   }
+    //   console.log('\n');
+    // }
+
+    // // 5. 创建 Lucky Draw 订单
+    // console.log('5. 创建 Lucky Draw 订单...');
+    // // 首先查找一个 LUCKY_DRAW 类型的商品
+    // const luckyDrawProductsResponse = await fetch(
+    //   `${endpoint}/api/v1/ecommerce/products?type=LUCKY_DRAW&status=ACTIVE&page=1&limit=1`,
+    //   {
+    //     method: 'GET',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //   },
+    // );
+    // const luckyDrawProductsData = await luckyDrawProductsResponse.json();
+
+    // if (luckyDrawProductsData.items && luckyDrawProductsData.items.length > 0) {
+    //   const luckyDrawProductId = luckyDrawProductsData.items[0].id;
+    //   const createLuckyDrawOrderData = {
+    //     productId: luckyDrawProductId,
+    //     spots: 5,
+    //   };
+
+    //   const createLuckyDrawResponse = await fetch(
+    //     `${endpoint}/api/v1/ecommerce/orders/lucky-draw`,
+    //     {
+    //       method: 'POST',
+    //       headers: authHeader,
+    //       body: JSON.stringify(createLuckyDrawOrderData),
+    //     },
+    //   );
+
+    //   if (!createLuckyDrawResponse.ok) {
+    //     const errorText = await createLuckyDrawResponse.text();
+    //     console.error('创建抽奖订单失败:', createLuckyDrawResponse.status, errorText);
+    //   } else {
+    //     const luckyDrawOrder = await createLuckyDrawResponse.json();
+    //     console.log('创建的抽奖订单:', JSON.stringify(luckyDrawOrder, null, 2));
+    //   }
+    // } else {
+    //   console.log('没有找到可用的抽奖商品');
+    // }
+    // console.log('\n');
   } catch (error) {
     console.error('订单 API 测试失败:', error);
   }
@@ -366,10 +377,10 @@ async function run() {
     // const productId = await testProductAPIs();
 
     // // 2. 测试收货地址 API
-    const shippingAddressId = await testShippingAddressAPIs();
+    // const shippingAddressId = await testShippingAddressAPIs();
 
     // 3. 测试订单 API（需要商品ID和地址ID）
-    // await testOrderAPIs(1, 3);
+    await testOrderAPIs(1, 3);
 
     // 4. 清理测试数据（可选，取消注释以启用）
     // if (shippingAddressId) {
