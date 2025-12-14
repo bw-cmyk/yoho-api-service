@@ -45,6 +45,15 @@ export class DrawResult {
   })
   winnerUserId: string | null; // 中奖用户ID
 
+  @Column({ nullable: true, name: 'winner_user_name' })
+  winnerUserName: string | null; // 中奖用户名称
+
+  @Column({
+    nullable: true,
+    name: 'winner_user_avatar',
+  })
+  winnerUserAvatar: string | null; // 中奖用户头像
+
   @Column({ type: 'int', nullable: true, name: 'winner_participation_id' })
   winnerParticipationId: number | null; // 中奖参与记录ID
 

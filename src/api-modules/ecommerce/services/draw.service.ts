@@ -71,12 +71,12 @@ export class DrawService {
         order: { roundNumber: 'DESC' },
       });
 
-      const isLocked = await this.getLock(productId);
-      if (isLocked) {
-        throw new BadRequestException(
-          'Another instance is processing the product, please try again later',
-        );
-      }
+      // const isLocked = await this.getLock(productId);
+      // if (isLocked) {
+      //   throw new BadRequestException(
+      //     'Another instance is processing the product, please try again later',
+      //   );
+      // }
 
       const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
 
@@ -112,9 +112,19 @@ export class DrawService {
    * 获取当前期次
    */
   async getAllOngoingRounds(): Promise<DrawRound[]> {
-    return await this.drawRoundRepository.find({
+    const rounds = await this.drawRoundRepository.find({
       where: { status: DrawRoundStatus.ONGOING },
     });
+    // find product by productId
+    const products = await this.productRepository.find({
+      where: { id: In(rounds.map((round) => round.productId)) },
+    });
+    rounds.forEach((round) => {
+      round.product = products.find(
+        (product) => product.id === round.productId,
+      );
+    });
+    return rounds;
   }
 
   /**
@@ -343,11 +353,17 @@ export class DrawService {
         p.containsNumber(winningNumber),
       );
 
+      const user = await this.userService.getUser(
+        winningParticipation?.userId || '-1',
+      );
+
       // 创建开奖结果
       const drawResult = manager.create(DrawResult, {
         drawRoundId: drawRound.id,
         winningNumber,
         winnerUserId: winningParticipation?.userId || null,
+        winnerUserName: user?.nickname || user?.botimName || user?.username,
+        winnerUserAvatar: user?.botimAvatar,
         winnerParticipationId: winningParticipation?.id || null,
         prizeType: this.determinePrizeType(drawRound.product),
         prizeValue: drawRound.prizeValue,
@@ -365,7 +381,6 @@ export class DrawService {
         ),
       });
 
-      console.log('drawResult', drawResult);
       await manager.save(drawResult);
 
       // 更新期次状态

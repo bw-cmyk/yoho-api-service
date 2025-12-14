@@ -107,6 +107,13 @@ export class DrawController {
     );
   }
 
+  @Get('create')
+  @ApiOperation({ summary: '创建抽奖' })
+  async createDraw(@Query() query: any) {
+    const productId = query.productId as string;
+    return await this.drawService.getOrCreateCurrentRound(parseInt(productId));
+  }
+
   @Post('rounds/:id/process')
   @ApiOperation({ summary: '手动触发开奖（管理员）' })
   async processDraw(@Param('id', ParseIntPipe) id: number) {
