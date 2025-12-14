@@ -539,7 +539,9 @@ export class OrderService {
 
     // 验证订单归属
     if (order.userId !== userId) {
-      throw new BadRequestException('You are not authorized to view this order');
+      throw new BadRequestException(
+        'You are not authorized to view this order',
+      );
     }
 
     // 推进物流进度

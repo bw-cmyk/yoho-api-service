@@ -54,6 +54,9 @@ export class DrawResult {
   })
   winnerUserAvatar: string | null; // 中奖用户头像
 
+  @Column({ type: 'int', nullable: true, name: 'winner_quantity' })
+  winnerQuantity: number | null; // 中奖用户购买的号码数量
+
   @Column({ type: 'int', nullable: true, name: 'winner_participation_id' })
   winnerParticipationId: number | null; // 中奖参与记录ID
 

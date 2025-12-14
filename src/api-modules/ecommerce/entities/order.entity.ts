@@ -115,26 +115,6 @@ export class Order {
   @Column({ type: 'timestamp', nullable: true, name: 'cancelled_at' })
   cancelledAt: Date | null; // 取消时间
 
-  // Lucky Draw 相关字段
-  @Column({ type: 'int', nullable: true, name: 'lucky_draw_spots' })
-  luckyDrawSpots: number | null; // 参与的份数
-
-  @Column({
-    type: 'decimal',
-    precision: 18,
-    scale: 2,
-    nullable: true,
-    transformer: {
-      to: (value: Decimal) => (value ? value.toString() : null),
-      from: (value: string) => (value ? new Decimal(value) : null),
-    },
-    name: 'lucky_draw_price_per_spot',
-  })
-  luckyDrawPricePerSpot: Decimal | null; // 每份金额
-
-  @Column({ type: 'boolean', nullable: true, name: 'lucky_draw_won' })
-  luckyDrawWon: boolean | null; // 是否中奖
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

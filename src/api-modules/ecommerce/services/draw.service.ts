@@ -357,6 +357,11 @@ export class DrawService {
         winningParticipation?.userId || '-1',
       );
 
+      // 获取 winner 一共购买的号码数量
+      const winnerQuantity = participations
+        .filter((p) => p.userId === winningParticipation?.userId)
+        .reduce((sum, p) => sum + p.quantity, 0);
+
       // 创建开奖结果
       const drawResult = manager.create(DrawResult, {
         drawRoundId: drawRound.id,
@@ -365,6 +370,7 @@ export class DrawService {
         winnerUserName: user?.nickname || user?.botimName || user?.username,
         winnerUserAvatar: user?.botimAvatar,
         winnerParticipationId: winningParticipation?.id || null,
+        winnerQuantity,
         prizeType: this.determinePrizeType(drawRound.product),
         prizeValue: drawRound.prizeValue,
         prizeStatus: PrizeStatus.PENDING,
