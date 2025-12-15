@@ -35,8 +35,8 @@ export class BinanceIndexService implements OnModuleDestroy {
   private priceCallbacks: ((data: BinanceIndexPriceData) => void)[] = [];
 
   private readonly config: Required<BinanceIndexConfig> = {
-    baseUrl: 'wss://nbstream.binance.com/eoptions',
-    streams: ['BTCUSDT@index'],
+    baseUrl: 'wss://fstream.binance.com',
+    streams: ['btcusdt@markPrice@1s'],
     reconnectInterval: 2000,
     pingInterval: 4 * 60 * 1000, // 4分钟
     healthCheckInterval: 2000,
@@ -213,8 +213,7 @@ export class BinanceIndexService implements OnModuleDestroy {
 
       // 判断是否为组合流格式 {"stream": "...", "data": {...}}
       const data = msg.data || msg;
-
-      if (data.e === 'index') {
+      if (data.e === 'markPriceUpdate') {
         const priceData: BinanceIndexPriceData = {
           symbol: data.s,
           price: data.p,
