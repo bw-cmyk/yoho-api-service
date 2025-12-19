@@ -272,47 +272,6 @@ GET /api/v1/ecommerce/products?type=INSTANT_BUY&status=ACTIVE&page=1&limit=20
 
 ---
 
-### 2. 创建 Lucky Draw 订单
-
-创建抽奖订单。
-
-**接口地址：** `POST /api/v1/ecommerce/orders/lucky-draw`
-
-**认证：** 需要认证
-
-**请求体：**
-```json
-{
-  "productId": 1002,
-  "spots": 5
-}
-```
-
-**请求字段说明：**
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| productId | number | 是 | 商品ID |
-| spots | number | 是 | 购买的份数，最小值为 1 |
-
-**响应示例：**
-```json
-{
-  "id": 2,
-  "orderNumber": "ORD1705315300000XYZ789",
-  "userId": "user123",
-  "type": "LUCKY_DRAW",
-  "productId": 1002,
-  "quantity": 5,
-  "paymentAmount": "0.50",
-  "paymentStatus": "PAID",
-  "luckyDrawStatus": "ONGOING",
-  "luckyDrawSpots": 5,
-  "luckyDrawPricePerSpot": "0.10",
-  "createdAt": "2024-01-15T10:05:00Z"
-}
-```
-
----
 
 ### 3. 获取我的订单列表
 
