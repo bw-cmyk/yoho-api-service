@@ -353,13 +353,12 @@ export class OKXDEX {
    */
   public static fromEnv(): OKXDEX {
     const apiKey =
-      process.env.OKX_API_KEY || '57f2fe6b-8156-4e67-9c5b-1a7dc0005fe9';
+      process.env.OKX_API_KEY || '09e0d711-8276-4e60-849c-d33362096db7';
     const secretKey =
-      process.env.OKX_SECRET_KEY || '056C2FC10A798571A859A93A9AE2AE65';
-    const apiPassphrase =
-      process.env.OKX_API_PASSPHRASE || 'rgy7djc.ckt7jxb6CFD';
+      process.env.OKX_SECRET_KEY || '02A320FF85330C3CD519A7A4123FE8B9';
+    const apiPassphrase = process.env.OKX_API_PASSPHRASE || 'Kimsuper1#';
     const projectId =
-      process.env.OKX_PROJECT_ID || 'b3be21845dd3113ca396b2ba8d219cf5';
+      process.env.OKX_PROJECT_ID || 'd9b5e4a981d347b1893d31d568766af2';
     const baseUrl = process.env.OKX_BASE_URL || 'https://web3.okx.com';
 
     if (!apiKey || !secretKey || !apiPassphrase || !projectId) {
