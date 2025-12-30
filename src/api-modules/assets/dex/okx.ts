@@ -113,6 +113,21 @@ export interface SwapParams {
   maxAutoslippagePercent?: string;
 }
 
+export interface ApproveTransactionParams {
+  chainIndex: string;
+  tokenContractAddress: string;
+  approveAmount: string;
+}
+
+export interface ApproveTransactionData {
+  to: string;
+  data: string;
+  value?: string;
+  gas?: string;
+  gasPrice?: string;
+  [key: string]: any;
+}
+
 export interface SwapTokenInfo {
   fromTokenIndex?: string;
   tokenContractAddress: string;
@@ -497,6 +512,32 @@ export class OKXDEX {
     }
 
     return this.get<SwapData>('/api/v6/dex/aggregator/swap', queryParams);
+  }
+
+  /**
+   * 获取授权交易数据
+   * @param params 请求参数
+   * @returns 授权交易数据
+   */
+  public async getApproveTransaction(
+    params: ApproveTransactionParams,
+  ): Promise<ApproveTransactionData> {
+    const queryParams: Record<string, string> = {
+      chainIndex: params.chainIndex,
+      tokenContractAddress: params.tokenContractAddress,
+      approveAmount: params.approveAmount,
+    };
+
+    const result = await this.get<ApproveTransactionData[]>(
+      '/api/v6/dex/aggregator/approve-transaction',
+      queryParams,
+    );
+
+    // API返回数组，返回第一个元素
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0];
+    }
+    throw new Error('No approve transaction data returned');
   }
 
   /**

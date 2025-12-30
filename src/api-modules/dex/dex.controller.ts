@@ -47,6 +47,12 @@ export interface SwapRequest {
   maxAutoslippagePercent?: string;
 }
 
+export interface ApproveTransactionRequest {
+  chainIndex: string;
+  tokenContractAddress: string;
+  approveAmount: string;
+}
+
 @ApiTags('DEX 聚合器')
 @Controller('/api/v1/dex')
 export class DexController {
@@ -447,6 +453,69 @@ export class DexController {
           success: false,
           message: error instanceof Error ? error.message : 'Unknown error',
           error: 'Failed to get swap data',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('approve-transaction')
+  @ApiOperation({ summary: '获取授权交易数据' })
+  @ApiResponse({
+    status: 200,
+    description: '获取授权交易数据成功',
+  })
+  @ApiQuery({
+    name: 'chainIndex',
+    required: true,
+    description: '链索引',
+    example: '1',
+  })
+  @ApiQuery({
+    name: 'tokenContractAddress',
+    required: true,
+    description: '代币合约地址',
+    example: '0x...',
+  })
+  @ApiQuery({
+    name: 'approveAmount',
+    required: true,
+    description: '授权数量',
+    example: '1000000000000000000',
+  })
+  async getApproveTransaction(@Query() query: ApproveTransactionRequest) {
+    try {
+      const { chainIndex, tokenContractAddress, approveAmount } = query;
+
+      // 验证必需参数
+      if (!chainIndex || !tokenContractAddress || !approveAmount) {
+        throw new HttpException(
+          'Missing required parameters: chainIndex, tokenContractAddress, approveAmount',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const params = {
+        chainIndex,
+        tokenContractAddress,
+        approveAmount,
+      };
+
+      const approveTransaction = await this.dexService.getApproveTransaction(
+        params,
+      );
+
+      return {
+        success: true,
+        data: approveTransaction,
+        message: 'Approve transaction retrieved successfully',
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          error: 'Failed to get approve transaction',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

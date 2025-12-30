@@ -5,6 +5,8 @@ import {
   SwapQuoteData,
   SwapParams,
   SwapData,
+  ApproveTransactionParams,
+  ApproveTransactionData,
 } from '../assets/dex/okx';
 import { OKXQueueService } from '../assets/dex/okx-queue.service';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
@@ -119,6 +121,34 @@ export class DexService {
       return result;
     } catch (error) {
       this.logger.error(`Failed to get swap data:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取授权交易数据（同步）
+   * @param params 授权交易参数
+   * @returns 授权交易数据
+   */
+  async getApproveTransaction(
+    params: ApproveTransactionParams,
+  ): Promise<ApproveTransactionData> {
+    try {
+      this.logger.log(`Getting approve transaction for token ${params.tokenContractAddress}`, {
+        chainIndex: params.chainIndex,
+        approveAmount: params.approveAmount,
+      });
+
+      const result = await this.okxDex.getApproveTransaction(params);
+
+      this.logger.log(`Approve transaction retrieved successfully`, {
+        tokenContractAddress: params.tokenContractAddress,
+        chainIndex: params.chainIndex,
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to get approve transaction:`, error);
       throw error;
     }
   }

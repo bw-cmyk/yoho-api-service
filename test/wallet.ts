@@ -1,5 +1,8 @@
-import { UniversalAccount } from '@particle-network/universal-account-sdk';
-import { Wallet } from 'ethers';
+import {
+  CHAIN_ID,
+  UniversalAccount,
+} from '@particle-network/universal-account-sdk';
+import { Wallet, JsonRpcProvider, Contract, getBytes } from 'ethers';
 import * as jwt from 'jsonwebtoken';
 
 const endpoint = 'https://yoho-api-service-dev-ff05bf602cab.herokuapp.com';
@@ -42,7 +45,8 @@ const bindEOAWallet = async (userProfile: any) => {
   }
 };
 
-const bindAAWallet = async (userProfile: any) => {
+const provider = new JsonRpcProvider('https://bsc-dataseed.binance.org');
+const bindAAWallet = async () => {
   // 这里用一个固定的私钥, 创建一个 wallet, 代替 particle wallet 用于测试
   const MINT_PRIVATE_KEY =
     'a5712b251725d22ac6eea60118d1452aa41d07db2500d1a1ddab24242b69fcfe';
@@ -55,19 +59,59 @@ const bindAAWallet = async (userProfile: any) => {
     projectAppUuid: '143c36a3-e3a8-419d-aa8a-d6eff64b8e04',
     ownerAddress: wallet.address,
   });
-
   const smartAccountOptions = await universalAccount.getSmartAccountOptions();
-  console.log(smartAccountOptions);
 
-  if (!userProfile.evmAAWallet) {
-    await fetch(`${endpoint}/api/v1/wallets/bind/aa`, {
-      method: 'POST',
-      headers: authHeader,
-      body: JSON.stringify({
-        address: smartAccountOptions.smartAccountAddress,
-      }),
-    });
-  }
+  /**  授权交易 */
+
+  // const approveData = await fetch('http://localhost:3000/api/v1/dex/approve-transaction?chainIndex=56&tokenContractAddress=0x55d398326f99059ff775485246999027b3197955&approveAmount=1000000').then((res) => res.json());
+  // const appoveTransaction = {
+  //   from: smartAccountOptions.smartAccountAddress,
+  //   data: approveData.data,
+  //   to: '0x55d398326f99059ff775485246999027b3197955',
+  // };
+
+  // const transaction = await universalAccount.createUniversalTransaction({
+  //   chainId: CHAIN_ID.BSC_MAINNET,
+  //   expectTokens: [],
+  //   transactions: [
+  //     {
+  //       ...appoveTransaction,
+  //     },
+  //   ],
+  // });
+
+  // const sendResult = await universalAccount.sendTransaction(
+  //   transaction,
+  //   wallet.signMessageSync(getBytes(transaction.rootHash)),
+  // );
+
+  /** swap 交易 */
+  const data = await fetch(
+    'http://localhost:3000/api/v1/dex/swap?chainIndex=56&amount=1000000&toTokenAddress=0x2170ed0880ac9a755fd29b2688956bd959f933f8&fromTokenAddress=0x55d398326f99059ff775485246999027b3197955&slippagePercent=0.5&userWalletAddress=' +
+      // smartAccountOptions.smartAccountAddress,
+      wallet.address,
+  ).then((res) => res.json());
+
+  const swapData = data.data[0].tx;
+  const transactionRaw = {
+    from: swapData.from,
+    to: swapData.to,
+    data: swapData.data,
+    value: swapData.value || '0x0',
+    chainIndex: 56,
+  };
+
+  const transaction = await universalAccount.createUniversalTransaction({
+    chainId: CHAIN_ID.BSC_MAINNET,
+    expectTokens: [],
+    transactions: [
+      {
+        ...transactionRaw,
+      },
+    ],
+  });
+
+  console.log(transaction);
 };
 
 async function main() {
@@ -83,16 +127,16 @@ async function main() {
   // const accessToken = botimLogin.access_token;
 
   // 获取 profile
-  const userProfile = await fetch(`${endpoint}/api/v1/user/profile`, {
-    method: 'GET',
-    headers: authHeader,
-  }).then((res) => res.json());
+  // const userProfile = await fetch(`${endpoint}/api/v1/user/profile`, {
+  //   method: 'GET',
+  //   headers: authHeader,
+  // }).then((res) => res.json());
 
-  console.log(userProfile);
+  // console.log(userProfile);
 
-  bindEOAWallet(userProfile);
+  // bindEOAWallet(userProfile);
 
-  bindAAWallet(userProfile);
+  bindAAWallet();
 }
 
 main();
