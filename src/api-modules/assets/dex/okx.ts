@@ -84,6 +84,82 @@ export interface SwapQuoteData {
   allowanceTargetAbi: any[];
 }
 
+export interface SwapParams {
+  chainIndex: string;
+  amount: string;
+  swapMode: 'exactIn' | 'exactOut';
+  fromTokenAddress: string;
+  toTokenAddress: string;
+  slippagePercent: string;
+  userWalletAddress: string;
+  swapReceiverAddress?: string;
+  feePercent?: string;
+  fromTokenReferrerWalletAddress?: string;
+  toTokenReferrerWalletAddress?: string;
+  positiveSlippagePercent?: string;
+  positiveSlippageFeeAddress?: string;
+  gaslimit?: string;
+  gasLevel?: 'average' | 'fast' | 'slow';
+  dexIds?: string;
+  directRoute?: boolean;
+  callDataMemo?: string;
+  computeUnitPrice?: string;
+  computeUnitLimit?: string;
+  tips?: string;
+  excludeDexIds?: string;
+  disableRFQ?: boolean;
+  priceImpactProtectionPercent?: string;
+  autoSlippage?: boolean;
+  maxAutoslippagePercent?: string;
+}
+
+export interface SwapTokenInfo {
+  fromTokenIndex?: string;
+  tokenContractAddress: string;
+  tokenSymbol: string;
+  tokenUnitPrice: string | null;
+  decimal: string;
+  isHoneyPot: boolean;
+  taxRate: string;
+  toTokenIndex?: string;
+}
+
+export interface SwapDexProtocol {
+  dexName: string;
+  percent: string;
+}
+
+export interface SwapRouterResult {
+  chainIndex?: string;
+  fromTokenAmount: string;
+  toTokenAmount: string;
+  tradeFee: string;
+  estimateGasFee: string;
+  dexRouterList: Array<{
+    router: string;
+    dexProtocol: SwapDexProtocol[];
+  }>;
+  fromToken: SwapTokenInfo;
+  toToken: SwapTokenInfo;
+  priceImpactPercent: string;
+  tx: {
+    signatureData?: string[];
+    from: string;
+    gas: string;
+    gasPrice: string;
+    maxPriorityFeePerGas?: string;
+    to: string;
+    value: string;
+    maxSpendAmount?: string;
+    minReceiveAmount: string;
+    data: string;
+    slippagePercent: string;
+  };
+}
+
+// SwapData 实际上是 SwapRouterResult，因为 API 返回的 data 字段直接是 routerResult 对象
+export type SwapData = SwapRouterResult;
+
 export class OKXDEX {
   private readonly config: OKXConfig;
 
@@ -339,6 +415,88 @@ export class OKXDEX {
       '/api/v5/dex/aggregator/quote',
       queryParams,
     );
+  }
+
+  /**
+   * 获取 DEX 聚合器交换数据
+   * @param params 请求参数
+   * @returns 交换数据
+   */
+  public async getSwap(params: SwapParams): Promise<SwapData> {
+    const queryParams: Record<string, string> = {
+      chainIndex: params.chainIndex,
+      amount: params.amount,
+      swapMode: params.swapMode,
+      fromTokenAddress: params.fromTokenAddress,
+      toTokenAddress: params.toTokenAddress,
+      slippagePercent: params.slippagePercent,
+      userWalletAddress: params.userWalletAddress,
+    };
+
+    // 添加可选参数
+    if (params.swapReceiverAddress) {
+      queryParams.swapReceiverAddress = params.swapReceiverAddress;
+    }
+    if (params.feePercent) {
+      queryParams.feePercent = params.feePercent;
+    }
+    if (params.fromTokenReferrerWalletAddress) {
+      queryParams.fromTokenReferrerWalletAddress =
+        params.fromTokenReferrerWalletAddress;
+    }
+    if (params.toTokenReferrerWalletAddress) {
+      queryParams.toTokenReferrerWalletAddress =
+        params.toTokenReferrerWalletAddress;
+    }
+    if (params.positiveSlippagePercent) {
+      queryParams.positiveSlippagePercent = params.positiveSlippagePercent;
+    }
+    if (params.positiveSlippageFeeAddress) {
+      queryParams.positiveSlippageFeeAddress =
+        params.positiveSlippageFeeAddress;
+    }
+    if (params.gaslimit) {
+      queryParams.gaslimit = params.gaslimit;
+    }
+    if (params.gasLevel) {
+      queryParams.gasLevel = params.gasLevel;
+    }
+    if (params.dexIds) {
+      queryParams.dexIds = params.dexIds;
+    }
+    if (params.directRoute !== undefined) {
+      queryParams.directRoute = params.directRoute.toString();
+    }
+    if (params.callDataMemo) {
+      queryParams.callDataMemo = params.callDataMemo;
+    }
+    if (params.computeUnitPrice) {
+      queryParams.computeUnitPrice = params.computeUnitPrice;
+    }
+    if (params.computeUnitLimit) {
+      queryParams.computeUnitLimit = params.computeUnitLimit;
+    }
+    if (params.tips) {
+      queryParams.tips = params.tips;
+    }
+    if (params.excludeDexIds) {
+      queryParams.excludeDexIds = params.excludeDexIds;
+    }
+    if (params.disableRFQ !== undefined) {
+      queryParams.disableRFQ = params.disableRFQ.toString();
+    }
+    if (params.priceImpactProtectionPercent) {
+      queryParams.priceImpactProtectionPercent =
+        params.priceImpactProtectionPercent;
+    }
+    if (params.autoSlippage !== undefined) {
+      queryParams.autoSlippage = params.autoSlippage.toString();
+    }
+    if (params.maxAutoslippagePercent) {
+      queryParams.maxAutoslippagePercent = params.maxAutoslippagePercent;
+    }
+
+    return this.get<SwapData>('/api/v6/dex/aggregator/swap', queryParams);
   }
 
   /**

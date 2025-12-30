@@ -1,5 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { OKXDEX, SwapQuoteParams, SwapQuoteData } from '../assets/dex/okx';
+import {
+  OKXDEX,
+  SwapQuoteParams,
+  SwapQuoteData,
+  SwapParams,
+  SwapData,
+} from '../assets/dex/okx';
 import { OKXQueueService } from '../assets/dex/okx-queue.service';
 import { RedisQueueService } from 'src/common-modules/queue/redis-queue.service';
 import { OKX_SWAP_QUOTE_CALLBACK_FUNCTION_ID } from '../assets/constants';
@@ -81,5 +87,39 @@ export class DexService {
       OKX_SWAP_QUOTE_CALLBACK_FUNCTION_ID,
       priority,
     );
+  }
+
+  /**
+   * 获取交换数据（同步）
+   * @param params 交换参数
+   * @returns 交换数据
+   */
+  async getSwap(params: SwapParams): Promise<SwapData> {
+    try {
+      this.logger.log(
+        `Getting swap data for ${params.fromTokenAddress} to ${params.toTokenAddress}`,
+        {
+          chainIndex: params.chainIndex,
+          amount: params.amount,
+          swapMode: params.swapMode,
+          userWalletAddress: params.userWalletAddress,
+        },
+      );
+
+      const result = await this.okxDex.getSwap(params);
+
+      this.logger.log(`Swap data retrieved successfully`, {
+        fromToken: params.fromTokenAddress,
+        toToken: params.toTokenAddress,
+        amount: params.amount,
+        fromTokenAmount: result.fromTokenAmount,
+        toTokenAmount: result.toTokenAmount,
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to get swap data:`, error);
+      throw error;
+    }
   }
 }
