@@ -894,7 +894,7 @@ export class DrawService {
   }
 
   /**
-   * 使用新用户机会参与抽奖（免费，复用purchaseSpots核心逻辑）
+   * 使用新用户机会参与抽奖（需支付0.1元）
    */
   async useNewUserChance(userId: string, productId: number) {
     const chance = await this.newUserDrawChanceRepository.findOne({
@@ -908,6 +908,13 @@ export class DrawService {
     const drawRound = await this.getOrCreateCurrentRound(productId);
     if (drawRound.remainingSpots < 1) {
       throw new BadRequestException('当前期次已满');
+    }
+
+    // 检查用户余额是否足够支付0.1元
+    const userAssets = await this.assetService.getUserAssets(userId);
+    const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
+    if (!usdAsset || !usdAsset.hasEnoughBalance(chance.chanceAmount)) {
+      throw new BadRequestException('余额不足，请先充值');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -937,6 +944,24 @@ export class DrawService {
         newUserChanceId: chance.id,
       });
       await manager.save(participation);
+
+      // 扣除0.1元参与费用
+      await this.assetService.bet({
+        userId,
+        currency: Currency.USD,
+        type: TransactionType.LUCKY_DRAW,
+        amount: chance.chanceAmount,
+        game_id: `NEW_USER_DRAW`,
+        description: `新用户抽奖参与费用`,
+        metadata: {
+          drawRoundId: lockedRound.id,
+          roundNumber: lockedRound.roundNumber,
+          productId,
+          participationId: participation.id,
+          isNewUserChance: true,
+          chanceId: chance.id,
+        },
+      });
 
       lockedRound.soldSpots += 1;
       if (lockedRound.isFull) {

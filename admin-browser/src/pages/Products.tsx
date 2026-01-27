@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Edit, Play, Pause, Archive, Plus, Search, Trash2, RefreshCw, Upload, X, Settings } from 'lucide-react'
+import { Edit, Play, Pause, Archive, Plus, Search, Trash2, RefreshCw, Upload, X, Settings, Dices, Trophy } from 'lucide-react'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
-import { productApi, uploadApi, specificationApi, type Product, type ProductType, type ProductStatus } from '../services/api'
+import { productApi, uploadApi, specificationApi, drawApi, type Product, type ProductType, type ProductStatus, type DrawRound } from '../services/api'
 
 const TABS: { value: ProductType; label: string }[] = [
   { value: 'LUCKY_DRAW', label: '一元购' },
@@ -18,6 +18,13 @@ const STATUS_OPTIONS: { value: ProductStatus; label: string; color: string }[] =
   { value: 'ARCHIVED', label: '已归档', color: 'bg-gray-200 text-gray-700' },
 ]
 
+const ROUND_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  ONGOING: { label: '进行中', color: 'bg-blue-100 text-blue-600' },
+  COMPLETED: { label: '待开奖', color: 'bg-amber-100 text-amber-600' },
+  DRAWN: { label: '已开奖', color: 'bg-emerald-100 text-emerald-600' },
+  CANCELLED: { label: '已取消', color: 'bg-gray-100 text-gray-600' },
+}
+
 interface SpecItem {
   key: string
   value: string
@@ -30,8 +37,13 @@ export default function Products() {
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showSpecModal, setShowSpecModal] = useState(false)
+  const [showRoundsModal, setShowRoundsModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [specProduct, setSpecProduct] = useState<Product | null>(null)
+  const [roundsProduct, setRoundsProduct] = useState<Product | null>(null)
+  const [rounds, setRounds] = useState<DrawRound[]>([])
+  const [roundsLoading, setRoundsLoading] = useState(false)
+  const [processingRound, setProcessingRound] = useState<number | null>(null)
   const [specifications, setSpecifications] = useState<SpecItem[]>([])
   const [formData, setFormData] = useState({
     name: '',
@@ -46,6 +58,7 @@ export default function Products() {
   const [keyword, setKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProductStatus | ''>('')
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
+  const [roundsPagination, setRoundsPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
   const [uploading, setUploading] = useState(false)
   const [savingSpecs, setSavingSpecs] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -66,6 +79,19 @@ export default function Products() {
       console.error('Failed to fetch products:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchRounds = async (productId: number, page = 1) => {
+    setRoundsLoading(true)
+    try {
+      const res = await drawApi.getRounds(productId, page, 10)
+      setRounds(res.data)
+      setRoundsPagination({ page: res.page, limit: res.limit, total: res.total, totalPages: res.totalPages })
+    } catch (error) {
+      console.error('Failed to fetch rounds:', error)
+    } finally {
+      setRoundsLoading(false)
     }
   }
 
@@ -167,6 +193,41 @@ export default function Products() {
       setSpecifications([])
     }
     setShowSpecModal(true)
+  }
+
+  const handleViewRounds = async (product: Product) => {
+    setRoundsProduct(product)
+    setShowRoundsModal(true)
+    await fetchRounds(product.id, 1)
+  }
+
+  const handleProcessDraw = async (roundId: number) => {
+    if (!confirm('确定要手动开奖吗？此操作不可撤销。')) return
+
+    setProcessingRound(roundId)
+    try {
+      await drawApi.processDraw(roundId)
+      alert('开奖成功！')
+      if (roundsProduct) {
+        await fetchRounds(roundsProduct.id, roundsPagination.page)
+      }
+    } catch (error) {
+      console.error('Failed to process draw:', error)
+      alert('开奖失败，请稍后重试')
+    } finally {
+      setProcessingRound(null)
+    }
+  }
+
+  const handleCreateRound = async () => {
+    if (!roundsProduct) return
+    try {
+      await drawApi.createRound(roundsProduct.id)
+      await fetchRounds(roundsProduct.id, 1)
+    } catch (error) {
+      console.error('Failed to create round:', error)
+      alert('创建轮次失败')
+    }
   }
 
   const handleAddSpec = () => {
@@ -380,6 +441,15 @@ export default function Products() {
                 title="管理规格"
               >
                 <Settings size={16} />
+              </button>
+            )}
+            {activeTab === 'LUCKY_DRAW' && (
+              <button
+                onClick={() => handleViewRounds(row)}
+                className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                title="查看轮次"
+              >
+                <Dices size={16} />
               </button>
             )}
             {row.status !== 'ACTIVE' && (
@@ -663,6 +733,127 @@ export default function Products() {
               disabled={savingSpecs}
             >
               {savingSpecs ? '保存中...' : '保存规格'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Rounds Modal */}
+      <Modal
+        isOpen={showRoundsModal}
+        onClose={() => setShowRoundsModal(false)}
+        title={`抽奖轮次 - ${roundsProduct?.name || ''}`}
+        size="lg"
+      >
+        <div className="space-y-5">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500">管理商品的抽奖轮次，可手动开奖</p>
+            <button
+              onClick={handleCreateRound}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center text-sm"
+            >
+              <Plus size={16} className="mr-1" />
+              新建轮次
+            </button>
+          </div>
+
+          {roundsLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+            </div>
+          ) : rounds.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Dices size={40} className="mx-auto mb-3 opacity-50" />
+              <p>暂无抽奖轮次</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {rounds.map((round) => (
+                <div key={round.id} className="p-4 bg-gray-50 rounded-xl">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <span className="font-medium text-gray-800">第 {round.roundNumber} 期</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ROUND_STATUS_MAP[round.status]?.color || 'bg-gray-100 text-gray-600'}`}>
+                          {ROUND_STATUS_MAP[round.status]?.label || round.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-sm text-gray-600">
+                        <div>
+                          <span className="text-gray-400">进度:</span>{' '}
+                          <span className="font-medium">{round.soldSpots}/{round.totalSpots}</span>
+                          <span className="text-gray-400 ml-1">({Math.round(round.soldSpots / round.totalSpots * 100)}%)</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">单价:</span>{' '}
+                          <span className="font-medium">${round.pricePerSpot}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">奖品价值:</span>{' '}
+                          <span className="font-medium text-emerald-600">${round.prizeValue}</span>
+                        </div>
+                      </div>
+                      {round.result && (
+                        <div className="mt-2 p-2 bg-emerald-50 rounded-lg text-sm">
+                          <div className="flex items-center text-emerald-700">
+                            <Trophy size={14} className="mr-1" />
+                            <span>中奖号码: <strong>{round.result.winningNumber}</strong></span>
+                            {round.result.winnerUserName && (
+                              <span className="ml-3">中奖用户: <strong>{round.result.winnerUserName}</strong></span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-4">
+                      {(round.status === 'ONGOING' || round.status === 'COMPLETED') && (
+                        <button
+                          onClick={() => handleProcessDraw(round.id)}
+                          disabled={processingRound === round.id}
+                          className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm disabled:opacity-50"
+                        >
+                          {processingRound === round.id ? '开奖中...' : '手动开奖'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Rounds Pagination */}
+          {rounds.length > 0 && (
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <span className="text-sm text-gray-500">共 {roundsPagination.total} 个轮次</span>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => roundsProduct && fetchRounds(roundsProduct.id, roundsPagination.page - 1)}
+                  disabled={roundsPagination.page <= 1}
+                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                >
+                  上一页
+                </button>
+                <span className="text-sm text-gray-600">
+                  {roundsPagination.page} / {roundsPagination.totalPages || 1}
+                </span>
+                <button
+                  onClick={() => roundsProduct && fetchRounds(roundsProduct.id, roundsPagination.page + 1)}
+                  disabled={roundsPagination.page >= roundsPagination.totalPages}
+                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={() => setShowRoundsModal(false)}
+              className="px-5 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              关闭
             </button>
           </div>
         </div>

@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { Repository, Like, FindOptionsWhere, In } from 'typeorm';
 import { User } from '../../user/entity/user.entity';
+import { UserAsset, Currency } from '../../assets/entities/balance/user-asset.entity';
 import { UpdateUserDto, QueryUserDto } from '../dto/user.dto';
 
 @Injectable()
@@ -9,10 +10,12 @@ export class AdminUserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(UserAsset)
+    private userAssetRepository: Repository<UserAsset>,
   ) {}
 
   async findAll(query: QueryUserDto) {
-    const { page = 1, limit = 10, keyword, role, banned } = query;
+    const { page = 1, limit = 50, keyword, role, banned } = query;
     const skip = (page - 1) * limit;
 
     const where: FindOptionsWhere<User>[] = [];
@@ -30,6 +33,7 @@ export class AdminUserService {
         { ...baseWhere, username: Like(`%${keyword}%`) },
         { ...baseWhere, email: Like(`%${keyword}%`) },
         { ...baseWhere, nickname: Like(`%${keyword}%`) },
+        { ...baseWhere, id: keyword },
       );
     } else {
       where.push(baseWhere);
@@ -55,8 +59,23 @@ export class AdminUserService {
       ],
     });
 
+    // 获取用户余额
+    const userIds = data.map((u) => u.id);
+    const assets = await this.userAssetRepository.find({
+      where: { userId: In(userIds), currency: Currency.USD },
+    });
+    const assetMap = new Map(assets.map((a) => [a.userId, a]));
+
+    const dataWithBalance = data.map((user) => {
+      const asset = assetMap.get(user.id);
+      return {
+        ...user,
+        balance: asset?.totalBalance?.toString() || '0',
+      };
+    });
+
     return {
-      data,
+      data: dataWithBalance,
       total,
       page,
       limit,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Edit, Ban, CheckCircle, Search, RefreshCw } from 'lucide-react'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
@@ -12,20 +13,25 @@ const ROLE_MAP: Record<number, string> = {
   1: '初始用户',
 }
 
+interface UserWithBalance extends User {
+  balance?: string
+}
+
 export default function Users() {
-  const [users, setUsers] = useState<User[]>([])
+  const navigate = useNavigate()
+  const [users, setUsers] = useState<UserWithBalance[]>([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [formData, setFormData] = useState({ nickname: '', email: '', role: 10 })
   const [keyword, setKeyword] = useState('')
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 0 })
 
-  const fetchUsers = async (page = 1, limit = 10) => {
+  const fetchUsers = async (page = 1, limit = 50) => {
     setLoading(true)
     try {
       const res = await userApi.getList({ page, limit, keyword: keyword || undefined })
-      setUsers(res.data)
+      setUsers(res.data as UserWithBalance[])
       setPagination({ page: res.page, limit: res.limit, total: res.total, totalPages: res.totalPages })
     } catch (error) {
       console.error('Failed to fetch users:', error)
@@ -35,14 +41,32 @@ export default function Users() {
   }
 
   useEffect(() => {
-    fetchUsers(1, 10)
+    fetchUsers(1, 50)
   }, [])
 
   const columns = [
-    { key: 'id' as const, label: 'ID' },
-    { key: 'username' as const, label: '用户名' },
+    {
+      key: 'id' as const,
+      label: 'UID',
+      render: (v: unknown) => (
+        <button
+          onClick={() => navigate(`/users/${v}`)}
+          className="text-blue-600 hover:text-blue-800 hover:underline font-mono text-sm"
+        >
+          {String(v)}
+        </button>
+      ),
+    },
     { key: 'nickname' as const, label: '昵称' },
-    { key: 'email' as const, label: '邮箱' },
+    {
+      key: 'balance' as const,
+      label: '余额',
+      render: (v: unknown) => (
+        <span className="font-medium text-emerald-600">
+          ${parseFloat(String(v) || '0').toFixed(2)}
+        </span>
+      ),
+    },
     {
       key: 'role' as const,
       label: '角色',
@@ -95,7 +119,7 @@ export default function Users() {
       await userApi.update(editingUser.id, formData)
       setShowModal(false)
       setEditingUser(null)
-      fetchUsers(pagination.page)
+      fetchUsers(pagination.page, pagination.limit)
     } catch (error) {
       console.error('Failed to update user:', error)
     }
@@ -111,18 +135,18 @@ export default function Users() {
         <div className="flex space-x-2">
           <input
             type="text"
-            placeholder="搜索用户..."
+            placeholder="搜索用户ID/昵称/邮箱..."
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
           />
           <button onClick={handleSearch} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">
             <Search size={20} />
           </button>
         </div>
         <button
-          onClick={() => fetchUsers(pagination.page)}
+          onClick={() => fetchUsers(pagination.page, pagination.limit)}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
           disabled={loading}
         >

@@ -7,7 +7,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  Image
 } from 'lucide-react'
 import { authApi } from '../services/api'
 
@@ -16,6 +17,7 @@ const menuItems = [
   { path: '/users', icon: Users, label: '用户管理' },
   // { path: '/orders', icon: ShoppingCart, label: '订单管理' },
   { path: '/products', icon: Package, label: '商品管理' },
+  { path: '/showcases', icon: Image, label: '晒单管理' },
   { path: '/settings', icon: Settings, label: '系统设置' },
 ]
 

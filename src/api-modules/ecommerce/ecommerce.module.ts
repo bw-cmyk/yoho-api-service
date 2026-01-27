@@ -12,6 +12,8 @@ import {
   DrawParticipation,
   DrawResult,
   NewUserDrawChance,
+  Showcase,
+  ShowcaseLike,
 } from './entities';
 import { ProductService } from './services/product.service';
 import { OrderService } from './services/order.service';
@@ -19,10 +21,13 @@ import { ShippingAddressService } from './services/shipping-address.service';
 import { LogisticsService } from './services/logistics.service';
 import { DrawService } from './services/draw.service';
 import { BlockchainService } from './services/blockchain.service';
+import { ShowcaseService } from './services/showcase.service';
+import { UploadService } from './services/upload.service';
 import { ProductController } from './controllers/product.controller';
 import { OrderController } from './controllers/order.controller';
 import { ShippingAddressController } from './controllers/shipping-address.controller';
 import { DrawController } from './controllers/draw.controller';
+import { ShowcaseController } from './controllers/showcase.controller';
 import { UserModule } from '../user/user.module';
 
 @Module({
@@ -38,6 +43,8 @@ import { UserModule } from '../user/user.module';
       DrawParticipation,
       DrawResult,
       NewUserDrawChance,
+      Showcase,
+      ShowcaseLike,
     ]),
     AssetsModule,
     UserModule,
@@ -49,12 +56,15 @@ import { UserModule } from '../user/user.module';
     LogisticsService,
     DrawService,
     BlockchainService,
+    ShowcaseService,
+    UploadService,
   ],
   controllers: [
     ProductController,
     OrderController,
     ShippingAddressController,
     DrawController,
+    ShowcaseController,
   ],
   exports: [
     ProductService,
@@ -63,6 +73,8 @@ import { UserModule } from '../user/user.module';
     LogisticsService,
     DrawService,
     BlockchainService,
+    ShowcaseService,
+    UploadService,
   ],
 })
 export class EcommerceModule {}

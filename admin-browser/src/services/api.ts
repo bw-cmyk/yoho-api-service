@@ -198,4 +198,155 @@ export const specificationApi = {
     request.delete<{ success: boolean }>(`/products/${productId}/specifications/${id}`),
 };
 
+// 抽奖轮次 API
+export type DrawRoundStatus = 'ONGOING' | 'COMPLETED' | 'DRAWN' | 'CANCELLED';
+
+export interface DrawRound {
+  id: number;
+  productId: number;
+  roundNumber: number;
+  totalSpots: number;
+  soldSpots: number;
+  pricePerSpot: string;
+  prizeValue: string;
+  status: DrawRoundStatus;
+  completedAt: string | null;
+  drawnAt: string | null;
+  createdAt: string;
+  result: {
+    winningNumber: number;
+    winnerUserId: string | null;
+    winnerUserName: string | null;
+    prizeStatus: string;
+  } | null;
+}
+
+export const drawApi = {
+  getRounds: (productId: number, page: number = 1, limit: number = 20) =>
+    request.get<PaginatedResponse<DrawRound>>('/draws/rounds', { productId, page, limit }),
+  getRoundDetail: (id: number) =>
+    request.get<DrawRound>(`/draws/rounds/${id}`),
+  processDraw: (id: number) =>
+    request.post<{ success: boolean; result: unknown }>(`/draws/rounds/${id}/process`),
+  createRound: (productId: number) =>
+    request.post<DrawRound>(`/draws/products/${productId}/create-round`),
+};
+
+// 用户资产 API
+export interface UserAsset {
+  currency: string;
+  balanceReal: string;
+  balanceBonus: string;
+  balanceLocked: string;
+  totalBalance: string;
+  withdrawableBalance: string;
+  availableBalance: string;
+}
+
+export interface UserAssetsResponse {
+  user: {
+    id: string;
+    username: string;
+    nickname: string;
+    email: string;
+  };
+  assets: UserAsset[];
+  chainAssetsTotalUsd: string;
+  chainAssetsCount: number;
+}
+
+export interface UserTransaction {
+  id: string;
+  type: string;
+  source: string;
+  status: string;
+  amount: string;
+  currency: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  description: string;
+  referenceId: string;
+  createdAt: string;
+}
+
+export interface UserChainAsset {
+  id: string;
+  tokenSymbol: string;
+  tokenName: string;
+  balance: string;
+  usdValue: string;
+  priceUsd: string;
+  lastUpdatedAt: string;
+}
+
+export const assetApi = {
+  getUserAssets: (userId: string) =>
+    request.get<UserAssetsResponse>(`/users/${userId}/assets`),
+  getUserTransactions: (userId: string, page: number = 1, limit: number = 20, type?: string) =>
+    request.get<PaginatedResponse<UserTransaction>>(`/users/${userId}/assets/transactions`, { page, limit, type }),
+  getUserChainAssets: (userId: string) =>
+    request.get<{ data: UserChainAsset[]; total: number }>(`/users/${userId}/assets/chain-assets`),
+};
+
+// 晒单管理 API
+export type ShowcaseStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN';
+export type MediaType = 'IMAGE' | 'VIDEO';
+
+export interface ShowcaseMedia {
+  type: MediaType;
+  url: string;
+  thumbnailUrl?: string;
+  cloudflareId?: string;
+}
+
+export interface Showcase {
+  id: number;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  media: ShowcaseMedia[];
+  productId: number | null;
+  drawRoundId: number | null;
+  prizeInfo: string | null;
+  likeCount: number;
+  viewCount: number;
+  status: ShowcaseStatus;
+  rejectReason: string | null;
+  isPinned: boolean;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShowcaseStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  total: number;
+}
+
+export const showcaseApi = {
+  getList: (params: { page: number; limit: number; status?: ShowcaseStatus; userId?: string }) =>
+    request.get<PaginatedResponse<Showcase>>('/showcases', params),
+  getStats: () => request.get<ShowcaseStats>('/showcases/stats'),
+  getOne: (id: number) => request.get<Showcase>(`/showcases/${id}`),
+  approve: (id: number) => request.post<{ success: boolean }>(`/showcases/${id}/approve`),
+  reject: (id: number, reason?: string) => request.post<{ success: boolean }>(`/showcases/${id}/reject`, { reason }),
+  hide: (id: number) => request.post<{ success: boolean }>(`/showcases/${id}/hide`),
+  togglePin: (id: number) => request.post<{ success: boolean; isPinned: boolean }>(`/showcases/${id}/pin`),
+  setPriority: (id: number, priority: number) => request.patch<{ success: boolean }>(`/showcases/${id}/priority`, { priority }),
+  delete: (id: number) => request.delete<{ success: boolean }>(`/showcases/${id}`),
+  // 手动创建晒单
+  create: (data: {
+    userId: string;
+    userName?: string;
+    userAvatar?: string;
+    content?: string;
+    media: ShowcaseMedia[];
+    productId?: number;
+    prizeInfo?: string;
+  }) => request.post<Showcase>('/showcases', data),
+};
+
 export default api;
