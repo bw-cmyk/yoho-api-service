@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.sidebar {
+  transition: width 0.3s;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}

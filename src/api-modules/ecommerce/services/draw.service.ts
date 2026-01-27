@@ -15,6 +15,8 @@ import {
   PrizeType,
   PrizeStatus,
 } from '../entities/draw-result.entity';
+import { NewUserDrawChance } from '../entities/new-user-draw-chance.entity';
+import { NewUserDrawChanceStatus } from '../enums/ecommerce.enums';
 import { Product } from '../entities/product.entity';
 import { ProductService } from './product.service';
 import { AssetService } from '../../assets/services/asset.service';
@@ -37,6 +39,8 @@ export class DrawService {
     private readonly drawResultRepository: Repository<DrawResult>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(NewUserDrawChance)
+    private readonly newUserDrawChanceRepository: Repository<NewUserDrawChance>,
     private readonly productService: ProductService,
     private readonly assetService: AssetService,
     private readonly blockchainService: BlockchainService,
@@ -406,6 +410,21 @@ export class DrawService {
             error,
           );
         });
+
+        // 处理新用户bonus发放
+        if (
+          winningParticipation.isNewUserChance &&
+          winningParticipation.newUserChanceId
+        ) {
+          this.processNewUserWinnerBonus(
+            winningParticipation.newUserChanceId,
+          ).catch((error) => {
+            this.logger.error(
+              `Failed to process new user bonus for participation ${winningParticipation.id}`,
+              error,
+            );
+          });
+        }
       }
 
       // 如果允许自动创建下一期，创建新期次
@@ -762,5 +781,201 @@ export class DrawService {
         },
       );
     });
+  }
+
+  /**
+   * 处理新用户中奖bonus发放
+   */
+  private async processNewUserWinnerBonus(chanceId: number): Promise<void> {
+    const chance = await this.newUserDrawChanceRepository.findOne({
+      where: { id: chanceId },
+    });
+
+    if (!chance) {
+      this.logger.warn(`New user chance ${chanceId} not found`);
+      return;
+    }
+
+    if (chance.bonusGranted) {
+      this.logger.log(`Bonus already granted for chance ${chanceId}`);
+      return;
+    }
+
+    // 发放bonus到用户的bonus余额
+    await this.assetService.bonusGrant({
+      userId: chance.userId,
+      currency: Currency.USD,
+      amount: chance.bonusAmount,
+      game_id: `NEW_USER_DRAW_BONUS_${chanceId}`,
+      description: `新用户抽奖中奖奖励 ${chance.bonusAmount} USD`,
+      metadata: {
+        chanceId,
+        type: 'NEW_USER_DRAW_BONUS',
+      },
+    });
+
+    // 更新机会记录
+    chance.isWinner = true;
+    chance.bonusGranted = true;
+    await this.newUserDrawChanceRepository.save(chance);
+
+    this.logger.log(
+      `为新用户 ${chance.userId} 发放中奖bonus: ${chance.bonusAmount} USD`,
+    );
+  }
+
+  // ==================== 新用户抽奖功能 ====================
+
+  private readonly CHANCE_EXPIRY_MINUTES = 10;
+  private readonly CHANCE_AMOUNT = new Decimal('0.1');
+  private readonly BONUS_AMOUNT = new Decimal('0.5');
+
+  /**
+   * 获取新用户抽奖机会状态（首次调用自动创建）
+   */
+  async getNewUserChanceStatus(userId: string) {
+    let chance = await this.newUserDrawChanceRepository.findOne({
+      where: { userId },
+    });
+
+    if (chance) {
+      // 检查过期
+      if (
+        chance.isExpired &&
+        chance.status !== 'EXPIRED' &&
+        chance.status !== 'USED'
+      ) {
+        chance.status = NewUserDrawChanceStatus.EXPIRED;
+        await this.newUserDrawChanceRepository.save(chance);
+      }
+      return this.formatChanceResponse(chance);
+    }
+
+    // 检查是否新用户（无参与记录）
+    const count = await this.participationRepository.count({
+      where: { userId },
+    });
+    if (count > 0) {
+      return { hasChance: false, chance: null };
+    }
+
+    // 创建机会
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + this.CHANCE_EXPIRY_MINUTES);
+
+    chance = this.newUserDrawChanceRepository.create({
+      userId,
+      chanceAmount: this.CHANCE_AMOUNT,
+      bonusAmount: this.BONUS_AMOUNT,
+      expiresAt,
+    });
+    await this.newUserDrawChanceRepository.save(chance);
+
+    return this.formatChanceResponse(chance);
+  }
+
+  /**
+   * 认领新用户机会
+   */
+  async claimNewUserChance(userId: string) {
+    const chance = await this.newUserDrawChanceRepository.findOne({
+      where: { userId },
+    });
+
+    if (!chance || !chance.canClaim()) {
+      throw new BadRequestException('无法认领机会');
+    }
+
+    chance.status = NewUserDrawChanceStatus.CLAIMED;
+    chance.claimedAt = new Date();
+    await this.newUserDrawChanceRepository.save(chance);
+
+    return this.formatChanceResponse(chance);
+  }
+
+  /**
+   * 使用新用户机会参与抽奖（免费，复用purchaseSpots核心逻辑）
+   */
+  async useNewUserChance(userId: string, productId: number) {
+    const chance = await this.newUserDrawChanceRepository.findOne({
+      where: { userId },
+    });
+
+    if (!chance || !chance.canUse()) {
+      throw new BadRequestException('无法使用机会');
+    }
+
+    const drawRound = await this.getOrCreateCurrentRound(productId);
+    if (drawRound.remainingSpots < 1) {
+      throw new BadRequestException('当前期次已满');
+    }
+
+    return await this.dataSource.transaction(async (manager) => {
+      const lockedRound = await manager.findOne(DrawRound, {
+        where: { id: drawRound.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (lockedRound.remainingSpots < 1) {
+        throw new BadRequestException('当前期次已满');
+      }
+
+      const startNumber = lockedRound.soldSpots + 1;
+
+      // 创建参与记录（标记为新用户机会）
+      const participation = manager.create(DrawParticipation, {
+        drawRoundId: lockedRound.id,
+        userId,
+        productId,
+        quantity: 1,
+        startNumber,
+        endNumber: startNumber,
+        totalAmount: chance.chanceAmount,
+        orderNumber: this.generateOrderNumber(),
+        timestampSum: Date.now(),
+        isNewUserChance: true,
+        newUserChanceId: chance.id,
+      });
+      await manager.save(participation);
+
+      lockedRound.soldSpots += 1;
+      if (lockedRound.isFull) {
+        lockedRound.status = DrawRoundStatus.COMPLETED;
+        lockedRound.completedAt = new Date();
+      }
+      await manager.save(lockedRound);
+
+      // 更新机会状态
+      chance.status = NewUserDrawChanceStatus.USED;
+      chance.usedAt = new Date();
+      chance.drawRoundId = lockedRound.id;
+      chance.participationId = participation.id;
+      await manager.save(chance);
+
+      // 触发开奖
+      if (lockedRound.isFull) {
+        this.processDraw(lockedRound.id).catch((e) =>
+          this.logger.error(`开奖失败`, e),
+        );
+      }
+
+      return { participation, drawRound: lockedRound, chance };
+    });
+  }
+
+  private formatChanceResponse(chance: NewUserDrawChance) {
+    const active =
+      ['PENDING', 'CLAIMED'].includes(chance.status) && !chance.isExpired;
+    return {
+      hasChance: active,
+      chance: {
+        id: chance.id,
+        status: chance.status,
+        chanceAmount: chance.chanceAmount.toString(),
+        bonusAmount: chance.bonusAmount.toString(),
+        expiresAt: chance.expiresAt,
+        remainingSeconds: chance.remainingSeconds,
+      },
+    };
   }
 }

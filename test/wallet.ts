@@ -61,9 +61,16 @@ const bindAAWallet = async () => {
   });
   const smartAccountOptions = await universalAccount.getSmartAccountOptions();
 
-  /**  授权交易 */
+  // 授权交易
 
   // const approveData = await fetch('http://localhost:3000/api/v1/dex/approve-transaction?chainIndex=56&tokenContractAddress=0x55d398326f99059ff775485246999027b3197955&approveAmount=1000000').then((res) => res.json());
+  // const approveData = {
+  //   data: '0x095ea7b30000000000000000000000002c34a2fb1d0b4f55de51e1d0bdefaddce6b7cdd600000000000000000000000000000000000000000000000000000000000f4240',
+  //   dexContractAddress: '0x2c34A2Fb1d0b4f55de51E1d0bDEfaDDce6b7cDD6',
+  //   gasLimit: '70000',
+  //   gasPrice: '60192874',
+  // };
+
   // const appoveTransaction = {
   //   from: smartAccountOptions.smartAccountAddress,
   //   data: approveData.data,
@@ -85,9 +92,9 @@ const bindAAWallet = async () => {
   //   wallet.signMessageSync(getBytes(transaction.rootHash)),
   // );
 
-  /** swap 交易 */
+  // console.log(smartAccountOptions.smartAccountAddress);
   const data = await fetch(
-    'http://localhost:3000/api/v1/dex/swap?chainIndex=56&amount=1000000&toTokenAddress=0x2170ed0880ac9a755fd29b2688956bd959f933f8&fromTokenAddress=0x55d398326f99059ff775485246999027b3197955&slippagePercent=0.5&userWalletAddress=' +
+    'http://localhost:3000/api/v1/dex/swap?chainIndex=56&amount=100000000000&toTokenAddress=0x2170ed0880ac9a755fd29b2688956bd959f933f8&fromTokenAddress=0x55d398326f99059ff775485246999027b3197955&slippagePercent=0.5&userWalletAddress=' +
       // smartAccountOptions.smartAccountAddress,
       wallet.address,
   ).then((res) => res.json());
@@ -111,7 +118,13 @@ const bindAAWallet = async () => {
     ],
   });
 
-  console.log(transaction);
+  const sendResult = await universalAccount.sendTransaction(
+    transaction,
+    wallet.signMessageSync(getBytes(transaction.rootHash)),
+  );
+
+  console.log('sendResult', sendResult);
+  console.log('explorer url', `https://universalx.app/activity/details?id=${sendResult.transactionId}`);
 };
 
 async function main() {

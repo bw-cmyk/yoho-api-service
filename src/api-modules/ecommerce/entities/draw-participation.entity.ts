@@ -56,6 +56,12 @@ export class DrawParticipation {
   @Column({ type: 'bigint', name: 'timestamp_sum' })
   timestampSum: number; // 参与时间戳（用于开奖计算）
 
+  @Column({ type: 'boolean', default: false, name: 'is_new_user_chance' })
+  isNewUserChance: boolean; // 是否为新用户机会参与
+
+  @Column({ type: 'int', nullable: true, name: 'new_user_chance_id' })
+  newUserChanceId: number | null; // 新用户机会ID
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

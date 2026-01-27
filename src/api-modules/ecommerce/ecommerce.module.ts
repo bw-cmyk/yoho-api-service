@@ -11,6 +11,7 @@ import {
   DrawRound,
   DrawParticipation,
   DrawResult,
+  NewUserDrawChance,
 } from './entities';
 import { ProductService } from './services/product.service';
 import { OrderService } from './services/order.service';
@@ -36,6 +37,7 @@ import { UserModule } from '../user/user.module';
       DrawRound,
       DrawParticipation,
       DrawResult,
+      NewUserDrawChance,
     ]),
     AssetsModule,
     UserModule,

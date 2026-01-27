@@ -769,10 +769,26 @@ export class AssetService {
 
     await this.dataSource.transaction(async (manager) => {
       // 使用悲观锁获取用户资产，防止并发修改
-      const asset = await manager.findOne(UserAsset, {
+      let asset = await manager.findOne(UserAsset, {
         where: { userId: userId, currency },
         lock: { mode: 'pessimistic_write' },
       });
+
+      // 如果资产不存在，创建新的资产记录
+      if (!asset) {
+        asset = manager.create(UserAsset, {
+          userId: userId,
+          currency,
+          balanceReal: new Decimal(0),
+          balanceBonus: new Decimal(0),
+          balanceLocked: new Decimal(0),
+        });
+      }
+
+      const balanceBefore = asset.balanceBonus;
+      asset.balanceBonus = asset.balanceBonus.plus(amount);
+
+      await manager.save(asset);
 
       const transaction = manager.create(Transaction, {
         transaction_id: Transaction.generateTransactionId(),
@@ -781,7 +797,7 @@ export class AssetService {
         type: TransactionType.BONUS_GRANT,
         status: TransactionStatus.SUCCESS,
         amount,
-        balance_before: asset.balanceBonus,
+        balance_before: balanceBefore,
         balance_after: asset.balanceBonus,
         reference_id: game_id,
         description: description || `奖励发放 ${amount} ${currency}`,
@@ -790,8 +806,11 @@ export class AssetService {
           ...metadata,
         },
         source: TransactionSource.BONUS,
+        processed_at: new Date(),
       });
       await manager.save(transaction);
+
+      this.logger.log(`用户 ${userId} 获得bonus奖励: ${amount} ${currency}`);
 
       return { asset, transaction };
     });

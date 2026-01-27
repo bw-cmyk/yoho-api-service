@@ -7,3 +7,4 @@ export * from './shipping-address.entity';
 export * from './draw-round.entity';
 export * from './draw-participation.entity';
 export * from './draw-result.entity';
+export * from './new-user-draw-chance.entity';

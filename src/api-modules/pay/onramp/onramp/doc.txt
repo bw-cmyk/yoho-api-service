@@ -1,0 +1,10 @@
+Please find the Production credentials below:
+
+Yoho appID- 1769331
+apiKey = TG3zMDg6LLDcOgIUFOV7PU17nPdU5c
+apiSecret = https://eu.onetimesecret.com/secret/4moejkfg226ulg942fw11jzni0biomz
+
+(please note the secret key as it can be viewed only once and the link will expire within 7 days)
+
+
+Tech Docs:- https://docs.onramp.money/onramp

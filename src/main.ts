@@ -9,6 +9,9 @@ import { SentryLogger } from './utils/sentry.logger';
 import * as session from 'express-session';
 import * as createRedisStore from 'connect-redis';
 import redis from './common-modules/redis/redis-client';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as express from 'express';
 // import
 const SWAGGER_ENABLE = process.env.SWAGGER_ENABLE === '1';
 const ENV = process.env.NODE_ENV || 'development';
@@ -37,6 +40,20 @@ async function bootstrap() {
     });
   }
 
+  // 配置前端静态文件服务
+  const browserDistDir = path.resolve('admin-browser/dist');
+  // 静态资源文件（js, css, images 等）
+  app.use('/app', express.static(browserDistDir));
+  // SPA 路由回退 - /app/* 所有非静态文件请求返回 index.html
+  app.use('/app/*', (req, res, next) => {
+    const indexPath = path.join(browserDistDir, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  });
+
   const RedisStore = createRedisStore(session);
   app.use(
     session({
@@ -47,8 +64,8 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.PORT || 3001);
 }
 bootstrap();

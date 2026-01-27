@@ -127,4 +127,33 @@ export class DrawController {
   async convertPhysicalPrizeToCashPrize(@Param('id', ParseIntPipe) id: number) {
     return await this.drawService.convertPhysicalPrizeToCashPrize(id);
   }
+
+  // ==================== 新用户抽奖 ====================
+
+  @Get('new-user/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '获取新用户抽奖机会状态' })
+  async getNewUserChanceStatus(@Request() req: ExpressRequest) {
+    const { id: userId } = req.user as any;
+    return await this.drawService.getNewUserChanceStatus(userId);
+  }
+
+  @Post('new-user/claim')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '认领新用户抽奖机会' })
+  async claimNewUserChance(@Request() req: ExpressRequest) {
+    const { id: userId } = req.user as any;
+    return await this.drawService.claimNewUserChance(userId);
+  }
+
+  @Post('new-user/use')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '使用新用户机会参与抽奖' })
+  async useNewUserChance(
+    @Request() req: ExpressRequest,
+    @Body() dto: PurchaseSpotsDto,
+  ) {
+    const { id: userId } = req.user as any;
+    return await this.drawService.useNewUserChance(userId, dto.productId);
+  }
 }

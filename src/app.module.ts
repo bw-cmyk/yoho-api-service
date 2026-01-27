@@ -18,6 +18,7 @@ import { GameModule } from './websocket-modules/btc-prediction/game.module';
 import { DexModule } from './api-modules/dex/dex.module';
 import { TaskModule } from './api-modules/task/task.module';
 import { EcommerceModule } from './api-modules/ecommerce/ecommerce.module';
+import { AdminModule } from './api-modules/admin/admin.module';
 
 const ENV = process.env.NODE_ENV || 'development';
 const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
@@ -50,6 +51,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     DexModule,
     TaskModule,
     EcommerceModule,
+    AdminModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),
     ...(process.env.IS_GAME_MODULE !== 'false' ? [GameModule] : []),
   ],

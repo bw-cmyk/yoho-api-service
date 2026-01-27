@@ -65,6 +65,13 @@ export enum LogisticsNodeKey {
   DELIVERY_STOPPED = 'DELIVERY_STOPPED',
 }
 
+export enum NewUserDrawChanceStatus {
+  PENDING = 'PENDING', // 待认领
+  CLAIMED = 'CLAIMED', // 已认领
+  USED = 'USED', // 已使用
+  EXPIRED = 'EXPIRED', // 已过期
+}
+
 // Optional GraphQL enum exposure (won't affect REST usage)
 // try {
 //   registerEnumType(ProductType, { name: 'ProductType' });
