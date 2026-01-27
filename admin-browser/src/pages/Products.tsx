@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Edit, Play, Pause, Archive, Plus, Search, Trash2, RefreshCw, Upload, X, Settings } from 'lucide-react'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
-import { productApi, uploadApi, specificationApi, type Product, type ProductType, type ProductStatus, type Specification } from '../services/api'
+import { productApi, uploadApi, specificationApi, type Product, type ProductType, type ProductStatus } from '../services/api'
 
 const TABS: { value: ProductType; label: string }[] = [
   { value: 'LUCKY_DRAW', label: '一元购' },
@@ -115,7 +115,7 @@ export default function Products() {
       label: '售价',
       render: (v: unknown, row: Product) => (
         <div>
-          <span className="font-medium text-emerald-600">${v}</span>
+          <span className="font-medium text-emerald-600">${String(v)}</span>
           {row.originalPrice !== row.salePrice && (
             <span className="text-gray-400 line-through ml-2 text-xs">${row.originalPrice}</span>
           )}
@@ -130,7 +130,7 @@ export default function Products() {
         const opt = STATUS_OPTIONS.find((o) => o.value === v)
         return (
           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${opt?.color || 'bg-gray-100 text-gray-600'}`}>
-            {opt?.label || v}
+            {opt?.label || String(v)}
           </span>
         )
       },

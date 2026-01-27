@@ -43,9 +43,9 @@ async function bootstrap() {
   // 配置前端静态文件服务
   const browserDistDir = path.resolve('admin-browser/dist');
   // 静态资源文件（js, css, images 等）
-  app.use('/app', express.static(browserDistDir));
-  // SPA 路由回退 - /app/* 所有非静态文件请求返回 index.html
-  app.use('/app/*', (req, res, next) => {
+  app.use('/admin', express.static(browserDistDir));
+  // SPA 路由回退 - /admin/* 所有非静态文件请求返回 index.html
+  app.use('/admin/{*path}', (req, res, next) => {
     const indexPath = path.join(browserDistDir, 'index.html');
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);

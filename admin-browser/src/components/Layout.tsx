@@ -3,7 +3,6 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
-  ShoppingCart,
   Package,
   Settings,
   ChevronLeft,
