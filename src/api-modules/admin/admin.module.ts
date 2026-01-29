@@ -10,8 +10,12 @@ import { DrawResult } from '../ecommerce/entities/draw-result.entity';
 import { UserAsset } from '../assets/entities/balance/user-asset.entity';
 import { Transaction } from '../assets/entities/balance/transaction.entity';
 import { UserChainAsset } from '../assets/entities/onchain/user-chain-asset.entity';
+import { Order } from '../assets/entities/balance/order.entity';
 import { Showcase } from '../ecommerce/entities/showcase.entity';
+import { ShowcaseComment } from '../ecommerce/entities/showcase-comment.entity';
+import { ShowcaseShare } from '../ecommerce/entities/showcase-share.entity';
 import { EcommerceModule } from '../ecommerce/ecommerce.module';
+import { AssetsModule } from '../assets/assets.module';
 import { AdminUserController } from './controllers/admin-user.controller';
 import { AdminProductController } from './controllers/admin-product.controller';
 import { AdminAuthController } from './controllers/admin-auth.controller';
@@ -19,6 +23,7 @@ import { AdminUploadController } from './controllers/admin-upload.controller';
 import { AdminSpecificationController } from './controllers/admin-specification.controller';
 import { AdminDrawController } from './controllers/admin-draw.controller';
 import { AdminShowcaseController } from './controllers/admin-showcase.controller';
+import { AdminWithdrawController } from './controllers/admin-withdraw.controller';
 import { AdminUserService } from './services/admin-user.service';
 import { AdminProductService } from './services/admin-product.service';
 import { AdminAuthService } from './services/admin-auth.service';
@@ -27,6 +32,7 @@ import { AdminSpecificationService } from './services/admin-specification.servic
 import { AdminDrawService } from './services/admin-draw.service';
 import { AdminAssetService } from './services/admin-asset.service';
 import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
+import { AdminJwtGuard } from './guards/admin-jwt.guard';
 
 @Module({
   imports: [
@@ -39,7 +45,10 @@ import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
       UserAsset,
       Transaction,
       UserChainAsset,
+      Order,
       Showcase,
+      ShowcaseComment,
+      ShowcaseShare,
     ]),
     PassportModule.register({ defaultStrategy: 'admin-google' }),
     JwtModule.register({
@@ -47,6 +56,7 @@ import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
       signOptions: { expiresIn: '24h' },
     }),
     EcommerceModule,
+    AssetsModule,
   ],
   controllers: [
     AdminUserController,
@@ -56,6 +66,7 @@ import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
     AdminSpecificationController,
     AdminDrawController,
     AdminShowcaseController,
+    AdminWithdrawController,
   ],
   providers: [
     AdminUserService,
@@ -66,6 +77,7 @@ import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
     AdminDrawService,
     AdminAssetService,
     AdminGoogleStrategy,
+    AdminJwtGuard,
   ],
   exports: [AdminUserService, AdminProductService, AdminAuthService],
 })

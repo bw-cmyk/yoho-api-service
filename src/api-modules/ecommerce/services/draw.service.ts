@@ -837,7 +837,7 @@ export class DrawService {
     let chance = await this.newUserDrawChanceRepository.findOne({
       where: { userId },
     });
-
+    console.log(chance)
     if (chance) {
       // 检查过期
       if (
@@ -851,13 +851,13 @@ export class DrawService {
       return this.formatChanceResponse(chance);
     }
 
-    // 检查是否新用户（无参与记录）
-    const count = await this.participationRepository.count({
-      where: { userId },
-    });
-    if (count > 0) {
-      return { hasChance: false, chance: null };
-    }
+    // // 检查是否新用户（无参与记录）
+    // const count = await this.participationRepository.count({
+    //   where: { userId },
+    // });
+    // if (count > 0) {
+    //   return { hasChance: false, chance: null };
+    // }
 
     // 创建机会
     const expiresAt = new Date();
@@ -1002,5 +1002,120 @@ export class DrawService {
         remainingSeconds: chance.remainingSeconds,
       },
     };
+  }
+
+  /**
+   * 获取用户的中奖历史列表（用于创建晒单）
+   */
+  async getMyWinningHistory(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    items: Array<{
+      drawResultId: number;
+      drawRoundId: number;
+      productId: number;
+      productName: string;
+      productImage: string;
+      winningNumber: number;
+      prizeType: PrizeType;
+      prizeValue: Decimal;
+      prizeStatus: PrizeStatus;
+      wonAt: Date;
+      hasShowcase: boolean;
+      shippingAddress?: any;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    // 查找用户的所有中奖记录
+    const [drawResults, total] = await this.drawResultRepository.findAndCount({
+      where: { winnerUserId: userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    if (drawResults.length === 0) {
+      return { items: [], total: 0, page, limit };
+    }
+
+    // 获取关联的 DrawRound 信息
+    const drawRoundIds = drawResults.map((result) => result.drawRoundId);
+    const drawRounds = await this.drawRoundRepository.find({
+      where: { id: In(drawRoundIds) },
+      relations: ['product'],
+    });
+
+    const drawRoundMap = new Map(drawRounds.map((round) => [round.id, round]));
+
+    // 检查哪些中奖记录已经有晒单
+    const { Showcase } = await import('../entities/showcase.entity');
+    const showcases = await this.dataSource.getRepository(Showcase).find({
+      where: {
+        drawResultId: In(drawResults.map((r) => r.id)),
+      },
+      select: ['drawResultId'],
+    });
+
+    const showcaseMap = new Set(
+      showcases.map((s) => s.drawResultId).filter(Boolean),
+    );
+
+    // 组装返回数据
+    const items = drawResults.map((result) => {
+      const drawRound = drawRoundMap.get(result.drawRoundId);
+      const product = drawRound?.product;
+
+      return {
+        drawResultId: result.id,
+        drawRoundId: result.drawRoundId,
+        productId: drawRound?.productId,
+        productName: product?.name || '',
+        productImage: product?.thumbnail || product?.images?.[0] || '',
+        winningNumber: result.winningNumber,
+        prizeType: result.prizeType,
+        prizeValue: result.prizeValue,
+        prizeStatus: result.prizeStatus,
+        wonAt: result.createdAt,
+        hasShowcase: showcaseMap.has(result.id),
+        shippingAddress:
+          result.prizeType === PrizeType.PHYSICAL
+            ? this.getShippingAddressForPrize(result)
+            : undefined,
+      };
+    });
+
+    return { items, total, page, limit };
+  }
+
+  /**
+   * 获取中奖记录详情用于晒单创建
+   */
+  async getDrawResultForShowcase(
+    drawResultId: number,
+    userId: string,
+  ): Promise<DrawResult | null> {
+    const result = await this.drawResultRepository.findOne({
+      where: { id: drawResultId, winnerUserId: userId },
+    });
+
+    if (!result) {
+      return null;
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取实物奖品的发货地址（私有方法）
+   */
+  private getShippingAddressForPrize(drawResult: DrawResult): any {
+    // 这里应该从用户地址表或其他地方获取实际地址
+    // 暂时返回 null，实际实现需要关联地址系统
+    // TODO: 实现地址获取逻辑
+    return null;
   }
 }

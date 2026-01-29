@@ -25,7 +25,14 @@ import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 import { ShowcaseService } from '../services/showcase.service';
 import { UploadService } from '../services/upload.service';
+import { ShowcaseCommentService } from '../services/showcase-comment.service';
+import { ShowcaseShareService } from '../services/showcase-share.service';
 import { CreateShowcaseDto, ShowcaseQueryDto } from '../dto/showcase.dto';
+import {
+  CreateCommentDto,
+  CommentQueryDto,
+} from '../dto/showcase-comment.dto';
+import { CreateShareDto } from '../dto/showcase-share.dto';
 
 @ApiTags('晒单')
 @ApiBearerAuth()
@@ -34,6 +41,8 @@ export class ShowcaseController {
   constructor(
     private readonly showcaseService: ShowcaseService,
     private readonly uploadService: UploadService,
+    private readonly commentService: ShowcaseCommentService,
+    private readonly shareService: ShowcaseShareService,
   ) {}
 
   @Post('upload')
@@ -176,5 +185,103 @@ export class ShowcaseController {
     const { id: userId } = req.user as any;
     await this.showcaseService.remove(id, userId);
     return { success: true };
+  }
+
+  // ==================== 评论相关 ====================
+
+  @Post(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '创建评论' })
+  async createComment(
+    @Param('id', ParseIntPipe) showcaseId: number,
+    @Body() dto: CreateCommentDto,
+    @Request() req: ExpressRequest,
+  ) {
+    const { id: userId } = req.user as any;
+    return await this.commentService.create(showcaseId, userId, dto);
+  }
+
+  @Get(':id/comments')
+  @ApiOperation({ summary: '获取晒单的评论列表' })
+  async getComments(
+    @Param('id', ParseIntPipe) showcaseId: number,
+    @Query() query: CommentQueryDto,
+  ) {
+    return await this.commentService.findByShowcase(showcaseId, query);
+  }
+
+  @Get('comments/:id/replies')
+  @ApiOperation({ summary: '获取评论的回复列表' })
+  async getCommentReplies(
+    @Param('id', ParseIntPipe) commentId: number,
+    @Query() query: CommentQueryDto,
+  ) {
+    return await this.commentService.findReplies(commentId, query);
+  }
+
+  @Delete('comments/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '删除自己的评论' })
+  async deleteComment(
+    @Param('id', ParseIntPipe) commentId: number,
+    @Request() req: ExpressRequest,
+  ) {
+    const { id: userId } = req.user as any;
+    await this.commentService.delete(commentId, userId);
+    return { success: true };
+  }
+
+  // ==================== 分享相关 ====================
+
+  @Post(':id/share')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '记录分享' })
+  async recordShare(
+    @Param('id', ParseIntPipe) showcaseId: number,
+    @Body() dto: CreateShareDto,
+    @Request() req: ExpressRequest,
+  ) {
+    const { id: userId } = req.user as any;
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = req.ip || req.connection.remoteAddress;
+
+    return await this.shareService.recordShare(showcaseId, userId, dto, {
+      userAgent,
+      ipAddress,
+    });
+  }
+
+  @Get(':id/share-data')
+  @ApiOperation({ summary: '获取分享数据' })
+  async getShareData(@Param('id', ParseIntPipe) showcaseId: number) {
+    return await this.shareService.generateShareData(showcaseId);
+  }
+
+  // ==================== 中奖晒单 ====================
+
+  @Post('winner')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '创建中奖晒单' })
+  async createWinnerShowcase(
+    @Body() dto: CreateShowcaseDto & { drawResultId: number },
+    @Request() req: ExpressRequest,
+  ) {
+    const { id: userId } = req.user as any;
+    const { drawResultId, ...showcaseDto } = dto;
+    return await this.showcaseService.createFromDrawResult(
+      userId,
+      drawResultId,
+      showcaseDto,
+    );
+  }
+
+  @Get('winners')
+  @ApiOperation({ summary: '获取中奖晒单列表' })
+  async getWinnerShowcases(
+    @Query() query: ShowcaseQueryDto,
+    @Request() req: ExpressRequest,
+  ) {
+    const currentUserId = req.user ? (req.user as any).id : undefined;
+    return await this.showcaseService.findWinnerShowcases(query, currentUserId);
   }
 }

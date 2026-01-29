@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Showcase, ShowcaseStatus } from '../entities/showcase.entity';
 import { ShowcaseLike } from '../entities/showcase-like.entity';
+import { DrawResult, PrizeType } from '../entities/draw-result.entity';
 import { CreateShowcaseDto, ShowcaseQueryDto } from '../dto/showcase.dto';
 import { UserService } from '../../user/service/user.service';
 
@@ -18,6 +19,8 @@ export class ShowcaseService {
     private readonly showcaseRepo: Repository<Showcase>,
     @InjectRepository(ShowcaseLike)
     private readonly likeRepo: Repository<ShowcaseLike>,
+    @InjectRepository(DrawResult)
+    private readonly drawResultRepo: Repository<DrawResult>,
     private readonly userService: UserService,
     private readonly dataSource: DataSource,
   ) {}
@@ -99,8 +102,12 @@ export class ShowcaseService {
       prizeInfo: item.prizeInfo,
       likeCount: item.likeCount,
       viewCount: item.viewCount,
+      commentCount: item.commentCount,
+      shareCount: item.shareCount,
       isLiked: likedMap.get(item.id) || false,
       isPinned: item.isPinned,
+      isWinnerShowcase: item.isWinnerShowcase,
+      isVerified: item.isVerified,
       createdAt: item.createdAt,
     }));
 
@@ -141,6 +148,14 @@ export class ShowcaseService {
       ...showcase,
       isLiked,
       viewCount: showcase.viewCount + 1,
+      commentCount: showcase.commentCount,
+      shareCount: showcase.shareCount,
+      isWinnerShowcase: showcase.isWinnerShowcase,
+      isVerified: showcase.isVerified,
+      verificationNote: showcase.verificationNote,
+      winningNumber: showcase.winningNumber,
+      prizeType: showcase.prizeType,
+      prizeValue: showcase.prizeValue,
     };
   }
 
@@ -234,5 +249,185 @@ export class ShowcaseService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  /**
+   * 从中奖记录创建晒单
+   */
+  async createFromDrawResult(
+    userId: string,
+    drawResultId: number,
+    dto: CreateShowcaseDto,
+  ): Promise<Showcase> {
+    if (!dto.media || dto.media.length === 0) {
+      throw new BadRequestException('请至少上传一个图片或视频');
+    }
+
+    // 验证用户是否是中奖者
+    const canCreate = await this.canCreateWinnerShowcase(userId, drawResultId);
+    if (!canCreate) {
+      throw new ForbiddenException('您不是该抽奖的中奖者');
+    }
+
+    // 获取中奖记录
+    const drawResult = await this.drawResultRepo.findOne({
+      where: { id: drawResultId },
+    });
+
+    if (!drawResult) {
+      throw new NotFoundException('中奖记录不存在');
+    }
+
+    // 检查是否已创建晒单
+    const existingShowcase = await this.showcaseRepo.findOne({
+      where: { drawResultId, userId },
+    });
+    if (existingShowcase) {
+      throw new BadRequestException('您已为该中奖记录创建过晒单');
+    }
+
+    // 获取用户信息
+    const user = await this.userService.getUser(userId);
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    // 获取发货地址快照（如果是实物奖品）
+    let shippingAddressSnapshot = null;
+    if (drawResult.prizeType === PrizeType.PHYSICAL) {
+      // TODO: 从 ShippingAddressService 获取用户默认地址
+      // 暂时留空，后续实现
+    }
+
+    const showcase = this.showcaseRepo.create({
+      userId,
+      userName: user.nickname || user.botimName || user.username,
+      userAvatar: user.botimAvatar,
+      content: dto.content,
+      media: dto.media,
+      productId: dto.productId, // 使用 DTO 中的 productId
+      drawRoundId: drawResult.drawRoundId,
+      prizeInfo: dto.prizeInfo || `${drawResult.prizeType} - ${drawResult.prizeValue}`,
+      drawResultId,
+      isWinnerShowcase: true,
+      winningNumber: drawResult.winningNumber,
+      prizeType: drawResult.prizeType,
+      prizeValue: drawResult.prizeValue.toString(),
+      shippingAddressSnapshot,
+      status: ShowcaseStatus.APPROVED, // 中奖晒单默认直接通过
+    });
+
+    return await this.showcaseRepo.save(showcase);
+  }
+
+  /**
+   * 验证用户是否是中奖者
+   */
+  async canCreateWinnerShowcase(
+    userId: string,
+    drawResultId: number,
+  ): Promise<boolean> {
+    const drawResult = await this.drawResultRepo.findOne({
+      where: { id: drawResultId },
+    });
+
+    if (!drawResult) {
+      return false;
+    }
+
+    return drawResult.winnerUserId === userId;
+  }
+
+  /**
+   * 获取中奖晒单列表
+   */
+  async findWinnerShowcases(
+    query: ShowcaseQueryDto,
+    currentUserId?: string,
+  ): Promise<{
+    items: any[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const { page = 1, limit = 20 } = query;
+
+    const [items, total] = await this.showcaseRepo.findAndCount({
+      where: {
+        status: ShowcaseStatus.APPROVED,
+        isWinnerShowcase: true,
+      },
+      order: { isPinned: 'DESC', priority: 'DESC', createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    // 如果有当前用户，查询是否已点赞
+    let likedMap = new Map<number, boolean>();
+    if (currentUserId && items.length > 0) {
+      const showcaseIds = items.map((item) => item.id);
+      const likes = await this.likeRepo.find({
+        where: showcaseIds.map((id) => ({ showcaseId: id, userId: currentUserId })),
+      });
+      likedMap = new Map(likes.map((like) => [like.showcaseId, true]));
+    }
+
+    const formattedItems = items.map((item) => ({
+      id: item.id,
+      userId: item.userId,
+      userName: item.userName,
+      userAvatar: item.userAvatar,
+      content: item.content,
+      media: item.media,
+      productId: item.productId,
+      prizeInfo: item.prizeInfo,
+      likeCount: item.likeCount,
+      viewCount: item.viewCount,
+      commentCount: item.commentCount,
+      shareCount: item.shareCount,
+      isLiked: likedMap.get(item.id) || false,
+      isPinned: item.isPinned,
+      isWinnerShowcase: item.isWinnerShowcase,
+      isVerified: item.isVerified,
+      winningNumber: item.winningNumber,
+      prizeType: item.prizeType,
+      prizeValue: item.prizeValue,
+      createdAt: item.createdAt,
+    }));
+
+    return {
+      items: formattedItems,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Admin: 设置/取消验证标识
+   */
+  async toggleVerified(
+    showcaseId: number,
+    verificationNote?: string,
+  ): Promise<Showcase> {
+    const showcase = await this.showcaseRepo.findOne({
+      where: { id: showcaseId },
+    });
+
+    if (!showcase) {
+      throw new NotFoundException('晒单不存在');
+    }
+
+    const isVerified = !showcase.isVerified;
+
+    await this.showcaseRepo.update(showcaseId, {
+      isVerified,
+      verifiedAt: isVerified ? new Date() : null,
+      verificationNote: isVerified ? verificationNote || '官方认证' : null,
+    });
+
+    return await this.showcaseRepo.findOne({ where: { id: showcaseId } });
   }
 }

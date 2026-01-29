@@ -372,6 +372,7 @@ export class AssetService {
 
   /**
    * 游戏中奖
+   * 注意：此方法包含幂等性检查，同一 game_id + userId 只会处理一次
    */
   async win(
     request: WinRequest,
@@ -384,6 +385,29 @@ export class AssetService {
     }
 
     return await this.dataSource.transaction(async (manager) => {
+      // 幂等性检查：检查是否已存在相同 game_id 的中奖交易记录
+      const existingTransaction = await manager.findOne(Transaction, {
+        where: {
+          reference_id: game_id,
+          userId: userId,
+          type: request.type || TransactionType.GAME_WIN,
+        },
+      });
+
+      if (existingTransaction) {
+        this.logger.warn(
+          `Win transaction for game_id ${game_id} user ${userId} already exists, returning existing record`,
+        );
+        // 返回已存在的交易记录，确保幂等性
+        const existingAsset = await manager.findOne(UserAsset, {
+          where: { userId: userId, currency },
+        });
+        return {
+          asset: existingAsset,
+          transaction: existingTransaction,
+        };
+      }
+
       // 使用悲观锁获取用户资产，防止并发修改
       const asset = await manager.findOne(UserAsset, {
         where: { userId: userId, currency },
@@ -491,6 +515,8 @@ export class AssetService {
       }
 
       const balanceBefore = asset.balanceReal;
+      // Fix: Actually deduct the balance
+      asset.balanceReal = asset.balanceReal.minus(amount);
 
       try {
         await manager.save(asset);
@@ -498,16 +524,16 @@ export class AssetService {
         // 处理乐观锁冲突
         if (error.code === '23505' || error.message.includes('version')) {
           this.logger.warn(
-            `Optimistic lock conflict for bet user ${userId} currency ${currency}`,
+            `Optimistic lock conflict for order payment user ${userId} currency ${currency}`,
           );
           throw new BadRequestException(
-            'Concurrent update detected during bet, please retry',
+            'Concurrent update detected during order payment, please retry',
           );
         }
         throw error;
       }
 
-      // 创建下注交易记录
+      // 创建订单支付交易记录
       const transaction = manager.create(Transaction, {
         transaction_id: Transaction.generateTransactionId(),
         userId,
@@ -519,7 +545,7 @@ export class AssetService {
         balance_before: balanceBefore,
         balance_after: asset.balanceReal,
         reference_id: game_id,
-        description: description || `游戏下注 ${amount} ${currency}`,
+        description: description || `订单支付 ${amount} ${currency}`,
         metadata: {
           ...metadata,
           game_id,
@@ -529,7 +555,7 @@ export class AssetService {
 
       await manager.save(transaction);
 
-      this.logger.log(`用户 ${userId} 下注成功: ${amount} ${currency}`);
+      this.logger.log(`用户 ${userId} 订单支付成功: ${amount} ${currency}`);
 
       return { asset, transaction };
     });
@@ -537,6 +563,8 @@ export class AssetService {
 
   /**
    * 提现
+   * Note: This method deducts from balanceLocked (funds locked via lockBalance).
+   * The withdraw flow: lockBalance() -> admin approves -> withdraw()
    */
   async withdraw(
     request: WithdrawRequest,
@@ -563,11 +591,12 @@ export class AssetService {
 
       if (!asset.balanceLocked.gte(amount)) {
         throw new BadRequestException(
-          `Withdrawable balance is not enough, need ${amount} ${currency}, withdrawable balance ${asset.balanceLocked} ${currency}`,
+          `Withdrawable balance is not enough, need ${amount} ${currency}, locked balance ${asset.balanceLocked} ${currency}`,
         );
       }
 
-      const balanceBefore = asset.balanceReal;
+      // Record balance before deduction (using balanceLocked since that's what we're modifying)
+      const balanceBefore = asset.balanceLocked;
       asset.balanceLocked = asset.balanceLocked.minus(amount);
 
       try {
@@ -585,17 +614,17 @@ export class AssetService {
         throw error;
       }
 
-      // 创建提现交易记录
+      // 创建提现交易记录 (records balanceLocked changes)
       const transaction = manager.create(Transaction, {
         transaction_id: Transaction.generateTransactionId(),
         userId: userId,
         currency,
         type: TransactionType.WITHDRAW,
-        source: TransactionSource.REAL,
+        source: TransactionSource.LOCKED,
         status: TransactionStatus.SUCCESS,
         amount,
         balance_before: balanceBefore,
-        balance_after: asset.balanceReal,
+        balance_after: asset.balanceLocked,
         reference_id,
         description: description || `提现 ${amount} ${currency}`,
         metadata,

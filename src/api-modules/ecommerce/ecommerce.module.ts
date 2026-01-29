@@ -15,6 +15,8 @@ import {
   Showcase,
   ShowcaseLike,
 } from './entities';
+import { ShowcaseComment } from './entities/showcase-comment.entity';
+import { ShowcaseShare } from './entities/showcase-share.entity';
 import { ProductService } from './services/product.service';
 import { OrderService } from './services/order.service';
 import { ShippingAddressService } from './services/shipping-address.service';
@@ -22,6 +24,8 @@ import { LogisticsService } from './services/logistics.service';
 import { DrawService } from './services/draw.service';
 import { BlockchainService } from './services/blockchain.service';
 import { ShowcaseService } from './services/showcase.service';
+import { ShowcaseCommentService } from './services/showcase-comment.service';
+import { ShowcaseShareService } from './services/showcase-share.service';
 import { UploadService } from './services/upload.service';
 import { ProductController } from './controllers/product.controller';
 import { OrderController } from './controllers/order.controller';
@@ -45,6 +49,8 @@ import { UserModule } from '../user/user.module';
       NewUserDrawChance,
       Showcase,
       ShowcaseLike,
+      ShowcaseComment,
+      ShowcaseShare,
     ]),
     AssetsModule,
     UserModule,
@@ -57,6 +63,8 @@ import { UserModule } from '../user/user.module';
     DrawService,
     BlockchainService,
     ShowcaseService,
+    ShowcaseCommentService,
+    ShowcaseShareService,
     UploadService,
   ],
   controllers: [
@@ -74,6 +82,8 @@ import { UserModule } from '../user/user.module';
     DrawService,
     BlockchainService,
     ShowcaseService,
+    ShowcaseCommentService,
+    ShowcaseShareService,
     UploadService,
   ],
 })

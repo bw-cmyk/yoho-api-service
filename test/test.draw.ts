@@ -1,6 +1,6 @@
 import * as jwt from 'jsonwebtoken';
 
-const endpoint = 'http://localhost:3000';
+const endpoint = 'http://localhost:3001';
 
 // 生成 JWT Token（请根据实际情况修改用户ID和密钥）
 const userId = '373358274021780480'; // 替换为实际的用户ID
@@ -246,6 +246,108 @@ async function processDraw(drawRoundId: number) {
 }
 
 /**
+ * 获取新用户抽奖机会状态
+ */
+async function getNewUserStatus() {
+  console.log('--- 获取新用户抽奖机会状态 ---\n');
+
+  try {
+    const response = await fetch(
+      `${endpoint}/api/v1/ecommerce/draws/new-user/status`,
+      {
+        method: 'GET',
+        headers: authHeader,
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('获取新用户状态失败:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('新用户状态:', JSON.stringify(data, null, 2));
+    console.log('\n');
+
+    return data;
+  } catch (error) {
+    console.error('获取新用户状态失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 领取新用户抽奖机会
+ */
+async function claimNewUserChance() {
+  console.log('--- 领取新用户抽奖机会 ---\n');
+
+  try {
+    const response = await fetch(
+      `${endpoint}/api/v1/ecommerce/draws/new-user/claim`,
+      {
+        method: 'POST',
+        headers: authHeader,
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('领取机会失败:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('领取成功:', JSON.stringify(data, null, 2));
+    console.log('\n');
+
+    return data;
+  } catch (error) {
+    console.error('领取机会失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 使用新用户机会参与抽奖
+ */
+async function useNewUserChance(productId?: number) {
+  console.log('--- 使用新用户机会参与抽奖 ---\n');
+
+  try {
+    const requestData = productId ? { productId } : {};
+
+    console.log('请求数据:', JSON.stringify(requestData, null, 2));
+    console.log('\n');
+
+    const response = await fetch(
+      `${endpoint}/api/v1/ecommerce/draws/new-user/use`,
+      {
+        method: 'POST',
+        headers: authHeader,
+        body: JSON.stringify(requestData),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('使用机会失败:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('使用机会成功:', JSON.stringify(data, null, 2));
+    console.log('\n');
+
+    return data;
+  } catch (error) {
+    console.error('使用机会失败:', error);
+    return null;
+  }
+}
+
+/**
  * 测试完整流程
  */
 async function testFullFlow() {
@@ -402,6 +504,99 @@ async function testDrawProcess(productId: number) {
 }
 
 /**
+ * 测试新用户抽奖完整流程
+ */
+async function testNewUserFlow() {
+  console.log('=== 测试新用户抽奖完整流程 ===\n');
+
+  try {
+    // 1. 获取新用户抽奖机会状态
+    const statusData = await getNewUserStatus();
+    if (!statusData) {
+      console.error('获取新用户状态失败');
+      return;
+    }
+
+    console.log('新用户机会状态:', {
+      hasChance: statusData.hasChance,
+      status: statusData.chance?.status,
+      chanceAmount: statusData.chance?.chanceAmount,
+      bonusAmount: statusData.chance?.bonusAmount,
+      remainingSeconds: statusData.chance?.remainingSeconds,
+    });
+    console.log('\n');
+
+    // // 2. 如果有机会且状态为 PENDING，则领取机会
+    // if (statusData.hasChance && statusData.chance?.status === 'PENDING') {
+    //   const claimData = await claimNewUserChance();
+    //   if (!claimData) {
+    //     console.error('领取机会失败');
+    //     return;
+    //   }
+
+    //   console.log('领取成功，机会状态:', {
+    //     status: claimData.status,
+    //     expiresAt: claimData.expiresAt,
+    //     remainingSeconds: claimData.remainingSeconds,
+    //   });
+    //   console.log('\n');
+    // }
+
+    // // 3. 获取抽奖商品
+    // const productId = await getDrawProducts();
+    // if (!productId) {
+    //   console.error('没有找到可用的抽奖商品');
+    //   return;
+    // }
+
+    // // 4. 使用新用户机会参与抽奖
+    // console.log(`使用新用户机会参与抽奖，商品ID: ${productId}\n`);
+    // const useData = await useNewUserChance(productId);
+    // if (!useData) {
+    //   console.error('使用机会失败');
+    //   return;
+    // }
+
+    // console.log('参与抽奖成功:', {
+    //   participationId: useData.participation.id,
+    //   drawRoundId: useData.participation.drawRoundId,
+    //   startNumber: useData.participation.startNumber,
+    //   endNumber: useData.participation.endNumber,
+    //   totalAmount: useData.participation.totalAmount,
+    //   isNewUserChance: useData.participation.isNewUserChance,
+    // });
+    // console.log('\n');
+
+    // console.log('抽奖轮次信息:', {
+    //   roundId: useData.round.id,
+    //   roundNumber: useData.round.roundNumber,
+    //   soldSpots: useData.round.soldSpots,
+    //   totalSpots: useData.round.totalSpots,
+    //   prizeValue: useData.round.prizeValue,
+    //   status: useData.round.status,
+    // });
+    // console.log('\n');
+
+    // // 5. 再次获取新用户状态，确认机会已被使用
+    // const finalStatus = await getNewUserStatus();
+    // if (finalStatus) {
+    //   console.log('使用后的状态:', {
+    //     hasChance: finalStatus.hasChance,
+    //     status: finalStatus.chance?.status,
+    //   });
+    //   console.log('\n');
+    // }
+
+    // // 6. 获取我的参与记录，确认新用户抽奖记录
+    // await getMyParticipations(productId);
+
+    console.log('=== 新用户抽奖完整流程测试完成 ===\n');
+  } catch (error) {
+    console.error('新用户抽奖流程测试失败:', error);
+  }
+}
+
+/**
  * 主测试函数
  */
 async function run() {
@@ -409,7 +604,7 @@ async function run() {
     // 测试选项（取消注释以运行相应的测试）
 
     // 1. 完整流程测试
-    await testFullFlow();
+    // await testFullFlow();
 
     // 2. 获取商品并测试批量购买（取消注释以启用）
     // const productId = await getDrawProducts();
@@ -422,6 +617,9 @@ async function run() {
     // if (productId) {
     //   await testDrawProcess(productId);
     // }
+
+    // 4. 测试新用户抽奖完整流程
+    await testNewUserFlow();
 
     console.log('=== 所有测试完成 ===');
   } catch (error) {

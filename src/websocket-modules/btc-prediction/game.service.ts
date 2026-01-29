@@ -127,6 +127,20 @@ export class GameService {
       return { success: false, message: 'Betting phase is not active' };
     }
 
+    // 安全检查：金额必须为正数
+    if (
+      betRequest.amount === undefined ||
+      betRequest.amount === null ||
+      isNaN(betRequest.amount) ||
+      !isFinite(betRequest.amount) ||
+      betRequest.amount <= 0
+    ) {
+      return {
+        success: false,
+        message: 'Invalid bet amount: must be a positive number',
+      };
+    }
+
     if (betRequest.amount < this.config.minBetAmount) {
       return {
         success: false,

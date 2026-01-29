@@ -17,6 +17,7 @@ import {
   PurchaseSpotsDto,
   QueryDrawRoundsDto,
   QueryParticipationsDto,
+  MyWinningHistoryQueryDto,
 } from '../dto/draw.dto';
 
 @ApiTags('一元购抽奖')
@@ -155,5 +156,40 @@ export class DrawController {
   ) {
     const { id: userId } = req.user as any;
     return await this.drawService.useNewUserChance(userId, dto.productId);
+  }
+
+  // ==================== 中奖历史（用于晒单） ====================
+
+  @Get('my-wins')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '获取我的中奖历史列表（用于创建晒单）' })
+  async getMyWinningHistory(
+    @Request() req: ExpressRequest,
+    @Query() query: MyWinningHistoryQueryDto,
+  ) {
+    const { id: userId } = req.user as any;
+    return await this.drawService.getMyWinningHistory(
+      userId,
+      query.page || 1,
+      query.limit || 20,
+    );
+  }
+
+  @Get('my-wins/:drawResultId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '获取中奖详情（用于创建晒单）' })
+  async getDrawResultForShowcase(
+    @Request() req: ExpressRequest,
+    @Param('drawResultId', ParseIntPipe) drawResultId: number,
+  ) {
+    const { id: userId } = req.user as any;
+    const result = await this.drawService.getDrawResultForShowcase(
+      drawResultId,
+      userId,
+    );
+    if (!result) {
+      throw new Error('中奖记录不存在或不属于当前用户');
+    }
+    return result;
   }
 }

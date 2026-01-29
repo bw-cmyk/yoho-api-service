@@ -81,3 +81,9 @@ export class ShowcaseQueryDto {
   @IsString()
   userId?: string;
 }
+
+export class CreateWinnerShowcaseDto extends CreateShowcaseDto {
+  @ApiProperty({ description: '中奖记录ID' })
+  @IsNumber()
+  drawResultId: number;
+}
