@@ -31,7 +31,9 @@ export class UploadService {
     // 验证文件类型
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('不支持的图片格式，请上传 JPG/PNG/GIF/WEBP 格式');
+      throw new BadRequestException(
+        '不支持的图片格式，请上传 JPG/PNG/GIF/WEBP 格式',
+      );
     }
 
     // 验证文件大小 (最大 10MB)
@@ -88,13 +90,22 @@ export class UploadService {
    */
   async uploadVideo(file: UploadedFile): Promise<UploadResult> {
     if (!this.accountId || !this.streamApiToken) {
-      throw new BadRequestException('Cloudflare Stream credentials not configured');
+      throw new BadRequestException(
+        'Cloudflare Stream credentials not configured',
+      );
     }
 
     // 验证文件类型
-    const allowedTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'];
+    const allowedTypes = [
+      'video/mp4',
+      'video/quicktime',
+      'video/webm',
+      'video/x-msvideo',
+    ];
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('不支持的视频格式，请上传 MP4/MOV/WEBM/AVI 格式');
+      throw new BadRequestException(
+        '不支持的视频格式，请上传 MP4/MOV/WEBM/AVI 格式',
+      );
     }
 
     // 验证文件大小 (最大 200MB)
@@ -151,7 +162,9 @@ export class UploadService {
   /**
    * 根据文件类型自动选择上传方式
    */
-  async upload(file: UploadedFile): Promise<UploadResult & { type: 'IMAGE' | 'VIDEO' }> {
+  async upload(
+    file: UploadedFile,
+  ): Promise<UploadResult & { type: 'IMAGE' | 'VIDEO' }> {
     if (file.mimetype.startsWith('image/')) {
       const result = await this.uploadImage(file);
       return { ...result, type: 'IMAGE' };

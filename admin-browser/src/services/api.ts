@@ -173,6 +173,30 @@ export const uploadApi = {
     }) as { success: boolean; data: { url: string; id: string } };
     return response.data;
   },
+
+  uploadVideo: async (file: File): Promise<{ url: string; id: string; thumbnailUrl?: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/upload/video', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 300000, // 5分钟超时（视频文件较大）
+    }) as { success: boolean; data: { url: string; id: string; thumbnailUrl?: string } };
+    return response.data;
+  },
+
+  uploadMedia: async (file: File): Promise<{ url: string; id: string; type: 'IMAGE' | 'VIDEO'; thumbnailUrl?: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/upload/media', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 300000, // 5分钟超时（视频文件较大）
+    }) as { success: boolean; data: { url: string; id: string; type: 'IMAGE' | 'VIDEO'; thumbnailUrl?: string } };
+    return response.data;
+  },
 };
 
 // 商品规格 API
@@ -347,6 +371,47 @@ export const showcaseApi = {
     productId?: number;
     prizeInfo?: string;
   }) => request.post<Showcase>('/showcases', data),
+};
+
+// 货币管理 API
+export interface CurrencyRate {
+  currency: string;
+  rateToUSD: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  isActive: boolean;
+  displayOrder: number;
+  lastUpdatedAt: string;
+  updatedBy: string | null;
+  createdAt: string;
+}
+
+export const currencyApi = {
+  getList: () =>
+    request.get<CurrencyRate[]>('/currencies'),
+  getOne: (code: string) =>
+    request.get<CurrencyRate>(`/currencies/${code}`),
+  create: (data: {
+    code: string;
+    rateToUSD: string;
+    symbol: string;
+    name: string;
+    decimals?: number;
+    displayOrder: number;
+  }) => request.post<CurrencyRate>('/currencies', data),
+  update: (code: string, data: {
+    rateToUSD?: string;
+    symbol?: string;
+    name?: string;
+    decimals?: number;
+    displayOrder?: number;
+    isActive?: boolean;
+  }) => request.put<CurrencyRate>(`/currencies/${code}`, data),
+  toggleStatus: (code: string) =>
+    request.patch<CurrencyRate>(`/currencies/${code}/status`, {}),
+  delete: (code: string) =>
+    request.delete<void>(`/currencies/${code}`),
 };
 
 export default api;

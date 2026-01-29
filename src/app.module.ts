@@ -19,6 +19,8 @@ import { DexModule } from './api-modules/dex/dex.module';
 import { TaskModule } from './api-modules/task/task.module';
 import { EcommerceModule } from './api-modules/ecommerce/ecommerce.module';
 import { AdminModule } from './api-modules/admin/admin.module';
+import { CurrencyModule } from './common-modules/currency/currency.module';
+import { CurrencyTransformInterceptor } from './common-modules/currency/interceptors/currency-transform.interceptor';
 
 const ENV = process.env.NODE_ENV || 'development';
 const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
@@ -52,10 +54,17 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     TaskModule,
     EcommerceModule,
     AdminModule,
+    CurrencyModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),
     ...(process.env.IS_GAME_MODULE !== 'false' ? [GameModule] : []),
   ],
   controllers: [JwkController],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CurrencyTransformInterceptor,
+    },
+  ],
 })
 export class AppModule {
   constructor(private idService: IdService) {}

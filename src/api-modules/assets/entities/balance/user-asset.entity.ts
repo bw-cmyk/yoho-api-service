@@ -17,6 +17,8 @@ export enum AssetType {
 
 export enum Currency {
   USD = 'USD',
+  AED = 'AED',
+  INR = 'INR',
 }
 
 @Entity('yoho_user_assets')

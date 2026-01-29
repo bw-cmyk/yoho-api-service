@@ -162,20 +162,21 @@ export default function Showcases() {
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
-        const result = await uploadApi.uploadImage(file)
-        const isVideo = file.type.startsWith('video/')
+        // 使用通用上传 API（自动识别图片或视频）
+        const result = await uploadApi.uploadMedia(file)
         setMediaList((prev) => [
           ...prev,
           {
-            type: isVideo ? 'VIDEO' : 'IMAGE',
+            type: result.type,
             url: result.url,
+            thumbnailUrl: result.thumbnailUrl,
             cloudflareId: result.id,
           },
         ])
       }
     } catch (error) {
       console.error('Failed to upload:', error)
-      alert('上传失败')
+      alert('上传失败: ' + (error as any)?.response?.data?.message || '未知错误')
     } finally {
       setUploading(false)
       if (fileInputRef.current) {

@@ -86,7 +86,10 @@ export class ShowcaseService {
     if (currentUserId && items.length > 0) {
       const showcaseIds = items.map((item) => item.id);
       const likes = await this.likeRepo.find({
-        where: showcaseIds.map((id) => ({ showcaseId: id, userId: currentUserId })),
+        where: showcaseIds.map((id) => ({
+          showcaseId: id,
+          userId: currentUserId,
+        })),
       });
       likedMap = new Map(likes.map((like) => [like.showcaseId, true]));
     }
@@ -226,8 +229,8 @@ export class ShowcaseService {
    */
   async findMyShowcases(
     userId: string,
-    page: number = 1,
-    limit: number = 20,
+    page = 1,
+    limit = 20,
   ): Promise<{
     items: Showcase[];
     total: number;
@@ -293,7 +296,7 @@ export class ShowcaseService {
     }
 
     // 获取发货地址快照（如果是实物奖品）
-    let shippingAddressSnapshot = null;
+    const shippingAddressSnapshot = null;
     if (drawResult.prizeType === PrizeType.PHYSICAL) {
       // TODO: 从 ShippingAddressService 获取用户默认地址
       // 暂时留空，后续实现
@@ -307,7 +310,8 @@ export class ShowcaseService {
       media: dto.media,
       productId: dto.productId, // 使用 DTO 中的 productId
       drawRoundId: drawResult.drawRoundId,
-      prizeInfo: dto.prizeInfo || `${drawResult.prizeType} - ${drawResult.prizeValue}`,
+      prizeInfo:
+        dto.prizeInfo || `${drawResult.prizeType} - ${drawResult.prizeValue}`,
       drawResultId,
       isWinnerShowcase: true,
       winningNumber: drawResult.winningNumber,
@@ -368,7 +372,10 @@ export class ShowcaseService {
     if (currentUserId && items.length > 0) {
       const showcaseIds = items.map((item) => item.id);
       const likes = await this.likeRepo.find({
-        where: showcaseIds.map((id) => ({ showcaseId: id, userId: currentUserId })),
+        where: showcaseIds.map((id) => ({
+          showcaseId: id,
+          userId: currentUserId,
+        })),
       });
       likedMap = new Map(likes.map((like) => [like.showcaseId, true]));
     }

@@ -16,6 +16,7 @@ import { ShowcaseComment } from '../ecommerce/entities/showcase-comment.entity';
 import { ShowcaseShare } from '../ecommerce/entities/showcase-share.entity';
 import { EcommerceModule } from '../ecommerce/ecommerce.module';
 import { AssetsModule } from '../assets/assets.module';
+import { CurrencyModule } from '../../common-modules/currency/currency.module';
 import { AdminUserController } from './controllers/admin-user.controller';
 import { AdminProductController } from './controllers/admin-product.controller';
 import { AdminAuthController } from './controllers/admin-auth.controller';
@@ -24,6 +25,7 @@ import { AdminSpecificationController } from './controllers/admin-specification.
 import { AdminDrawController } from './controllers/admin-draw.controller';
 import { AdminShowcaseController } from './controllers/admin-showcase.controller';
 import { AdminWithdrawController } from './controllers/admin-withdraw.controller';
+import { AdminCurrencyController } from './controllers/admin-currency.controller';
 import { AdminUserService } from './services/admin-user.service';
 import { AdminProductService } from './services/admin-product.service';
 import { AdminAuthService } from './services/admin-auth.service';
@@ -57,6 +59,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
     }),
     EcommerceModule,
     AssetsModule,
+    CurrencyModule,
   ],
   controllers: [
     AdminUserController,
@@ -67,6 +70,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
     AdminDrawController,
     AdminShowcaseController,
     AdminWithdrawController,
+    AdminCurrencyController,
   ],
   providers: [
     AdminUserService,

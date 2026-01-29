@@ -273,4 +273,37 @@ export class ShowcaseCommentService {
       totalPages: Math.ceil(total / limit),
     };
   }
+
+  /**
+   * Admin：批量硬删除评论
+   */
+  async adminBatchDelete(commentIds: number[]): Promise<void> {
+    // 获取所有待删除的评论
+    const comments = await this.commentRepo.findByIds(commentIds);
+
+    await this.dataSource.transaction(async (manager) => {
+      // 按晒单分组，计算每个晒单需要减少的评论数
+      const showcaseCountMap = new Map<number, number>();
+
+      for (const comment of comments) {
+        if (!comment.isDeleted) {
+          const currentCount = showcaseCountMap.get(comment.showcaseId) || 0;
+          showcaseCountMap.set(comment.showcaseId, currentCount + 1);
+        }
+      }
+
+      // 硬删除所有评论
+      await manager.delete(ShowcaseComment, commentIds);
+
+      // 更新每个晒单的计数器
+      for (const [showcaseId, decrementCount] of showcaseCountMap.entries()) {
+        await manager.decrement(
+          Showcase,
+          { id: showcaseId },
+          'commentCount',
+          decrementCount,
+        );
+      }
+    });
+  }
 }
