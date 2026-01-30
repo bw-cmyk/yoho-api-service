@@ -59,12 +59,12 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     ...(process.env.IS_GAME_MODULE !== 'false' ? [GameModule] : []),
   ],
   controllers: [JwkController],
-  providers: [
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: CurrencyTransformInterceptor,
-    },
-  ],
+  // providers: [
+  //   {
+  //     provide: APP_INTERCEPTOR,
+  //     useClass: CurrencyTransformInterceptor,
+  //   },
+  // ],
 })
 export class AppModule {
   constructor(private idService: IdService) {}
