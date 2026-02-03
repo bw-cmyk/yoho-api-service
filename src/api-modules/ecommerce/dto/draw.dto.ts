@@ -78,3 +78,12 @@ export class MyWinningHistoryQueryDto {
   limit?: number = 20;
 }
 
+export class RecentWinnersQueryDto {
+  @ApiPropertyOptional({ description: '返回数量', default: 50, maximum: 100 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Transform(({ value }) => parseInt(value))
+  limit?: number = 50;
+}
+

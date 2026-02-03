@@ -9,7 +9,8 @@ import {
   ChevronRight,
   LogOut,
   Image,
-  DollarSign
+  DollarSign,
+  MonitorPlay
 } from 'lucide-react'
 import { authApi } from '../services/api'
 
@@ -19,6 +20,7 @@ const menuItems = [
   // { path: '/orders', icon: ShoppingCart, label: '订单管理' },
   { path: '/products', icon: Package, label: '商品管理' },
   { path: '/showcases', icon: Image, label: '晒单管理' },
+  { path: '/banners', icon: MonitorPlay, label: 'Banner管理' },
   { path: '/currencies', icon: DollarSign, label: '货币管理' },
   { path: '/settings', icon: Settings, label: '系统设置' },
 ]

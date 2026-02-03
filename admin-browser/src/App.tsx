@@ -9,6 +9,7 @@ import UserDetail from './pages/UserDetail'
 import Orders from './pages/Orders'
 import Products from './pages/Products'
 import Showcases from './pages/Showcases'
+import Banners from './pages/Banners'
 import CurrencyRates from './pages/CurrencyRates'
 import Settings from './pages/Settings'
 
@@ -35,6 +36,7 @@ function App() {
         <Route path="orders" element={<Orders />} />
         <Route path="products" element={<Products />} />
         <Route path="showcases" element={<Showcases />} />
+        <Route path="banners" element={<Banners />} />
         <Route path="currencies" element={<CurrencyRates />} />
         <Route path="settings" element={<Settings />} />
       </Route>

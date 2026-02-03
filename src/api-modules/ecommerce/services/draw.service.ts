@@ -1110,6 +1110,71 @@ export class DrawService {
   }
 
   /**
+   * 获取最近中奖记录（用于跑马灯展示）
+   */
+  async getRecentWinners(limit: number = 50): Promise<
+    Array<{
+      winnerUserName: string;
+      winnerUserAvatar: string | null;
+      prizeType: PrizeType;
+      prizeValue: string;
+      prizeInfo: string;
+      productId: number;
+      productName: string;
+      wonAt: Date;
+    }>
+  > {
+    // 查询最近的中奖记录，排除没有中奖者的记录
+    const results = await this.drawResultRepository
+      .createQueryBuilder('result')
+      .leftJoinAndSelect(
+        'yoho_ecommerce_draw_rounds',
+        'round',
+        'round.id = result.draw_round_id',
+      )
+      .leftJoinAndSelect(
+        'yoho_ecommerce_products',
+        'product',
+        'product.id = round.product_id',
+      )
+      .where('result.winner_user_id IS NOT NULL')
+      .orderBy('result.created_at', 'DESC')
+      .limit(Math.min(limit, 100)) // 最多返回100条
+      .getRawMany();
+
+    return results.map((row) => {
+      // 构建奖品描述
+      let prizeInfo = '';
+      const prizeValue = new Decimal(row.result_prize_value || '0');
+
+      switch (row.result_prize_type) {
+        case PrizeType.CASH:
+          prizeInfo = `$${prizeValue.toFixed(2)} Cash Prize`;
+          break;
+        case PrizeType.CRYPTO:
+          prizeInfo = `$${prizeValue.toFixed(2)} USDT`;
+          break;
+        case PrizeType.PHYSICAL:
+          prizeInfo = row.product_name || `$${prizeValue.toFixed(2)} Prize`;
+          break;
+        default:
+          prizeInfo = `$${prizeValue.toFixed(2)} Prize`;
+      }
+
+      return {
+        winnerUserName: row.result_winner_user_name || 'Anonymous',
+        winnerUserAvatar: row.result_winner_user_avatar,
+        prizeType: row.result_prize_type,
+        prizeValue: prizeValue.toFixed(2),
+        prizeInfo,
+        productId: row.product_id,
+        productName: row.product_name || 'Lucky Draw',
+        wonAt: row.result_created_at,
+      };
+    });
+  }
+
+  /**
    * 获取实物奖品的发货地址（私有方法）
    */
   private getShippingAddressForPrize(drawResult: DrawResult): any {

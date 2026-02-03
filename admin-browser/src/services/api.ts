@@ -414,4 +414,68 @@ export const currencyApi = {
     request.delete<void>(`/currencies/${code}`),
 };
 
+// Banner 管理 API
+export type BannerActionType = 'NONE' | 'ROUTER' | 'EXTERNAL_LINK' | 'PRODUCT' | 'DRAW';
+
+export interface Banner {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  imageUrl: string;
+  mobileImageUrl: string | null;
+  actionType: BannerActionType;
+  actionValue: string | null;
+  buttonText: string | null;
+  backgroundColor: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  startDate: string | null;
+  endDate: string | null;
+  clickCount: number;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const bannerApi = {
+  getList: (params: { page?: number; limit?: number; isActive?: boolean }) =>
+    request.get<{ items: Banner[]; total: number; page: number; limit: number; totalPages: number }>('/banners', params),
+  getOne: (id: number) => request.get<Banner>(`/banners/${id}`),
+  create: (data: {
+    title: string;
+    subtitle?: string;
+    description?: string;
+    imageUrl: string;
+    mobileImageUrl?: string;
+    actionType: BannerActionType;
+    actionValue?: string;
+    buttonText?: string;
+    backgroundColor?: string;
+    isActive?: boolean;
+    sortOrder?: number;
+    startDate?: string;
+    endDate?: string;
+  }) => request.post<Banner>('/banners', data),
+  update: (id: number, data: {
+    title?: string;
+    subtitle?: string;
+    description?: string;
+    imageUrl?: string;
+    mobileImageUrl?: string;
+    actionType?: BannerActionType;
+    actionValue?: string;
+    buttonText?: string;
+    backgroundColor?: string;
+    isActive?: boolean;
+    sortOrder?: number;
+    startDate?: string;
+    endDate?: string;
+  }) => request.put<Banner>(`/banners/${id}`, data),
+  delete: (id: number) => request.delete<{ success: boolean }>(`/banners/${id}`),
+  toggleActive: (id: number) => request.post<Banner>(`/banners/${id}/toggle-active`, {}),
+  updateSort: (sortData: Array<{ id: number; sortOrder: number }>) =>
+    request.post<{ success: boolean }>('/banners/sort', sortData),
+};
+
 export default api;

@@ -17,6 +17,7 @@ import {
 } from './entities';
 import { ShowcaseComment } from './entities/showcase-comment.entity';
 import { ShowcaseShare } from './entities/showcase-share.entity';
+import { Banner } from './entities/banner.entity';
 import { ProductService } from './services/product.service';
 import { OrderService } from './services/order.service';
 import { ShippingAddressService } from './services/shipping-address.service';
@@ -26,12 +27,14 @@ import { BlockchainService } from './services/blockchain.service';
 import { ShowcaseService } from './services/showcase.service';
 import { ShowcaseCommentService } from './services/showcase-comment.service';
 import { ShowcaseShareService } from './services/showcase-share.service';
+import { BannerService } from './services/banner.service';
 import { UploadService } from './services/upload.service';
 import { ProductController } from './controllers/product.controller';
 import { OrderController } from './controllers/order.controller';
 import { ShippingAddressController } from './controllers/shipping-address.controller';
 import { DrawController } from './controllers/draw.controller';
 import { ShowcaseController } from './controllers/showcase.controller';
+import { BannerController } from './controllers/banner.controller';
 import { UserModule } from '../user/user.module';
 
 @Module({
@@ -51,6 +54,7 @@ import { UserModule } from '../user/user.module';
       ShowcaseLike,
       ShowcaseComment,
       ShowcaseShare,
+      Banner,
     ]),
     AssetsModule,
     UserModule,
@@ -65,6 +69,7 @@ import { UserModule } from '../user/user.module';
     ShowcaseService,
     ShowcaseCommentService,
     ShowcaseShareService,
+    BannerService,
     UploadService,
   ],
   controllers: [
@@ -73,6 +78,7 @@ import { UserModule } from '../user/user.module';
     ShippingAddressController,
     DrawController,
     ShowcaseController,
+    BannerController,
   ],
   exports: [
     ProductService,
@@ -84,6 +90,7 @@ import { UserModule } from '../user/user.module';
     ShowcaseService,
     ShowcaseCommentService,
     ShowcaseShareService,
+    BannerService,
     UploadService,
   ],
 })

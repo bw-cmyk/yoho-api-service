@@ -10,3 +10,4 @@ export * from './draw-result.entity';
 export * from './new-user-draw-chance.entity';
 export * from './showcase.entity';
 export * from './showcase-like.entity';
+export * from './banner.entity';

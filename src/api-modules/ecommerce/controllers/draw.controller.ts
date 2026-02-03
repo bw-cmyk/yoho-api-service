@@ -18,6 +18,7 @@ import {
   QueryDrawRoundsDto,
   QueryParticipationsDto,
   MyWinningHistoryQueryDto,
+  RecentWinnersQueryDto,
 } from '../dto/draw.dto';
 
 @ApiTags('一元购抽奖')
@@ -191,5 +192,13 @@ export class DrawController {
       throw new Error('中奖记录不存在或不属于当前用户');
     }
     return result;
+  }
+
+  // ==================== 中奖跑马灯 ====================
+
+  @Get('recent-winners')
+  @ApiOperation({ summary: '获取最近中奖记录（用于跑马灯展示）' })
+  async getRecentWinners(@Query() query: RecentWinnersQueryDto) {
+    return await this.drawService.getRecentWinners(query.limit || 50);
   }
 }
