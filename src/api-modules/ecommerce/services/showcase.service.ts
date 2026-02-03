@@ -204,12 +204,21 @@ export class ShowcaseService {
       if (existingLike) {
         // 取消点赞
         await manager.remove(existingLike);
-        await manager.decrement(Showcase, { id: showcaseId }, 'likeCount', 1);
+
+        // 使用 GREATEST 函数确保 likeCount 不会小于 0
+        await manager
+          .createQueryBuilder()
+          .update(Showcase)
+          .set({
+            likeCount: () => 'GREATEST(like_count - 1, 0)',
+          })
+          .where('id = :id', { id: showcaseId })
+          .execute();
 
         const updated = await manager.findOne(Showcase, {
           where: { id: showcaseId },
         });
-        return { liked: false, likeCount: Math.max(0, updated.likeCount) };
+        return { liked: false, likeCount: updated.likeCount };
       } else {
         // 点赞
         const newLike = manager.create(ShowcaseLike, { showcaseId, userId });

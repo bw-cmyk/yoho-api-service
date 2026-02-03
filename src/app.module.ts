@@ -21,6 +21,7 @@ import { EcommerceModule } from './api-modules/ecommerce/ecommerce.module';
 import { AdminModule } from './api-modules/admin/admin.module';
 import { CurrencyModule } from './common-modules/currency/currency.module';
 import { CurrencyTransformInterceptor } from './common-modules/currency/interceptors/currency-transform.interceptor';
+import { GeolocationApiModule } from './api-modules/geolocation/geolocation.module';
 
 const ENV = process.env.NODE_ENV || 'development';
 const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
@@ -55,6 +56,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     EcommerceModule,
     AdminModule,
     CurrencyModule,
+    GeolocationApiModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),
     ...(process.env.IS_GAME_MODULE !== 'false' ? [GameModule] : []),
   ],
