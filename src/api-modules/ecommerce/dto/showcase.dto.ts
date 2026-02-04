@@ -61,6 +61,18 @@ export class CreateShowcaseDto {
   @IsString()
   @MaxLength(255)
   prizeInfo?: string;
+
+  @ApiPropertyOptional({ description: 'IP地址' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(45)
+  ipAddress?: string;
+
+  @ApiPropertyOptional({ description: '地理位置' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  location?: string;
 }
 
 export class ShowcaseQueryDto {

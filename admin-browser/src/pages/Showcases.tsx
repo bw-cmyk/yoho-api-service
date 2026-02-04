@@ -295,6 +295,22 @@ export default function Showcases() {
       ),
     },
     {
+      key: 'location' as const,
+      label: '位置',
+      render: (v: unknown, row: Showcase) => (
+        <div className="text-sm">
+          {v ? (
+            <div>
+              <p className="text-gray-800">{String(v)}</p>
+              {row.ipAddress && <p className="text-xs text-gray-400">{row.ipAddress}</p>}
+            </div>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'content' as const,
       label: '内容',
       render: (v: unknown) => (

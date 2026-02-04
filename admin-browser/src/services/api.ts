@@ -333,6 +333,8 @@ export interface Showcase {
   productId: number | null;
   drawRoundId: number | null;
   prizeInfo: string | null;
+  ipAddress: string | null;
+  location: string | null;
   likeCount: number;
   viewCount: number;
   status: ShowcaseStatus;

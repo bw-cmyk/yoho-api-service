@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AssetsModule } from '../assets/assets.module';
+import { GeolocationModule } from '../../common-modules/geolocation/geolocation.module';
 import {
   Product,
   ProductSpecification,
@@ -58,6 +59,7 @@ import { UserModule } from '../user/user.module';
     ]),
     AssetsModule,
     UserModule,
+    GeolocationModule,
   ],
   providers: [
     ProductService,

@@ -48,6 +48,8 @@ export class ShowcaseService {
       productId: dto.productId,
       drawRoundId: dto.drawRoundId,
       prizeInfo: dto.prizeInfo,
+      ipAddress: dto.ipAddress,
+      location: dto.location,
       status: ShowcaseStatus.APPROVED, // 默认直接通过，如需审核可改为 PENDING
     });
 
@@ -270,6 +272,7 @@ export class ShowcaseService {
     userId: string,
     drawResultId: number,
     dto: CreateShowcaseDto,
+    req?: Request,
   ): Promise<Showcase> {
     if (!dto.media || dto.media.length === 0) {
       throw new BadRequestException('请至少上传一个图片或视频');
@@ -304,6 +307,28 @@ export class ShowcaseService {
       throw new NotFoundException('用户不存在');
     }
 
+    // 获取 IP 地址和地理位置
+    let ipAddress: string | null = null;
+    let location: string | null = null;
+
+    if (req) {
+      try {
+        const geoData = await this.geolocationService.getLocationFromRequest(
+          req,
+        );
+        ipAddress = geoData.ip;
+        // 格式化地理位置显示
+        if (geoData.city && geoData.country) {
+          location = `${geoData.city}, ${geoData.country}`;
+        } else if (geoData.country) {
+          location = geoData.country;
+        }
+      } catch (error) {
+        // 地理位置获取失败不影响晒单创建，只记录日志
+        console.error('Failed to get geolocation:', error);
+      }
+    }
+
     // 获取发货地址快照（如果是实物奖品）
     const shippingAddressSnapshot = null;
     if (drawResult.prizeType === PrizeType.PHYSICAL) {
@@ -327,6 +352,8 @@ export class ShowcaseService {
       prizeType: drawResult.prizeType,
       prizeValue: drawResult.prizeValue.toString(),
       shippingAddressSnapshot,
+      ipAddress,
+      location,
       status: ShowcaseStatus.APPROVED, // 中奖晒单默认直接通过
     });
 

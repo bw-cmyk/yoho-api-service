@@ -110,6 +110,13 @@ export class Showcase {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'verification_note' })
   verificationNote: string | null;
 
+  // 地理位置信息（从 IP 自动获取）
+  @Column({ type: 'varchar', length: 45, nullable: true, name: 'ip_address' })
+  ipAddress: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  location: string | null; // 格式: "City, Country" 或 "Country"
+
   // 互动数据
   @Column({ type: 'int', default: 0, name: 'like_count' })
   likeCount: number;
