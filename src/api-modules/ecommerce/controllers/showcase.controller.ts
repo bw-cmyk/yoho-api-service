@@ -129,7 +129,7 @@ export class ShowcaseController {
     @Request() req: ExpressRequest,
   ) {
     const { id: userId } = req.user as any;
-    return await this.showcaseService.create(userId, dto, req);
+    return await this.showcaseService.create(userId, dto);
   }
 
   @Get()
@@ -272,7 +272,6 @@ export class ShowcaseController {
       userId,
       drawResultId,
       showcaseDto,
-      req,
     );
   }
 
