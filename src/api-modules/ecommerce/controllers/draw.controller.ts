@@ -19,6 +19,8 @@ import {
   QueryParticipationsDto,
   MyWinningHistoryQueryDto,
   RecentWinnersQueryDto,
+  MyPhysicalPrizesQueryDto,
+  ClaimPhysicalPrizeDto,
 } from '../dto/draw.dto';
 
 @ApiTags('一元购抽奖')
@@ -200,5 +202,49 @@ export class DrawController {
   @ApiOperation({ summary: '获取最近中奖记录（用于跑马灯展示）' })
   async getRecentWinners(@Query() query: RecentWinnersQueryDto) {
     return await this.drawService.getRecentWinners(query.limit || 50);
+  }
+
+  // ==================== 实物奖品发货 ====================
+
+  @Get('prizes/physical/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '获取我的待领取实物奖品列表' })
+  async getMyPhysicalPrizes(
+    @Request() req: ExpressRequest,
+    @Query() query: MyPhysicalPrizesQueryDto,
+  ) {
+    const { id: userId } = req.user as any;
+    return await this.drawService.getMyPhysicalPrizes(
+      userId,
+      query.page || 1,
+      query.limit || 20,
+    );
+  }
+
+  @Post('prizes/physical/:drawResultId/claim')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '领取实物奖品（提交收货地址）' })
+  async claimPhysicalPrize(
+    @Request() req: ExpressRequest,
+    @Param('drawResultId', ParseIntPipe) drawResultId: number,
+    @Body() dto: ClaimPhysicalPrizeDto,
+  ) {
+    const { id: userId } = req.user as any;
+    return await this.drawService.claimPhysicalPrize(
+      drawResultId,
+      userId,
+      dto.shippingAddressId,
+    );
+  }
+
+  @Get('prizes/physical/:drawResultId/shipping')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '获取实物奖品物流信息' })
+  async getPhysicalPrizeShipping(
+    @Request() req: ExpressRequest,
+    @Param('drawResultId', ParseIntPipe) drawResultId: number,
+  ) {
+    const { id: userId } = req.user as any;
+    return await this.drawService.getPhysicalPrizeShipping(drawResultId, userId);
   }
 }

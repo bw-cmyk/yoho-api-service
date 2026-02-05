@@ -189,6 +189,25 @@ export class User {
   })
   parentAccount: string;
 
+  @Column({
+    name: 'is_bot',
+    default: false,
+  })
+  @Index()
+  isBot: boolean;
+
+  @Column({
+    name: 'bot_config',
+    type: 'jsonb',
+    nullable: true,
+  })
+  botConfig: {
+    displayName?: string;
+    displayAvatar?: string;
+    createdBy?: string;
+    createdAt?: Date;
+  };
+
   @CreateDateColumn({
     select: false,
   })

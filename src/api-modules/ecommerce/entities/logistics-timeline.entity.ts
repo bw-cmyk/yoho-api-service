@@ -7,17 +7,32 @@ import {
   CreateDateColumn,
   Index,
 } from 'typeorm';
-import { LogisticsNodeKey } from '../enums/ecommerce.enums';
+import {
+  LogisticsNodeKey,
+  LogisticsSourceType,
+} from '../enums/ecommerce.enums';
 import { Order } from './order.entity';
 
 @Entity('yoho_ecommerce_logistics_timelines')
 @Index(['orderId', 'nodeKey', 'activatedAt'])
+@Index(['drawResultId', 'sourceType'])
 export class LogisticsTimeline {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
-  @Column({ type: 'int', name: 'order_id' })
-  orderId: number;
+  @Column({ type: 'int', name: 'order_id', nullable: true })
+  orderId: number | null; // 关联 Order（Instant Buy）
+
+  @Column({ type: 'int', name: 'draw_result_id', nullable: true })
+  drawResultId: number | null; // 关联 DrawResult（一元购实物奖品）
+
+  @Column({
+    type: 'enum',
+    enum: LogisticsSourceType,
+    default: LogisticsSourceType.INSTANT_BUY,
+    name: 'source_type',
+  })
+  sourceType: LogisticsSourceType; // 物流来源类型
 
   @Column({
     type: 'enum',

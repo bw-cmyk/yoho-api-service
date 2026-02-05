@@ -87,3 +87,27 @@ export class RecentWinnersQueryDto {
   limit?: number = 50;
 }
 
+// ==================== 实物奖品发货 DTOs ====================
+
+export class MyPhysicalPrizesQueryDto {
+  @ApiPropertyOptional({ description: '页码', default: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Transform(({ value }) => parseInt(value))
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: '每页数量', default: 20 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Transform(({ value }) => parseInt(value))
+  limit?: number = 20;
+}
+
+export class ClaimPhysicalPrizeDto {
+  @ApiProperty({ description: '收货地址ID' })
+  @IsNumber()
+  shippingAddressId: number;
+}
+

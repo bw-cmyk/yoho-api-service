@@ -19,6 +19,7 @@ import { DexModule } from './api-modules/dex/dex.module';
 import { TaskModule } from './api-modules/task/task.module';
 import { EcommerceModule } from './api-modules/ecommerce/ecommerce.module';
 import { AdminModule } from './api-modules/admin/admin.module';
+import { BotModule } from './api-modules/bot/bot.module';
 import { CurrencyModule } from './common-modules/currency/currency.module';
 import { CurrencyTransformInterceptor } from './common-modules/currency/interceptors/currency-transform.interceptor';
 import { GeolocationApiModule } from './api-modules/geolocation/geolocation.module';
@@ -55,6 +56,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     TaskModule,
     EcommerceModule,
     AdminModule,
+    BotModule,
     CurrencyModule,
     GeolocationApiModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),

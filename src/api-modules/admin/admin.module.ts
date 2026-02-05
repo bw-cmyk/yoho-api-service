@@ -18,6 +18,7 @@ import { Banner } from '../ecommerce/entities/banner.entity';
 import { EcommerceModule } from '../ecommerce/ecommerce.module';
 import { AssetsModule } from '../assets/assets.module';
 import { CurrencyModule } from '../../common-modules/currency/currency.module';
+import { UserModule } from '../user/user.module';
 import { AdminUserController } from './controllers/admin-user.controller';
 import { AdminProductController } from './controllers/admin-product.controller';
 import { AdminAuthController } from './controllers/admin-auth.controller';
@@ -63,6 +64,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
     EcommerceModule,
     AssetsModule,
     CurrencyModule,
+    UserModule,
   ],
   controllers: [
     AdminUserController,

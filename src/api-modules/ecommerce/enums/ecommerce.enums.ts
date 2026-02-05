@@ -63,6 +63,10 @@ export enum LogisticsNodeKey {
   CUSTOMS_CLEARANCE_FAILED = 'CUSTOMS_CLEARANCE_FAILED',
   RETURN_TO_SENDER = 'RETURN_TO_SENDER',
   DELIVERY_STOPPED = 'DELIVERY_STOPPED',
+  // 一元购实物奖品专用节点
+  PRIZE_PENDING_SHIPMENT = 'PRIZE_PENDING_SHIPMENT',
+  PRIZE_SHIPPED = 'PRIZE_SHIPPED',
+  PRIZE_DELIVERED = 'PRIZE_DELIVERED',
 }
 
 export enum NewUserDrawChanceStatus {
@@ -70,6 +74,20 @@ export enum NewUserDrawChanceStatus {
   CLAIMED = 'CLAIMED', // 已认领
   USED = 'USED', // 已使用
   EXPIRED = 'EXPIRED', // 已过期
+}
+
+// 实物奖品发货状态
+export enum PrizeShippingStatus {
+  PENDING_ADDRESS = 'PENDING_ADDRESS', // 待填写地址
+  PENDING_SHIPMENT = 'PENDING_SHIPMENT', // 待发货
+  SHIPPED = 'SHIPPED', // 已发货
+  DELIVERED = 'DELIVERED', // 已签收
+}
+
+// 物流来源类型
+export enum LogisticsSourceType {
+  INSTANT_BUY = 'INSTANT_BUY', // 即时购订单
+  PRIZE_SHIPPING = 'PRIZE_SHIPPING', // 一元购实物奖品
 }
 
 // Optional GraphQL enum exposure (won't affect REST usage)

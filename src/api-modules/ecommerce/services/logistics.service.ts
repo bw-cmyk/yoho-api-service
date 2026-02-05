@@ -3,8 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
 import { Order } from '../entities';
+import { DrawResult } from '../entities/draw-result.entity';
 import {
   LogisticsNodeKey,
+  LogisticsSourceType,
   InstantBuyOrderStatus,
 } from '../enums/ecommerce.enums';
 
@@ -141,6 +143,30 @@ const DELIVERY_STOPPED_NODE: LogisticsNodeConfig = {
   description: 'Delivery has been stopped',
   dayIndex: null, // 立即激活
 };
+
+/**
+ * 一元购实物奖品物流节点配置
+ */
+const PRIZE_SHIPPING_NODES: LogisticsNodeConfig[] = [
+  {
+    key: LogisticsNodeKey.PRIZE_PENDING_SHIPMENT,
+    title: 'Pending Shipment',
+    description: 'Prize is being prepared for shipment',
+    dayIndex: 0, // 提交地址后立即激活
+  },
+  {
+    key: LogisticsNodeKey.PRIZE_SHIPPED,
+    title: 'Shipped',
+    description: 'Prize has been shipped',
+    dayIndex: null, // 运营手动激活
+  },
+  {
+    key: LogisticsNodeKey.PRIZE_DELIVERED,
+    title: 'Delivered',
+    description: 'Prize has been delivered',
+    dayIndex: null, // 运营手动激活或自动激活
+  },
+];
 
 @Injectable()
 export class LogisticsService {
@@ -330,6 +356,105 @@ export class LogisticsService {
 
     // 找到最后一个已激活的节点
     const activatedNodes = timelines.filter((t) => t.isActivated());
+    if (activatedNodes.length === 0) {
+      return null;
+    }
+
+    return activatedNodes[activatedNodes.length - 1];
+  }
+
+  // ==================== 一元购实物奖品物流管理 ====================
+
+  /**
+   * 为一元购实物奖品初始化物流时间线
+   */
+  async initializePrizeShippingTimeline(
+    drawResult: DrawResult,
+  ): Promise<LogisticsTimeline[]> {
+    // 创建一元购物流节点
+    const nodes = PRIZE_SHIPPING_NODES.map((config) =>
+      this.timelineRepository.create({
+        orderId: null,
+        drawResultId: drawResult.id,
+        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
+        nodeKey: config.key,
+        title: config.title,
+        description: config.description,
+        dayIndex: config.dayIndex,
+        activatedAt: config.dayIndex === 0 ? new Date() : null, // dayIndex=0 立即激活
+      }),
+    );
+
+    return await this.timelineRepository.save(nodes);
+  }
+
+  /**
+   * 一元购实物奖品发货
+   */
+  async shipPrize(
+    drawResult: DrawResult,
+    logisticsCompany: string,
+    trackingNumber: string,
+  ): Promise<void> {
+    // 激活"已发货"节点
+    const shippedNode = await this.timelineRepository.findOne({
+      where: {
+        drawResultId: drawResult.id,
+        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
+        nodeKey: LogisticsNodeKey.PRIZE_SHIPPED,
+      },
+    });
+
+    if (shippedNode && !shippedNode.activatedAt) {
+      shippedNode.activatedAt = new Date();
+      shippedNode.description = `Shipped via ${logisticsCompany}, Tracking: ${trackingNumber}`;
+      await this.timelineRepository.save(shippedNode);
+    }
+  }
+
+  /**
+   * 一元购实物奖品确认签收
+   */
+  async confirmPrizeDelivery(drawResult: DrawResult): Promise<void> {
+    // 激活"已签收"节点
+    const deliveredNode = await this.timelineRepository.findOne({
+      where: {
+        drawResultId: drawResult.id,
+        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
+        nodeKey: LogisticsNodeKey.PRIZE_DELIVERED,
+      },
+    });
+
+    if (deliveredNode && !deliveredNode.activatedAt) {
+      deliveredNode.activatedAt = new Date();
+      await this.timelineRepository.save(deliveredNode);
+    }
+  }
+
+  /**
+   * 获取一元购实物奖品的物流时间线
+   */
+  async getPrizeShippingTimeline(
+    drawResultId: number,
+  ): Promise<LogisticsTimeline[]> {
+    return await this.timelineRepository.find({
+      where: {
+        drawResultId,
+        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
+      },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  /**
+   * 获取一元购实物奖品当前物流状态
+   */
+  async getCurrentPrizeShippingStatus(
+    drawResultId: number,
+  ): Promise<LogisticsTimeline | null> {
+    const timelines = await this.getPrizeShippingTimeline(drawResultId);
+    const activatedNodes = timelines.filter((t) => t.isActivated());
+
     if (activatedNodes.length === 0) {
       return null;
     }

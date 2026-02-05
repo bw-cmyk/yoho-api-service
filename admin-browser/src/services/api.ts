@@ -480,4 +480,107 @@ export const bannerApi = {
     request.post<{ success: boolean }>('/banners/sort', sortData),
 };
 
+// 实物奖品订单管理 API
+export type PrizeShippingStatus = 'PENDING_ADDRESS' | 'PENDING_SHIPMENT' | 'SHIPPED' | 'DELIVERED';
+
+export interface PrizeOrderStats {
+  pendingAddress: number;
+  pendingShipment: number;
+  shipped: number;
+  delivered: number;
+  total: number;
+}
+
+export interface PrizeOrder {
+  drawResultId: number;
+  shippingOrderNumber: string | null;
+  prizeShippingStatus: PrizeShippingStatus;
+  prizeStatus: string;
+  product: {
+    id: number;
+    name: string;
+    thumbnail: string;
+  } | null;
+  winner: {
+    userId: string;
+    userName: string | null;
+    avatar: string | null;
+  };
+  shippingAddress: {
+    recipientName: string;
+    phoneNumber: string;
+    fullAddress: string;
+  } | null;
+  logistics: {
+    company: string | null;
+    trackingNumber: string | null;
+    shippedAt: string | null;
+    deliveredAt: string | null;
+  };
+  prizeValue: string;
+  addressSubmittedAt: string | null;
+  createdAt: string;
+}
+
+export interface PrizeOrderDetail extends PrizeOrder {
+  drawRoundId: number;
+  roundNumber: number;
+  winningNumber: number;
+  timeline: Array<{
+    event: string;
+    title: string;
+    description?: string;
+    time: string;
+  }>;
+  logisticsTimeline: Array<{
+    nodeKey: string;
+    title: string;
+    description: string;
+    activatedAt: string | null;
+  }>;
+}
+
+export interface PrizeOrdersResponse {
+  data: PrizeOrder[];
+  total: number;
+  page: number;
+  limit: number;
+  stats: {
+    pendingAddress: number;
+    pendingShipment: number;
+    shipped: number;
+    delivered: number;
+  };
+}
+
+export const prizeOrderApi = {
+  getStats: () =>
+    request.get<PrizeOrderStats>('/draws/prize-orders/stats'),
+  getList: (params: {
+    status?: PrizeShippingStatus;
+    keyword?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    request.get<PrizeOrdersResponse>('/draws/prize-orders', params),
+  getDetail: (drawResultId: number) =>
+    request.get<PrizeOrderDetail>(`/draws/prize-orders/${drawResultId}`),
+  ship: (drawResultId: number, data: { logisticsCompany: string; trackingNumber: string }) =>
+    request.post<{ success: boolean; drawResultId: number; prizeShippingStatus: PrizeShippingStatus; shippedAt: string }>(
+      `/draws/prize-orders/${drawResultId}/ship`,
+      data
+    ),
+  confirmDelivery: (drawResultId: number) =>
+    request.post<{ success: boolean; drawResultId: number; prizeStatus: string; prizeShippingStatus: PrizeShippingStatus; deliveredAt: string }>(
+      `/draws/prize-orders/${drawResultId}/confirm-delivery`
+    ),
+  batchShip: (orders: Array<{ drawResultId: number; logisticsCompany: string; trackingNumber: string }>) =>
+    request.post<{ success: number; failed: number; errors: Array<{ drawResultId: number; error: string }> }>(
+      '/draws/prize-orders/batch-ship',
+      { orders }
+    ),
+};
+
 export default api;

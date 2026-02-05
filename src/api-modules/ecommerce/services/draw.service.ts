@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThanOrEqual, In } from 'typeorm';
+import { Repository, DataSource, LessThanOrEqual, In, IsNull, Not } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DrawRound, DrawRoundStatus } from '../entities/draw-round.entity';
@@ -16,7 +16,7 @@ import {
   PrizeStatus,
 } from '../entities/draw-result.entity';
 import { NewUserDrawChance } from '../entities/new-user-draw-chance.entity';
-import { NewUserDrawChanceStatus } from '../enums/ecommerce.enums';
+import { NewUserDrawChanceStatus, PrizeShippingStatus } from '../enums/ecommerce.enums';
 import { Product } from '../entities/product.entity';
 import { ProductService } from './product.service';
 import { AssetService } from '../../assets/services/asset.service';
@@ -25,6 +25,9 @@ import { BlockchainService } from './blockchain.service';
 import { TransactionType } from 'src/api-modules/assets/entities/balance/transaction.entity';
 import redisClient from 'src/common-modules/redis/redis-client';
 import { UserService } from 'src/api-modules/user/service/user.service';
+import { LogisticsService } from './logistics.service';
+import { ShippingAddressService } from './shipping-address.service';
+import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
 
 @Injectable()
 export class DrawService {
@@ -46,6 +49,8 @@ export class DrawService {
     private readonly blockchainService: BlockchainService,
     private readonly dataSource: DataSource,
     private readonly userService: UserService,
+    private readonly logisticsService: LogisticsService,
+    private readonly shippingAddressService: ShippingAddressService,
   ) {}
 
   /**
@@ -487,12 +492,13 @@ export class DrawService {
           `Prize distributed to user ${drawResult.winnerUserId}, amount ${drawResult.prizeValue}`,
         );
       } else if (drawResult.prizeType === PrizeType.PHYSICAL) {
-        // 实物奖品：标记为待领取，需要用户联系客服
-        // 这里可以发送通知，引导用户联系客服
+        // 实物奖品：设置为待填写地址状态
+        drawResult.prizeShippingStatus = PrizeShippingStatus.PENDING_ADDRESS;
+        await this.drawResultRepository.save(drawResult);
+
         this.logger.log(
           `Physical prize pending for user ${drawResult.winnerUserId}, product ${drawRound.product.name}`,
         );
-        // 实物奖品暂不自动发放，需要人工处理
       }
     } catch (error) {
       this.logger.error(
@@ -1178,9 +1184,261 @@ export class DrawService {
    * 获取实物奖品的发货地址（私有方法）
    */
   private getShippingAddressForPrize(drawResult: DrawResult): any {
-    // 这里应该从用户地址表或其他地方获取实际地址
-    // 暂时返回 null，实际实现需要关联地址系统
-    // TODO: 实现地址获取逻辑
-    return null;
+    return drawResult.shippingAddressSnapshot || null;
+  }
+
+  // ==================== 实物奖品领取相关 ====================
+
+  /**
+   * 获取用户待领取/已领取的实物奖品列表
+   */
+  async getMyPhysicalPrizes(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    items: Array<{
+      drawResultId: number;
+      drawRoundId: number;
+      productId: number;
+      productName: string;
+      productImage: string;
+      prizeValue: string;
+      prizeStatus: PrizeStatus;
+      prizeShippingStatus: PrizeShippingStatus | null;
+      wonAt: Date;
+      shippingAddress: any;
+      logisticsInfo: any;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const [drawResults, total] = await this.drawResultRepository.findAndCount({
+      where: {
+        winnerUserId: userId,
+        prizeType: PrizeType.PHYSICAL,
+      },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    if (drawResults.length === 0) {
+      return { items: [], total: 0, page, limit };
+    }
+
+    // 获取关联的 DrawRound 和 Product 信息
+    const drawRoundIds = drawResults.map((result) => result.drawRoundId);
+    const drawRounds = await this.drawRoundRepository.find({
+      where: { id: In(drawRoundIds) },
+      relations: ['product'],
+    });
+    const drawRoundMap = new Map(drawRounds.map((round) => [round.id, round]));
+
+    // 组装返回数据
+    const items = drawResults.map((result) => {
+      const drawRound = drawRoundMap.get(result.drawRoundId);
+      const product = drawRound?.product;
+
+      return {
+        drawResultId: result.id,
+        drawRoundId: result.drawRoundId,
+        productId: drawRound?.productId,
+        productName: product?.name || '',
+        productImage: product?.thumbnail || product?.images?.[0] || '',
+        prizeValue: result.prizeValue.toString(),
+        prizeStatus: result.prizeStatus,
+        prizeShippingStatus: result.prizeShippingStatus,
+        wonAt: result.createdAt,
+        shippingAddress: result.shippingAddressSnapshot,
+        logisticsInfo:
+          result.prizeShippingStatus === PrizeShippingStatus.SHIPPED ||
+          result.prizeShippingStatus === PrizeShippingStatus.DELIVERED
+            ? {
+                company: result.logisticsCompany,
+                trackingNumber: result.trackingNumber,
+                shippedAt: result.shippedAt,
+                deliveredAt: result.deliveredAt,
+              }
+            : null,
+      };
+    });
+
+    return { items, total, page, limit };
+  }
+
+  /**
+   * 提交收货地址领取实物奖品
+   */
+  async claimPhysicalPrize(
+    drawResultId: number,
+    userId: string,
+    shippingAddressId: number,
+  ): Promise<{
+    success: boolean;
+    drawResultId: number;
+    shippingOrderNumber: string;
+    prizeShippingStatus: PrizeShippingStatus;
+    shippingAddress: any;
+  }> {
+    return await this.dataSource.transaction(async (manager) => {
+      // 获取中奖记录（加锁）
+      const drawResult = await manager.findOne(DrawResult, {
+        where: { id: drawResultId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!drawResult) {
+        throw new NotFoundException('Draw result not found');
+      }
+
+      // 验证用户
+      if (drawResult.winnerUserId !== userId) {
+        throw new BadRequestException('You are not authorized to claim this prize');
+      }
+
+      // 验证奖品类型
+      if (drawResult.prizeType !== PrizeType.PHYSICAL) {
+        throw new BadRequestException('This prize is not a physical prize');
+      }
+
+      // 验证状态
+      if (
+        drawResult.prizeShippingStatus !== PrizeShippingStatus.PENDING_ADDRESS &&
+        drawResult.prizeShippingStatus !== null
+      ) {
+        throw new BadRequestException('Shipping address has already been submitted');
+      }
+
+      // 获取收货地址
+      const shippingAddress = await this.shippingAddressService.findByIdAndUserId(
+        shippingAddressId,
+        userId,
+      );
+
+      if (!shippingAddress) {
+        throw new NotFoundException('Shipping address not found');
+      }
+
+      // 更新中奖记录
+      drawResult.shippingAddressId = shippingAddressId;
+      drawResult.shippingAddressSnapshot = {
+        recipientName: shippingAddress.recipientName,
+        phoneNumber: shippingAddress.phoneNumber,
+        country: shippingAddress.country,
+        state: shippingAddress.state,
+        city: shippingAddress.city,
+        streetAddress: shippingAddress.streetAddress,
+        apartment: shippingAddress.apartment,
+        zipCode: shippingAddress.zipCode,
+      };
+      drawResult.shippingOrderNumber = this.generateShippingOrderNumber();
+      drawResult.prizeShippingStatus = PrizeShippingStatus.PENDING_SHIPMENT;
+      drawResult.addressSubmittedAt = new Date();
+
+      await manager.save(drawResult);
+
+      // 初始化物流时间线
+      await this.logisticsService.initializePrizeShippingTimeline(drawResult);
+
+      this.logger.log(
+        `User ${userId} claimed physical prize: ${drawResultId}, order: ${drawResult.shippingOrderNumber}`,
+      );
+
+      return {
+        success: true,
+        drawResultId: drawResult.id,
+        shippingOrderNumber: drawResult.shippingOrderNumber,
+        prizeShippingStatus: drawResult.prizeShippingStatus,
+        shippingAddress: {
+          recipientName: shippingAddress.recipientName,
+          phoneNumber: this.maskPhoneNumber(shippingAddress.phoneNumber),
+          fullAddress: shippingAddress.getFullAddress(),
+        },
+      };
+    });
+  }
+
+  /**
+   * 获取实物奖品物流详情
+   */
+  async getPhysicalPrizeShipping(
+    drawResultId: number,
+    userId: string,
+  ): Promise<{
+    drawResultId: number;
+    shippingOrderNumber: string | null;
+    prizeShippingStatus: PrizeShippingStatus | null;
+    shippingAddress: any;
+    logisticsInfo: any;
+    timeline: LogisticsTimeline[];
+  }> {
+    const drawResult = await this.drawResultRepository.findOne({
+      where: { id: drawResultId, winnerUserId: userId },
+    });
+
+    if (!drawResult) {
+      throw new NotFoundException('Draw result not found');
+    }
+
+    if (drawResult.prizeType !== PrizeType.PHYSICAL) {
+      throw new BadRequestException('This prize is not a physical prize');
+    }
+
+    const timeline = await this.logisticsService.getPrizeShippingTimeline(drawResultId);
+
+    return {
+      drawResultId: drawResult.id,
+      shippingOrderNumber: drawResult.shippingOrderNumber,
+      prizeShippingStatus: drawResult.prizeShippingStatus,
+      shippingAddress: drawResult.shippingAddressSnapshot
+        ? {
+            recipientName: drawResult.shippingAddressSnapshot.recipientName,
+            phoneNumber: this.maskPhoneNumber(
+              drawResult.shippingAddressSnapshot.phoneNumber,
+            ),
+            fullAddress: [
+              drawResult.shippingAddressSnapshot.country,
+              drawResult.shippingAddressSnapshot.state,
+              drawResult.shippingAddressSnapshot.city,
+              drawResult.shippingAddressSnapshot.streetAddress,
+              drawResult.shippingAddressSnapshot.apartment,
+              drawResult.shippingAddressSnapshot.zipCode,
+            ]
+              .filter(Boolean)
+              .join(', '),
+          }
+        : null,
+      logisticsInfo:
+        drawResult.logisticsCompany || drawResult.trackingNumber
+          ? {
+              company: drawResult.logisticsCompany,
+              trackingNumber: drawResult.trackingNumber,
+              shippedAt: drawResult.shippedAt,
+              deliveredAt: drawResult.deliveredAt,
+            }
+          : null,
+      timeline,
+    };
+  }
+
+  /**
+   * 生成发货订单号
+   */
+  private generateShippingOrderNumber(): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `PRIZE${timestamp}${random}`;
+  }
+
+  /**
+   * 掩码电话号码
+   */
+  private maskPhoneNumber(phone: string): string {
+    if (!phone || phone.length < 7) return phone;
+    const start = phone.slice(0, 3);
+    const end = phone.slice(-4);
+    return `${start}****${end}`;
   }
 }

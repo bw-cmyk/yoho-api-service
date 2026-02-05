@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { DrawRound } from './draw-round.entity';
+import { PrizeShippingStatus } from '../enums/ecommerce.enums';
 
 export enum PrizeType {
   CASH = 'CASH', // 现金（USDT）
@@ -63,6 +64,9 @@ export class DrawResult {
   @Column({
     type: 'enum',
     enum: PrizeType,
+    name: 'prize_type',
+    nullable: true,
+    default: PrizeType.PHYSICAL,
   })
   prizeType: PrizeType; // 奖品类型
 
@@ -75,6 +79,8 @@ export class DrawResult {
       from: (value: string) => new Decimal(value || '0'),
     },
     name: 'prize_value',
+    nullable: true,
+    default: '0',
   })
   prizeValue: Decimal; // 奖品价值（USD）
 
@@ -82,6 +88,7 @@ export class DrawResult {
     type: 'enum',
     enum: PrizeStatus,
     default: PrizeStatus.PENDING,
+    name: 'prize_status',
   })
   prizeStatus: PrizeStatus; // 奖品发放状态
 
@@ -112,6 +119,64 @@ export class DrawResult {
 
   @Column({ type: 'timestamp', nullable: true, name: 'prize_distributed_at' })
   prizeDistributedAt: Date | null; // 奖品发放时间
+
+  // ========== 实物奖品发货相关字段 ==========
+
+  @Column({
+    type: 'enum',
+    enum: PrizeShippingStatus,
+    nullable: true,
+    name: 'prize_shipping_status',
+  })
+  prizeShippingStatus: PrizeShippingStatus | null; // 实物奖品发货状态
+
+  @Column({ type: 'int', nullable: true, name: 'shipping_address_id' })
+  shippingAddressId: number | null; // 收货地址ID
+
+  @Column({ type: 'json', nullable: true, name: 'shipping_address_snapshot' })
+  shippingAddressSnapshot: {
+    recipientName: string;
+    phoneNumber: string;
+    country: string;
+    state: string;
+    city: string;
+    streetAddress: string;
+    apartment?: string;
+    zipCode?: string;
+  } | null; // 收货地址快照
+
+  @Column({
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+    name: 'shipping_order_number',
+  })
+  shippingOrderNumber: string | null; // 发货订单号
+
+  @Column({
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+    name: 'logistics_company',
+  })
+  logisticsCompany: string | null; // 物流公司
+
+  @Column({
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+    name: 'tracking_number',
+  })
+  trackingNumber: string | null; // 物流单号
+
+  @Column({ type: 'timestamp', nullable: true, name: 'address_submitted_at' })
+  addressSubmittedAt: Date | null; // 地址提交时间
+
+  @Column({ type: 'timestamp', nullable: true, name: 'shipped_at' })
+  shippedAt: Date | null; // 发货时间
+
+  @Column({ type: 'timestamp', nullable: true, name: 'delivered_at' })
+  deliveredAt: Date | null; // 签收时间
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
