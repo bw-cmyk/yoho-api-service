@@ -13,6 +13,7 @@ import Banners from './pages/Banners'
 import CurrencyRates from './pages/CurrencyRates'
 import Settings from './pages/Settings'
 import PrizeOrders from './pages/PrizeOrders'
+import Notifications from './pages/Notifications'
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
         <Route path="banners" element={<Banners />} />
         <Route path="currencies" element={<CurrencyRates />} />
         <Route path="prize-orders" element={<PrizeOrders />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

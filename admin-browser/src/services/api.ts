@@ -583,4 +583,65 @@ export const prizeOrderApi = {
     ),
 };
 
+// 通知管理 API
+export type NotificationType = 'SYSTEM' | 'PRIZE_WON' | 'SHIPPING_UPDATE' | 'ORDER_UPDATE' | 'ACCOUNT' | 'PROMOTION';
+export type NotificationTargetType = 'ALL' | 'SINGLE_USER';
+
+export interface Notification {
+  id: number;
+  type: NotificationType;
+  targetType: NotificationTargetType;
+  userId: string | null;
+  title: string;
+  content: string;
+  imageUrl: string | null;
+  actionType: string | null;
+  actionValue: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface NotificationStats {
+  totalSent: number;
+  systemBroadcasts: number;
+  userNotifications: number;
+  todaySent: number;
+}
+
+export const notificationApi = {
+  getList: (params: {
+    page: number;
+    limit: number;
+    type?: NotificationType;
+    targetType?: NotificationTargetType;
+    keyword?: string;
+  }) =>
+    request.get<PaginatedResponse<Notification>>('/notifications', params),
+  getStats: () =>
+    request.get<NotificationStats>('/notifications/stats'),
+  getOne: (id: number) =>
+    request.get<Notification>(`/notifications/${id}`),
+  createSystem: (data: {
+    title: string;
+    content: string;
+    type?: NotificationType;
+    imageUrl?: string;
+    actionType?: string;
+    actionValue?: string;
+  }) =>
+    request.post<{ success: boolean; notificationId: number; recipientCount: number }>('/notifications/system', data),
+  sendToUser: (data: {
+    userId: string;
+    title: string;
+    content: string;
+    type?: NotificationType;
+    imageUrl?: string;
+    actionType?: string;
+    actionValue?: string;
+  }) =>
+    request.post<{ success: boolean; notificationId: number }>('/notifications/user', data),
+  delete: (id: number) =>
+    request.delete<{ success: boolean }>(`/notifications/${id}`),
+};
+
 export default api;

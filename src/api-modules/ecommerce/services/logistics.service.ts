@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
@@ -9,6 +9,7 @@ import {
   LogisticsSourceType,
   InstantBuyOrderStatus,
 } from '../enums/ecommerce.enums';
+import { NotificationService } from '../../notification/services/notification.service';
 
 /**
  * 物流节点配置
@@ -170,9 +171,12 @@ const PRIZE_SHIPPING_NODES: LogisticsNodeConfig[] = [
 
 @Injectable()
 export class LogisticsService {
+  private readonly logger = new Logger(LogisticsService.name);
+
   constructor(
     @InjectRepository(LogisticsTimeline)
     private readonly timelineRepository: Repository<LogisticsTimeline>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -395,6 +399,7 @@ export class LogisticsService {
     drawResult: DrawResult,
     logisticsCompany: string,
     trackingNumber: string,
+    productName?: string,
   ): Promise<void> {
     // 激活"已发货"节点
     const shippedNode = await this.timelineRepository.findOne({
@@ -409,13 +414,32 @@ export class LogisticsService {
       shippedNode.activatedAt = new Date();
       shippedNode.description = `Shipped via ${logisticsCompany}, Tracking: ${trackingNumber}`;
       await this.timelineRepository.save(shippedNode);
+
+      // 发送发货通知
+      if (drawResult.winnerUserId) {
+        try {
+          await this.notificationService.notifyShippingUpdate(
+            drawResult.winnerUserId,
+            {
+              orderNumber: drawResult.shippingOrderNumber || `PRIZE-${drawResult.id}`,
+              status: 'SHIPPED',
+              productName: productName || 'Your prize',
+            },
+          );
+        } catch (error) {
+          this.logger.error(`Failed to send shipping notification`, error);
+        }
+      }
     }
   }
 
   /**
    * 一元购实物奖品确认签收
    */
-  async confirmPrizeDelivery(drawResult: DrawResult): Promise<void> {
+  async confirmPrizeDelivery(
+    drawResult: DrawResult,
+    productName?: string,
+  ): Promise<void> {
     // 激活"已签收"节点
     const deliveredNode = await this.timelineRepository.findOne({
       where: {
@@ -428,6 +452,22 @@ export class LogisticsService {
     if (deliveredNode && !deliveredNode.activatedAt) {
       deliveredNode.activatedAt = new Date();
       await this.timelineRepository.save(deliveredNode);
+
+      // 发送签收通知
+      if (drawResult.winnerUserId) {
+        try {
+          await this.notificationService.notifyShippingUpdate(
+            drawResult.winnerUserId,
+            {
+              orderNumber: drawResult.shippingOrderNumber || `PRIZE-${drawResult.id}`,
+              status: 'DELIVERED',
+              productName: productName || 'Your prize',
+            },
+          );
+        } catch (error) {
+          this.logger.error(`Failed to send delivery notification`, error);
+        }
+      }
     }
   }
 

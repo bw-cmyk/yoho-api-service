@@ -11,7 +11,8 @@ import {
   Image,
   DollarSign,
   MonitorPlay,
-  Gift
+  Gift,
+  Bell
 } from 'lucide-react'
 import { authApi } from '../services/api'
 
@@ -24,6 +25,7 @@ const menuItems = [
   { path: '/showcases', icon: Image, label: '晒单管理' },
   { path: '/banners', icon: MonitorPlay, label: 'Banner管理' },
   { path: '/currencies', icon: DollarSign, label: '货币管理' },
+  { path: '/notifications', icon: Bell, label: '通知管理' },
   { path: '/settings', icon: Settings, label: '系统设置' },
 ]
 

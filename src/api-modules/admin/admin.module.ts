@@ -38,6 +38,9 @@ import { AdminDrawService } from './services/admin-draw.service';
 import { AdminAssetService } from './services/admin-asset.service';
 import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
+import { Notification } from '../notification/entities/notification.entity';
+import { AdminNotificationController } from './controllers/admin-notification.controller';
+import { AdminNotificationService } from './services/admin-notification.service';
 
 @Module({
   imports: [
@@ -55,6 +58,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
       ShowcaseComment,
       ShowcaseShare,
       Banner,
+      Notification,
     ]),
     PassportModule.register({ defaultStrategy: 'admin-google' }),
     JwtModule.register({
@@ -77,6 +81,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
     AdminWithdrawController,
     AdminCurrencyController,
     AdminBannerController,
+    AdminNotificationController,
   ],
   providers: [
     AdminUserService,
@@ -88,6 +93,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
     AdminAssetService,
     AdminGoogleStrategy,
     AdminJwtGuard,
+    AdminNotificationService,
   ],
   exports: [AdminUserService, AdminProductService, AdminAuthService],
 })

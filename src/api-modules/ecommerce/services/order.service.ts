@@ -29,6 +29,7 @@ import { LogisticsService } from './logistics.service';
 import { TransactionType } from 'src/api-modules/assets/entities/balance/transaction.entity';
 import { UserService } from 'src/api-modules/user/service/user.service';
 import { User } from '@sentry/node';
+import { NotificationService } from '../../notification/services/notification.service';
 
 @Injectable()
 export class OrderService {
@@ -47,6 +48,7 @@ export class OrderService {
     private readonly logisticsService: LogisticsService,
     private readonly userService: UserService,
     private readonly dataSource: DataSource,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -179,6 +181,18 @@ export class OrderService {
       await this.logisticsService.initializeLogisticsTimeline(savedOrder);
 
       this.logger.log(`用户 ${userId} 创建订单成功: ${savedOrder.orderNumber}`);
+
+      // 发送订单确认通知
+      try {
+        await this.notificationService.notifyOrderUpdate(userId, {
+          orderId: savedOrder.id,
+          orderNumber: savedOrder.orderNumber,
+          status: 'CONFIRMED',
+          productName: product.name,
+        });
+      } catch (notifyError) {
+        this.logger.error(`Failed to send order notification`, notifyError);
+      }
 
       return savedOrder;
     });
@@ -409,6 +423,18 @@ export class OrderService {
 
       this.logger.log(`订单退款申请成功: ${order.orderNumber}`);
 
+      // 发送退款通知
+      try {
+        await this.notificationService.notifyOrderUpdate(order.userId, {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: 'REFUNDED',
+          productName: order.productInfo.name,
+        });
+      } catch (notifyError) {
+        this.logger.error(`Failed to send refund notification`, notifyError);
+      }
+
       return order;
     });
   }
@@ -469,6 +495,21 @@ export class OrderService {
         await manager.save(order);
 
         this.logger.log(`订单自动取消并退款: ${order.orderNumber}`);
+
+        // 发送自动取消通知
+        try {
+          await this.notificationService.notifyOrderUpdate(order.userId, {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            status: 'CANCELLED',
+            productName: order.productInfo.name,
+          });
+        } catch (notifyError) {
+          this.logger.error(
+            `Failed to send auto-cancel notification`,
+            notifyError,
+          );
+        }
       });
     }
   }

@@ -23,6 +23,7 @@ import { BotModule } from './api-modules/bot/bot.module';
 import { CurrencyModule } from './common-modules/currency/currency.module';
 import { CurrencyTransformInterceptor } from './common-modules/currency/interceptors/currency-transform.interceptor';
 import { GeolocationApiModule } from './api-modules/geolocation/geolocation.module';
+import { NotificationModule } from './api-modules/notification/notification.module';
 
 const ENV = process.env.NODE_ENV || 'development';
 const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
@@ -59,6 +60,7 @@ const isScheduling = process.env.IS_SCHEDULE_PROCESS === 'true';
     BotModule,
     CurrencyModule,
     GeolocationApiModule,
+    NotificationModule,
     ...(isScheduling ? [ScheduleModule.forRoot()] : []),
     ...(process.env.IS_GAME_MODULE !== 'false' ? [GameModule] : []),
   ],

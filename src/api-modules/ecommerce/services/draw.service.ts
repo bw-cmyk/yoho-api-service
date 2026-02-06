@@ -28,6 +28,7 @@ import { UserService } from 'src/api-modules/user/service/user.service';
 import { LogisticsService } from './logistics.service';
 import { ShippingAddressService } from './shipping-address.service';
 import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
+import { NotificationService } from '../../notification/services/notification.service';
 
 @Injectable()
 export class DrawService {
@@ -51,6 +52,7 @@ export class DrawService {
     private readonly userService: UserService,
     private readonly logisticsService: LogisticsService,
     private readonly shippingAddressService: ShippingAddressService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -491,6 +493,17 @@ export class DrawService {
         this.logger.log(
           `Prize distributed to user ${drawResult.winnerUserId}, amount ${drawResult.prizeValue}`,
         );
+
+        // 发送中奖通知
+        try {
+          await this.notificationService.notifyPrizeWon(drawResult.winnerUserId, {
+            drawResultId: drawResult.id,
+            productName: drawRound.product.name,
+            productImage: drawRound.product.thumbnail || drawRound.product.images?.[0],
+          });
+        } catch (notifyError) {
+          this.logger.error(`Failed to send prize notification`, notifyError);
+        }
       } else if (drawResult.prizeType === PrizeType.PHYSICAL) {
         // 实物奖品：设置为待填写地址状态
         drawResult.prizeShippingStatus = PrizeShippingStatus.PENDING_ADDRESS;
@@ -499,6 +512,17 @@ export class DrawService {
         this.logger.log(
           `Physical prize pending for user ${drawResult.winnerUserId}, product ${drawRound.product.name}`,
         );
+
+        // 发送实物中奖通知
+        try {
+          await this.notificationService.notifyPrizeWon(drawResult.winnerUserId, {
+            drawResultId: drawResult.id,
+            productName: drawRound.product.name,
+            productImage: drawRound.product.thumbnail || drawRound.product.images?.[0],
+          });
+        } catch (notifyError) {
+          this.logger.error(`Failed to send physical prize notification`, notifyError);
+        }
       }
     } catch (error) {
       this.logger.error(
