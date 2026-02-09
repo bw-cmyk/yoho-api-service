@@ -14,6 +14,9 @@ import CurrencyRates from './pages/CurrencyRates'
 import Settings from './pages/Settings'
 import PrizeOrders from './pages/PrizeOrders'
 import Notifications from './pages/Notifications'
+import BotUserManagement from './pages/bot/BotUserManagement'
+import LuckyDrawBotConfig from './pages/bot/LuckyDrawBotConfig'
+import BotTaskLogs from './pages/bot/BotTaskLogs'
 
 function App() {
   return (
@@ -42,6 +45,9 @@ function App() {
         <Route path="currencies" element={<CurrencyRates />} />
         <Route path="prize-orders" element={<PrizeOrders />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="bot/users" element={<BotUserManagement />} />
+        <Route path="bot/lucky-draw" element={<LuckyDrawBotConfig />} />
+        <Route path="bot/logs" element={<BotTaskLogs />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

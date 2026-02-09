@@ -673,4 +673,112 @@ export const notificationApi = {
     request.delete<{ success: boolean }>(`/notifications/${id}`),
 };
 
+// Bot Management API
+
+// Bot User Types
+export interface BotUser {
+  userId: string;
+  displayName: string;
+  displayAvatar: string;
+  enabled: boolean;
+  balance?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BotUserStats {
+  totalBots: number;
+  enabledBots: number;
+  totalBalance: string;
+  avgBalance: string;
+  botsWithLowBalance: number;
+}
+
+// Bot Task Types
+export interface BotTask {
+  id: number;
+  taskType: string;
+  targetId: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  lastExecutedAt: string | null;
+  nextExecuteAt: string | null;
+  executionsToday: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Lucky Draw Config Types
+export interface BotLuckyDrawConfig {
+  id: number;
+  productId: number;
+  enabled: boolean;
+  minIntervalSeconds: number;
+  maxIntervalSeconds: number;
+  minQuantity: number;
+  maxQuantity: number;
+  dailyOrderLimit: number;
+  maxFillPercentage: number;
+  activeHours: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Bot Task Log Types
+export interface BotTaskLog {
+  id: number;
+  taskId: number;
+  taskType: string;
+  botUserId: string;
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  details: Record<string, unknown>;
+  errorMessage: string | null;
+  executionTimeMs: number | null;
+  createdAt: string;
+}
+
+export const botApi = {
+  // Bot Users
+  getList: (params: { page?: number; limit?: number; enabled?: boolean; hasBalance?: boolean }) =>
+    request.get<{ items: BotUser[]; total: number; page: number; limit: number }>('/bot/users', params),
+  getStats: () =>
+    request.get<{ stats: BotUserStats }>('/bot/users/stats'),
+  batchCreate: (data: { count: number; displayNamePrefix?: string; initialBalance?: number }) =>
+    request.post<{ count: number; botUsers: BotUser[] }>('/bot/users/batch-create', data),
+  recharge: (id: string, amount: number) =>
+    request.post<{ success: boolean; message: string }>(`/bot/users/${id}/recharge`, { amount }),
+  batchRecharge: (amountPerBot: number) =>
+    request.post<{ success: number; failed: number }>('/bot/users/batch-recharge', { amountPerBot }),
+  toggleStatus: (id: string, enabled: boolean) =>
+    request.patch<{ success: boolean; message: string }>(`/bot/users/${id}/toggle`, { enabled }),
+  delete: (id: string) =>
+    request.delete<{ success: boolean; message: string }>(`/bot/users/${id}`),
+
+  // Lucky Draw Config
+  getConfigs: () =>
+    request.get<{ configs: BotLuckyDrawConfig[] }>('/bot/lucky-draw/configs'),
+  getConfig: (productId: number) =>
+    request.get<{ config: BotLuckyDrawConfig }>(`/bot/lucky-draw/configs/${productId}`),
+  updateConfig: (productId: number, data: Partial<BotLuckyDrawConfig>) =>
+    request.put<{ config: BotLuckyDrawConfig }>(`/bot/lucky-draw/configs/${productId}`, data),
+  enableBot: (productId: number) =>
+    request.post<{ success: boolean; message: string }>(`/bot/lucky-draw/configs/${productId}/enable`),
+  disableBot: (productId: number) =>
+    request.post<{ success: boolean; message: string }>(`/bot/lucky-draw/configs/${productId}/disable`),
+  createTask: (data: { productId: number; config?: Partial<BotLuckyDrawConfig> }) =>
+    request.post<{ task: BotTask; config: BotLuckyDrawConfig }>('/bot/lucky-draw/tasks/create', data),
+
+  // Tasks
+  getTasks: (params: { page?: number; limit?: number; taskType?: string; enabled?: boolean }) =>
+    request.get<{ items: BotTask[]; total: number; page: number; limit: number }>('/bot/tasks', params),
+  startTask: (id: number) =>
+    request.post<{ success: boolean; message: string }>(`/bot/tasks/${id}/start`),
+  stopTask: (id: number) =>
+    request.post<{ success: boolean; message: string }>(`/bot/tasks/${id}/stop`),
+
+  // Logs
+  getLogs: (params: { page?: number; limit?: number; taskType?: string; taskId?: number; status?: string; botUserId?: string }) =>
+    request.get<{ items: BotTaskLog[]; total: number; page: number; limit: number }>('/bot/logs', params),
+};
+
 export default api;

@@ -12,7 +12,10 @@ import {
   DollarSign,
   MonitorPlay,
   Gift,
-  Bell
+  Bell,
+  Bot,
+  BotMessageSquare,
+  ScrollText,
 } from 'lucide-react'
 import { authApi } from '../services/api'
 
@@ -26,6 +29,9 @@ const menuItems = [
   { path: '/banners', icon: MonitorPlay, label: 'Banner管理' },
   { path: '/currencies', icon: DollarSign, label: '货币管理' },
   { path: '/notifications', icon: Bell, label: '通知管理' },
+  { path: '/bot/users', icon: Bot, label: 'Bot用户' },
+  { path: '/bot/lucky-draw', icon: BotMessageSquare, label: '一元购Bot' },
+  { path: '/bot/logs', icon: ScrollText, label: 'Bot日志' },
   { path: '/settings', icon: Settings, label: '系统设置' },
 ]
 
