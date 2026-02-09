@@ -377,7 +377,7 @@ export default function PrizeOrders() {
                 <div>
                   <div className="font-medium">{selectedOrder.product?.name || '商品'}</div>
                   <div className="text-sm text-gray-500">
-                    订单号: {selectedOrder.shippingOrderNumber || '-'}
+                    订单号: {selectedOrder.shippingOrderNumber || selectedOrder.product?.name || '-'}
                   </div>
                 </div>
               </div>
@@ -464,18 +464,20 @@ export default function PrizeOrders() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-gray-500">订单号</label>
-                <div className="font-mono">{orderDetail.shippingOrderNumber || '-'}</div>
+                <div className="font-mono">{orderDetail.orderNumber || '-'}</div>
               </div>
               <div>
                 <label className="text-sm text-gray-500">状态</label>
                 <div>
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      STATUS_CONFIG[orderDetail.prizeShippingStatus].bgColor
-                    } ${STATUS_CONFIG[orderDetail.prizeShippingStatus].color}`}
-                  >
-                    {STATUS_CONFIG[orderDetail.prizeShippingStatus].label}
-                  </span>
+                  {orderDetail.prizeShippingStatus && (
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        STATUS_CONFIG[orderDetail.prizeShippingStatus].bgColor
+                      } ${STATUS_CONFIG[orderDetail.prizeShippingStatus].color}`}
+                    >
+                      {STATUS_CONFIG[orderDetail.prizeShippingStatus].label}
+                    </span>
+                  )}
                 </div>
               </div>
               <div>
@@ -521,14 +523,23 @@ export default function PrizeOrders() {
                     {orderDetail.shippingAddress.phoneNumber}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
-                    {orderDetail.shippingAddress.fullAddress}
+                    {[
+                      orderDetail.shippingAddress.country,
+                      orderDetail.shippingAddress.state,
+                      orderDetail.shippingAddress.city,
+                      orderDetail.shippingAddress.streetAddress,
+                      orderDetail.shippingAddress.apartment,
+                      orderDetail.shippingAddress.zipCode,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')}
                   </div>
                 </div>
               </div>
             )}
 
             {/* 物流信息 */}
-            {orderDetail.logistics.trackingNumber && (
+            {orderDetail.logistics && orderDetail.logistics.trackingNumber && (
               <div className="border-t border-gray-100 pt-4">
                 <label className="text-sm text-gray-500 block mb-2">物流信息</label>
                 <div className="bg-gray-50 rounded-lg p-3">
@@ -536,13 +547,8 @@ export default function PrizeOrders() {
                   <div className="text-sm text-gray-600 font-mono">
                     {orderDetail.logistics.trackingNumber}
                   </div>
-                  {orderDetail.logistics.shippedAt && (
-                    <div className="text-sm text-gray-500 mt-1">
-                      发货时间: {new Date(orderDetail.logistics.shippedAt).toLocaleString('zh-CN')}
-                    </div>
-                  )}
                   {orderDetail.logistics.deliveredAt && (
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 mt-1">
                       签收时间: {new Date(orderDetail.logistics.deliveredAt).toLocaleString('zh-CN')}
                     </div>
                   )}
@@ -577,7 +583,7 @@ export default function PrizeOrders() {
                 <button
                   onClick={() => {
                     setDetailModalOpen(false)
-                    openShipModal(orderDetail)
+                    openShipModal(orderDetail as any)
                   }}
                   className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
                 >

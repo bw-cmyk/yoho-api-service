@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In, Like, Between } from 'typeorm';
-import { DrawRound, DrawRoundStatus } from '../../ecommerce/entities/draw-round.entity';
+import { Repository, DataSource, In, Not, IsNull } from 'typeorm';
+import {
+  DrawRound,
+  DrawRoundStatus,
+} from '../../ecommerce/entities/draw-round.entity';
 import {
   DrawResult,
   PrizeType,
@@ -9,8 +16,12 @@ import {
 } from '../../ecommerce/entities/draw-result.entity';
 import { DrawService } from '../../ecommerce/services/draw.service';
 import { LogisticsService } from '../../ecommerce/services/logistics.service';
-import { PrizeShippingStatus } from '../../ecommerce/enums/ecommerce.enums';
+import {
+  PrizeShippingStatus,
+  OrderType,
+} from '../../ecommerce/enums/ecommerce.enums';
 import { Product } from '../../ecommerce/entities/product.entity';
+import { Order } from '../../ecommerce/entities/order.entity';
 import { UserService } from '../../user/service/user.service';
 
 @Injectable()
@@ -22,6 +33,8 @@ export class AdminDrawService {
     private readonly drawResultRepo: Repository<DrawResult>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+    @InjectRepository(Order)
+    private readonly orderRepo: Repository<Order>,
     private readonly drawService: DrawService,
     private readonly logisticsService: LogisticsService,
     private readonly userService: UserService,
@@ -46,13 +59,10 @@ export class AdminDrawService {
       const results = await this.drawResultRepo.find({
         where: drawnRoundIds.map((id) => ({ drawRoundId: id })),
       });
-      resultsMap = results.reduce(
-        (acc, r) => {
-          acc[r.drawRoundId] = r;
-          return acc;
-        },
-        {} as Record<number, DrawResult>,
-      );
+      resultsMap = results.reduce((acc, r) => {
+        acc[r.drawRoundId] = r;
+        return acc;
+      }, {} as Record<number, DrawResult>);
     }
 
     return {
@@ -135,7 +145,7 @@ export class AdminDrawService {
   // ==================== 实物奖品订单管理 ====================
 
   /**
-   * 获取实物奖品订单统计
+   * 获取实物奖品订单统计（基于 Order 系统）
    */
   async getPrizeOrderStats(): Promise<{
     pendingAddress: number;
@@ -144,24 +154,21 @@ export class AdminDrawService {
     delivered: number;
     total: number;
   }> {
-    const results = await this.drawResultRepo
-      .createQueryBuilder('result')
-      .select('result.prize_shipping_status', 'status')
+    const results = await this.orderRepo
+      .createQueryBuilder('order')
+      .select('"prize_shipping_status"', 'status')
       .addSelect('COUNT(*)', 'count')
-      .where('result.prize_type = :type', { type: PrizeType.PHYSICAL })
-      .andWhere('result.winner_user_id IS NOT NULL')
-      .groupBy('result.prize_shipping_status')
+      .where('order.type = :type', { type: OrderType.LUCKY_DRAW })
+      .andWhere('order."drawResultId" IS NOT NULL')
+      .addGroupBy('"prize_shipping_status"')
       .getRawMany();
 
-    const statsMap = results.reduce(
-      (acc, row) => {
-        // NULL 状态视为 PENDING_ADDRESS
-        const status = row.status || PrizeShippingStatus.PENDING_ADDRESS;
-        acc[status] = (acc[status] || 0) + parseInt(row.count, 10);
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const statsMap = results.reduce((acc, row) => {
+      // NULL 状态视为 PENDING_ADDRESS（未创建订单的情况）
+      const status = row.status || PrizeShippingStatus.PENDING_ADDRESS;
+      acc[status] = (acc[status] || 0) + parseInt(row.count, 10);
+      return acc;
+    }, {} as Record<string, number>);
 
     const pendingAddress = statsMap[PrizeShippingStatus.PENDING_ADDRESS] || 0;
     const pendingShipment = statsMap[PrizeShippingStatus.PENDING_SHIPMENT] || 0;
@@ -178,7 +185,7 @@ export class AdminDrawService {
   }
 
   /**
-   * 获取实物奖品订单列表
+   * 获取实物奖品订单列表（基于 Order 系统）
    */
   async getPrizeOrders(query: {
     status?: PrizeShippingStatus;
@@ -201,113 +208,197 @@ export class AdminDrawService {
   }> {
     const { status, keyword, startDate, endDate, page = 1, limit = 20 } = query;
 
+    // 处理 PENDING_ADDRESS 状态（未创建订单的情况）
+    if (status === PrizeShippingStatus.PENDING_ADDRESS) {
+      const drawResultsWithoutOrder = await this.drawResultRepo.find({
+        where: {
+          prizeType: PrizeType.PHYSICAL,
+          winnerUserId: Not(IsNull()),
+          orderId: IsNull(),
+        },
+        relations: ['drawRound', 'drawRound.product'],
+        take: limit,
+        skip: (page - 1) * limit,
+        order: { createdAt: 'DESC' as any },
+      });
+
+      // 转换为统一格式
+      const data = await Promise.all(
+        drawResultsWithoutOrder.map(async (result) => {
+          const drawRound = await this.drawRoundRepo.findOne({
+            where: { id: result.drawRoundId },
+            relations: ['product'],
+          });
+          return {
+            drawResultId: result.id,
+            shippingOrderNumber: result.shippingOrderNumber,
+            prizeShippingStatus: PrizeShippingStatus.PENDING_ADDRESS,
+            prizeStatus: result.prizeStatus,
+            product: drawRound?.product
+              ? {
+                  id: drawRound.product.id,
+                  name: drawRound.product.name,
+                  thumbnail: drawRound.product.thumbnail,
+                }
+              : null,
+            winner: {
+              userId: result.winnerUserId,
+              userName: result.winnerUserName,
+              avatar: result.winnerUserAvatar,
+            },
+            shippingAddress: null,
+            logistics: {
+              company: result.logisticsCompany,
+              trackingNumber: result.trackingNumber,
+              shippedAt: result.shippedAt,
+              deliveredAt: result.deliveredAt,
+            },
+            prizeValue: result.prizeValue.toString(),
+            addressSubmittedAt: result.addressSubmittedAt,
+            createdAt: result.createdAt,
+          };
+        }),
+      );
+
+      const stats = await this.getPrizeOrderStats();
+      return {
+        data,
+        total: await this.drawResultRepo.count({
+          where: {
+            prizeType: PrizeType.PHYSICAL,
+            winnerUserId: Not(IsNull()),
+            orderId: IsNull(),
+          },
+        }),
+        page,
+        limit,
+        stats: {
+          pendingAddress: stats.pendingAddress,
+          pendingShipment: stats.pendingShipment,
+          shipped: stats.shipped,
+          delivered: stats.delivered,
+        },
+      };
+    }
+
     // 构建查询条件
-    const qb = this.drawResultRepo
-      .createQueryBuilder('result')
-      .where('result.prize_type = :type', { type: PrizeType.PHYSICAL })
-      .andWhere('result.winner_user_id IS NOT NULL');
+    const qb = this.orderRepo
+      .createQueryBuilder('order')
+      .where('order.type = :type', { type: OrderType.LUCKY_DRAW })
+      .andWhere('order.drawResultId IS NOT NULL');
 
     if (status) {
-      if (status === PrizeShippingStatus.PENDING_ADDRESS) {
-        // 对于 PENDING_ADDRESS 状态，包含 NULL 值
-        qb.andWhere(
-          '(result.prize_shipping_status = :status OR result.prize_shipping_status IS NULL)',
-          { status },
-        );
-      } else {
-        qb.andWhere('result.prize_shipping_status = :status', { status });
-      }
+      qb.andWhere('"prize_shipping_status" = :status', { status });
     }
-    // 不再过滤 NULL 值，因为 NULL 视为 PENDING_ADDRESS
 
+    // 关键词搜索
     if (keyword) {
       qb.andWhere(
-        '(result.shipping_order_number LIKE :keyword OR result.winner_user_name LIKE :keyword OR result.tracking_number LIKE :keyword)',
+        '("order_number" LIKE :keyword OR "logistics_company" LIKE :keyword OR "tracking_number" LIKE :keyword)',
         { keyword: `%${keyword}%` },
       );
     }
 
+    // 日期范围
     if (startDate) {
-      qb.andWhere('result.created_at >= :startDate', {
+      qb.andWhere('"created_at" >= :startDate', {
         startDate: new Date(startDate),
       });
     }
 
     if (endDate) {
-      qb.andWhere('result.created_at <= :endDate', {
+      qb.andWhere('"created_at" <= :endDate', {
         endDate: new Date(endDate + 'T23:59:59'),
       });
     }
 
-    qb.orderBy('result.address_submitted_at', 'DESC', 'NULLS LAST')
-      .addOrderBy('result.created_at', 'DESC')
+    qb.orderBy('"created_at"', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
-    const [results, total] = await qb.getManyAndCount();
+    const [orders, total] = await qb.getManyAndCount();
 
-    // 获取关联的商品信息
-    const drawRoundIds = results.map((r) => r.drawRoundId);
-    let productMap: Map<number, any> = new Map();
+    // 获取关联的 DrawResult 信息
+    const drawResultIds = orders
+      .map((o) => o.drawResultId)
+      .filter((id) => id !== null);
+    const drawResults = await this.drawResultRepo.find({
+      where: { id: In(drawResultIds as number[]) },
+      relations: ['drawRound', 'drawRound.product'],
+    });
 
-    if (drawRoundIds.length > 0) {
-      const rounds = await this.drawRoundRepo.find({
-        where: { id: In(drawRoundIds) },
-        relations: ['product'],
-      });
-      rounds.forEach((round) => {
-        if (round.product) {
-          productMap.set(round.id, {
-            id: round.product.id,
-            name: round.product.name,
-            thumbnail: round.product.thumbnail,
-          });
-        }
-      });
-    }
+    const drawResultMap = new Map(
+      drawResults.map((dr) => [
+        dr.id,
+        {
+          ...dr,
+          roundNumber: dr.drawRound?.roundNumber,
+          winningNumber: dr.winningNumber,
+          product: dr.drawRound?.product,
+        },
+      ]),
+    );
+
+    // 获取收货地址信息
+    const shippingAddressIds = orders
+      .map((o) => o.shippingAddressId)
+      .filter((id) => id !== null);
+    const shippingAddresses = await this.dataSource
+      .getRepository('ShippingAddress')
+      .findByIds(shippingAddressIds as number[]);
+    const shippingAddressMap = new Map(shippingAddresses.map((sa) => [sa.id, sa]));
 
     // 获取统计数据
     const stats = await this.getPrizeOrderStats();
 
-    const data = results.map((result) => ({
-      drawResultId: result.id,
-      shippingOrderNumber: result.shippingOrderNumber,
-      // NULL 视为 PENDING_ADDRESS
-      prizeShippingStatus:
-        result.prizeShippingStatus || PrizeShippingStatus.PENDING_ADDRESS,
-      prizeStatus: result.prizeStatus,
-      product: productMap.get(result.drawRoundId) || null,
-      winner: {
-        userId: result.winnerUserId,
-        userName: result.winnerUserName,
-        avatar: result.winnerUserAvatar,
-      },
-      shippingAddress: result.shippingAddressSnapshot
-        ? {
-            recipientName: result.shippingAddressSnapshot.recipientName,
-            phoneNumber: result.shippingAddressSnapshot.phoneNumber,
-            fullAddress: [
-              result.shippingAddressSnapshot.country,
-              result.shippingAddressSnapshot.state,
-              result.shippingAddressSnapshot.city,
-              result.shippingAddressSnapshot.streetAddress,
-              result.shippingAddressSnapshot.apartment,
-              result.shippingAddressSnapshot.zipCode,
-            ]
-              .filter(Boolean)
-              .join(', '),
-          }
-        : null,
-      logistics: {
-        company: result.logisticsCompany,
-        trackingNumber: result.trackingNumber,
-        shippedAt: result.shippedAt,
-        deliveredAt: result.deliveredAt,
-      },
-      prizeValue: result.prizeValue.toString(),
-      addressSubmittedAt: result.addressSubmittedAt,
-      createdAt: result.createdAt,
-    }));
+    const data = orders.map((order) => {
+      const drawResult = drawResultMap.get(order.drawResultId!);
+      const shippingAddress = shippingAddressMap.get(order.shippingAddressId!);
+
+      return {
+        drawResultId: order.drawResultId,
+        shippingOrderNumber: order.orderNumber,
+        prizeShippingStatus: order.prizeShippingStatus,
+        prizeStatus: drawResult?.prizeStatus,
+        product: order.productInfo
+          ? {
+              id: order.productId,
+              name: order.productInfo.name,
+              thumbnail: order.productInfo.thumbnail,
+            }
+          : null,
+        winner: {
+          userId: order.userId,
+          userName: drawResult?.winnerUserName,
+          avatar: drawResult?.winnerUserAvatar,
+        },
+        shippingAddress: shippingAddress
+          ? {
+              recipientName: shippingAddress.recipientName,
+              phoneNumber: shippingAddress.phoneNumber,
+              fullAddress: [
+                shippingAddress.country,
+                shippingAddress.state,
+                shippingAddress.city,
+                shippingAddress.streetAddress,
+                shippingAddress.apartment,
+                shippingAddress.zipCode,
+              ]
+                .filter(Boolean)
+                .join(', '),
+            }
+          : null,
+        logistics: {
+          company: order.logisticsCompany,
+          trackingNumber: order.trackingNumber,
+          shippedAt: null,
+          deliveredAt: order.deliveredAt,
+        },
+        prizeValue: drawResult?.prizeValue.toString() || '0',
+        addressSubmittedAt: drawResult?.addressSubmittedAt,
+        createdAt: order.createdAt,
+      };
+    });
 
     return {
       data,
@@ -324,11 +415,12 @@ export class AdminDrawService {
   }
 
   /**
-   * 获取实物奖品订单详情
+   * 获取实物奖品订单详情（基于新的 Order 系统）
    */
   async getPrizeOrderDetail(drawResultId: number): Promise<any> {
     const result = await this.drawResultRepo.findOne({
       where: { id: drawResultId },
+      relations: ['drawRound', 'drawRound.product'],
     });
 
     if (!result) {
@@ -339,16 +431,21 @@ export class AdminDrawService {
       throw new BadRequestException('This is not a physical prize');
     }
 
-    // 获取商品信息
-    const round = await this.drawRoundRepo.findOne({
-      where: { id: result.drawRoundId },
-      relations: ['product'],
-    });
+    // 如果已创建订单，获取订单信息
+    let order = null;
+    let timeline = [];
+    if (result.orderId) {
+      order = await this.dataSource.manager.findOne(Order, {
+        where: { id: result.orderId },
+        relations: ['shippingAddress'],
+      });
 
-    // 获取物流时间线
-    const timeline = await this.logisticsService.getPrizeShippingTimeline(
-      drawResultId,
-    );
+      if (order) {
+        timeline = await this.logisticsService.getOrderLogisticsTimeline(
+          order.id,
+        );
+      }
+    }
 
     // 构建时间线事件
     const events = [
@@ -367,37 +464,38 @@ export class AdminDrawService {
       });
     }
 
-    if (result.shippedAt) {
+    if (order?.logisticsCompany) {
       events.push({
         event: 'SHIPPED',
         title: 'Shipped',
-        description: `${result.logisticsCompany} ${result.trackingNumber}`,
-        time: result.shippedAt,
+        description: `${order.logisticsCompany} ${order.trackingNumber}`,
+        time: timeline.find((t) => t.nodeKey === 'PRIZE_SHIPPED')?.activatedAt,
       } as any);
     }
 
-    if (result.deliveredAt) {
+    if (order?.deliveredAt) {
       events.push({
         event: 'DELIVERED',
         title: 'Delivered',
-        time: result.deliveredAt,
+        time: order.deliveredAt,
       });
     }
 
     return {
       drawResultId: result.id,
-      shippingOrderNumber: result.shippingOrderNumber,
-      prizeShippingStatus: result.prizeShippingStatus,
+      orderId: order?.id,
+      orderNumber: order?.orderNumber,
+      prizeShippingStatus: order?.prizeShippingStatus,
       prizeStatus: result.prizeStatus,
       drawRoundId: result.drawRoundId,
-      roundNumber: round?.roundNumber,
+      roundNumber: result.drawRound?.roundNumber,
       winningNumber: result.winningNumber,
-      product: round?.product
+      product: result.drawRound?.product
         ? {
-            id: round.product.id,
-            name: round.product.name,
-            thumbnail: round.product.thumbnail,
-            images: round.product.images,
+            id: result.drawRound.product.id,
+            name: result.drawRound.product.name,
+            thumbnail: result.drawRound.product.thumbnail,
+            images: result.drawRound.product.images,
           }
         : null,
       winner: {
@@ -405,15 +503,15 @@ export class AdminDrawService {
         userName: result.winnerUserName,
         avatar: result.winnerUserAvatar,
       },
-      shippingAddress: result.shippingAddressSnapshot,
-      logistics: {
-        company: result.logisticsCompany,
-        trackingNumber: result.trackingNumber,
-        shippedAt: result.shippedAt,
-        deliveredAt: result.deliveredAt,
-      },
+      shippingAddress: order?.shippingAddress || null,
+      logistics: order
+        ? {
+            company: order.logisticsCompany,
+            trackingNumber: order.trackingNumber,
+            deliveredAt: order.deliveredAt,
+          }
+        : null,
       timeline: events,
-      logisticsTimeline: timeline,
       prizeValue: result.prizeValue.toString(),
       addressSubmittedAt: result.addressSubmittedAt,
       createdAt: result.createdAt,
@@ -421,7 +519,7 @@ export class AdminDrawService {
   }
 
   /**
-   * 发货操作
+   * 发货操作（基于新的 Order 系统）
    */
   async shipPrizeOrder(
     drawResultId: number,
@@ -429,9 +527,8 @@ export class AdminDrawService {
     trackingNumber: string,
   ): Promise<{
     success: boolean;
-    drawResultId: number;
+    orderId: number;
     prizeShippingStatus: PrizeShippingStatus;
-    shippedAt: Date;
   }> {
     return await this.dataSource.transaction(async (manager) => {
       const result = await manager.findOne(DrawResult, {
@@ -443,38 +540,54 @@ export class AdminDrawService {
         throw new NotFoundException('Prize order not found');
       }
 
-      if (result.prizeShippingStatus !== PrizeShippingStatus.PENDING_SHIPMENT) {
+      if (!result.orderId) {
+        throw new BadRequestException('Prize has not been claimed yet');
+      }
+
+      // 获取订单
+      const order = await manager.findOne(Order, {
+        where: { id: result.orderId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      if (order.prizeShippingStatus !== PrizeShippingStatus.PENDING_SHIPMENT) {
         throw new BadRequestException(
-          `Cannot ship order with status: ${result.prizeShippingStatus}`,
+          `Cannot ship order with status: ${order.prizeShippingStatus}`,
         );
       }
 
-      // 更新发货信息
-      result.logisticsCompany = logisticsCompany;
-      result.trackingNumber = trackingNumber;
-      result.prizeShippingStatus = PrizeShippingStatus.SHIPPED;
-      result.shippedAt = new Date();
+      // 更新订单发货信息
+      order.logisticsCompany = logisticsCompany;
+      order.trackingNumber = trackingNumber;
+      order.prizeShippingStatus = PrizeShippingStatus.SHIPPED;
 
-      await manager.save(result);
+      await manager.save(order);
 
       // 更新物流时间线
-      await this.logisticsService.shipPrize(result, logisticsCompany, trackingNumber);
+      await this.logisticsService.shipPrize(
+        order,
+        logisticsCompany,
+        trackingNumber,
+      );
 
       return {
         success: true,
-        drawResultId: result.id,
-        prizeShippingStatus: result.prizeShippingStatus,
-        shippedAt: result.shippedAt,
+        orderId: order.id,
+        prizeShippingStatus: order.prizeShippingStatus,
       };
     });
   }
 
   /**
-   * 确认签收
+   * 确认签收（基于新的 Order 系统）
    */
   async confirmPrizeDelivery(drawResultId: number): Promise<{
     success: boolean;
-    drawResultId: number;
+    orderId: number;
     prizeStatus: PrizeStatus;
     prizeShippingStatus: PrizeShippingStatus;
     deliveredAt: Date;
@@ -489,29 +602,45 @@ export class AdminDrawService {
         throw new NotFoundException('Prize order not found');
       }
 
-      if (result.prizeShippingStatus !== PrizeShippingStatus.SHIPPED) {
+      if (!result.orderId) {
+        throw new BadRequestException('Prize has not been claimed yet');
+      }
+
+      // 获取订单
+      const order = await manager.findOne(Order, {
+        where: { id: result.orderId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      if (order.prizeShippingStatus !== PrizeShippingStatus.SHIPPED) {
         throw new BadRequestException(
-          `Cannot confirm delivery for order with status: ${result.prizeShippingStatus}`,
+          `Cannot confirm delivery for order with status: ${order.prizeShippingStatus}`,
         );
       }
 
-      // 更新状态
-      result.prizeShippingStatus = PrizeShippingStatus.DELIVERED;
-      result.prizeStatus = PrizeStatus.DISTRIBUTED;
-      result.deliveredAt = new Date();
-      result.prizeDistributedAt = new Date();
+      // 更新订单状态
+      order.prizeShippingStatus = PrizeShippingStatus.DELIVERED;
+      order.deliveredAt = new Date();
+      await manager.save(order);
 
+      // 更新 DrawResult 状态为已发放
+      result.prizeStatus = PrizeStatus.DISTRIBUTED;
+      result.prizeDistributedAt = new Date();
       await manager.save(result);
 
       // 更新物流时间线
-      await this.logisticsService.confirmPrizeDelivery(result);
+      await this.logisticsService.confirmPrizeDelivery(order);
 
       return {
         success: true,
-        drawResultId: result.id,
+        orderId: order.id,
         prizeStatus: result.prizeStatus,
-        prizeShippingStatus: result.prizeShippingStatus,
-        deliveredAt: result.deliveredAt,
+        prizeShippingStatus: order.prizeShippingStatus,
+        deliveredAt: order.deliveredAt,
       };
     });
   }

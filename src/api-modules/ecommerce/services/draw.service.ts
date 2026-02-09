@@ -16,8 +16,15 @@ import {
   PrizeStatus,
 } from '../entities/draw-result.entity';
 import { NewUserDrawChance } from '../entities/new-user-draw-chance.entity';
-import { NewUserDrawChanceStatus, PrizeShippingStatus } from '../enums/ecommerce.enums';
+import {
+  NewUserDrawChanceStatus,
+  PrizeShippingStatus,
+  OrderType,
+  PaymentStatus,
+} from '../enums/ecommerce.enums';
 import { Product } from '../entities/product.entity';
+import { Order } from '../entities/order.entity';
+import { ShippingAddress } from '../entities/shipping-address.entity';
 import { ProductService } from './product.service';
 import { AssetService } from '../../assets/services/asset.service';
 import { Currency } from '../../assets/entities/balance/user-asset.entity';
@@ -45,6 +52,10 @@ export class DrawService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(NewUserDrawChance)
     private readonly newUserDrawChanceRepository: Repository<NewUserDrawChance>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+    @InjectRepository(ShippingAddress)
+    private readonly shippingAddressRepository: Repository<ShippingAddress>,
     private readonly productService: ProductService,
     private readonly assetService: AssetService,
     private readonly blockchainService: BlockchainService,
@@ -1211,195 +1222,20 @@ export class DrawService {
     return drawResult.shippingAddressSnapshot || null;
   }
 
-  // ==================== 实物奖品领取相关 ====================
+  // ==================== 实物奖品领取相关（新方案：创建 Order） ====================
 
   /**
-   * 获取用户待领取/已领取的实物奖品列表
-   */
-  async getMyPhysicalPrizes(
-    userId: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{
-    items: Array<{
-      drawResultId: number;
-      drawRoundId: number;
-      productId: number;
-      productName: string;
-      productImage: string;
-      prizeValue: string;
-      prizeStatus: PrizeStatus;
-      prizeShippingStatus: PrizeShippingStatus | null;
-      wonAt: Date;
-      shippingAddress: any;
-      logisticsInfo: any;
-    }>;
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    const [drawResults, total] = await this.drawResultRepository.findAndCount({
-      where: {
-        winnerUserId: userId,
-        prizeType: PrizeType.PHYSICAL,
-      },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    if (drawResults.length === 0) {
-      return { items: [], total: 0, page, limit };
-    }
-
-    // 获取关联的 DrawRound 和 Product 信息
-    const drawRoundIds = drawResults.map((result) => result.drawRoundId);
-    const drawRounds = await this.drawRoundRepository.find({
-      where: { id: In(drawRoundIds) },
-      relations: ['product'],
-    });
-    const drawRoundMap = new Map(drawRounds.map((round) => [round.id, round]));
-
-    // 组装返回数据
-    const items = drawResults.map((result) => {
-      const drawRound = drawRoundMap.get(result.drawRoundId);
-      const product = drawRound?.product;
-
-      return {
-        drawResultId: result.id,
-        drawRoundId: result.drawRoundId,
-        productId: drawRound?.productId,
-        productName: product?.name || '',
-        productImage: product?.thumbnail || product?.images?.[0] || '',
-        prizeValue: result.prizeValue.toString(),
-        prizeStatus: result.prizeStatus,
-        prizeShippingStatus: result.prizeShippingStatus,
-        wonAt: result.createdAt,
-        shippingAddress: result.shippingAddressSnapshot,
-        logisticsInfo:
-          result.prizeShippingStatus === PrizeShippingStatus.SHIPPED ||
-          result.prizeShippingStatus === PrizeShippingStatus.DELIVERED
-            ? {
-                company: result.logisticsCompany,
-                trackingNumber: result.trackingNumber,
-                shippedAt: result.shippedAt,
-                deliveredAt: result.deliveredAt,
-              }
-            : null,
-      };
-    });
-
-    return { items, total, page, limit };
-  }
-
-  /**
-   * 提交收货地址领取实物奖品
+   * 提交收货地址领取实物奖品（创建 LUCKY_DRAW 订单）
    */
   async claimPhysicalPrize(
     drawResultId: number,
     userId: string,
     shippingAddressId: number,
-  ): Promise<{
-    success: boolean;
-    drawResultId: number;
-    shippingOrderNumber: string;
-    prizeShippingStatus: PrizeShippingStatus;
-    shippingAddress: any;
-  }> {
-    return await this.dataSource.transaction(async (manager) => {
-      // 获取中奖记录（加锁）
-      const drawResult = await manager.findOne(DrawResult, {
-        where: { id: drawResultId },
-        lock: { mode: 'pessimistic_write' },
-      });
-
-      if (!drawResult) {
-        throw new NotFoundException('Draw result not found');
-      }
-
-      // 验证用户
-      if (drawResult.winnerUserId !== userId) {
-        throw new BadRequestException('You are not authorized to claim this prize');
-      }
-
-      // 验证奖品类型
-      if (drawResult.prizeType !== PrizeType.PHYSICAL) {
-        throw new BadRequestException('This prize is not a physical prize');
-      }
-
-      // 验证状态
-      if (
-        drawResult.prizeShippingStatus !== PrizeShippingStatus.PENDING_ADDRESS &&
-        drawResult.prizeShippingStatus !== null
-      ) {
-        throw new BadRequestException('Shipping address has already been submitted');
-      }
-
-      // 获取收货地址
-      const shippingAddress = await this.shippingAddressService.findByIdAndUserId(
-        shippingAddressId,
-        userId,
-      );
-
-      if (!shippingAddress) {
-        throw new NotFoundException('Shipping address not found');
-      }
-
-      // 更新中奖记录
-      drawResult.shippingAddressId = shippingAddressId;
-      drawResult.shippingAddressSnapshot = {
-        recipientName: shippingAddress.recipientName,
-        phoneNumber: shippingAddress.phoneNumber,
-        country: shippingAddress.country,
-        state: shippingAddress.state,
-        city: shippingAddress.city,
-        streetAddress: shippingAddress.streetAddress,
-        apartment: shippingAddress.apartment,
-        zipCode: shippingAddress.zipCode,
-      };
-      drawResult.shippingOrderNumber = this.generateShippingOrderNumber();
-      drawResult.prizeShippingStatus = PrizeShippingStatus.PENDING_SHIPMENT;
-      drawResult.addressSubmittedAt = new Date();
-
-      await manager.save(drawResult);
-
-      // 初始化物流时间线
-      await this.logisticsService.initializePrizeShippingTimeline(drawResult);
-
-      this.logger.log(
-        `User ${userId} claimed physical prize: ${drawResultId}, order: ${drawResult.shippingOrderNumber}`,
-      );
-
-      return {
-        success: true,
-        drawResultId: drawResult.id,
-        shippingOrderNumber: drawResult.shippingOrderNumber,
-        prizeShippingStatus: drawResult.prizeShippingStatus,
-        shippingAddress: {
-          recipientName: shippingAddress.recipientName,
-          phoneNumber: this.maskPhoneNumber(shippingAddress.phoneNumber),
-          fullAddress: shippingAddress.getFullAddress(),
-        },
-      };
-    });
-  }
-
-  /**
-   * 获取实物奖品物流详情
-   */
-  async getPhysicalPrizeShipping(
-    drawResultId: number,
-    userId: string,
-  ): Promise<{
-    drawResultId: number;
-    shippingOrderNumber: string | null;
-    prizeShippingStatus: PrizeShippingStatus | null;
-    shippingAddress: any;
-    logisticsInfo: any;
-    timeline: LogisticsTimeline[];
-  }> {
+  ): Promise<{ drawResult: DrawResult; order: Order }> {
+    // 1. 验证 DrawResult
     const drawResult = await this.drawResultRepository.findOne({
       where: { id: drawResultId, winnerUserId: userId },
+      relations: ['drawRound', 'drawRound.product'],
     });
 
     if (!drawResult) {
@@ -1407,62 +1243,124 @@ export class DrawService {
     }
 
     if (drawResult.prizeType !== PrizeType.PHYSICAL) {
-      throw new BadRequestException('This prize is not a physical prize');
+      throw new BadRequestException('Prize is not a physical item');
     }
 
-    const timeline = await this.logisticsService.getPrizeShippingTimeline(drawResultId);
+    if (drawResult.orderId) {
+      throw new BadRequestException('Prize has already been claimed');
+    }
 
-    return {
+    // 2. 验证收货地址
+    const shippingAddress = await this.shippingAddressRepository.findOne({
+      where: { id: shippingAddressId, userId },
+    });
+
+    if (!shippingAddress) {
+      throw new NotFoundException('Shipping address not found');
+    }
+
+    // 3. 创建 LUCKY_DRAW 订单
+    const order = this.orderRepository.create({
+      orderNumber: Order.generateOrderNumber(),
+      userId,
+      type: OrderType.LUCKY_DRAW,
+      productId: drawResult.drawRound.productId,
+      productInfo: {
+        name: drawResult.drawRound.product.name,
+        thumbnail: drawResult.drawRound.product.thumbnail,
+        images: drawResult.drawRound.product.images || [],
+        specifications: drawResult.drawRound.product.specifications || [],
+        originalPrice: drawResult.prizeValue.toString(),
+        salePrice: '0', // 一元购奖品免费
+      },
+      quantity: 1,
+      paymentAmount: new Decimal(0), // 奖品无需支付
+      paymentStatus: PaymentStatus.PAID, // 直接标记为已支付
+      prizeShippingStatus: PrizeShippingStatus.PENDING_SHIPMENT, // 待发货
+      shippingAddressId,
       drawResultId: drawResult.id,
-      shippingOrderNumber: drawResult.shippingOrderNumber,
-      prizeShippingStatus: drawResult.prizeShippingStatus,
-      shippingAddress: drawResult.shippingAddressSnapshot
-        ? {
-            recipientName: drawResult.shippingAddressSnapshot.recipientName,
-            phoneNumber: this.maskPhoneNumber(
-              drawResult.shippingAddressSnapshot.phoneNumber,
-            ),
-            fullAddress: [
-              drawResult.shippingAddressSnapshot.country,
-              drawResult.shippingAddressSnapshot.state,
-              drawResult.shippingAddressSnapshot.city,
-              drawResult.shippingAddressSnapshot.streetAddress,
-              drawResult.shippingAddressSnapshot.apartment,
-              drawResult.shippingAddressSnapshot.zipCode,
-            ]
-              .filter(Boolean)
-              .join(', '),
-          }
-        : null,
-      logisticsInfo:
-        drawResult.logisticsCompany || drawResult.trackingNumber
-          ? {
-              company: drawResult.logisticsCompany,
-              trackingNumber: drawResult.trackingNumber,
-              shippedAt: drawResult.shippedAt,
-              deliveredAt: drawResult.deliveredAt,
-            }
-          : null,
-      timeline,
-    };
+    });
+
+    await this.orderRepository.save(order);
+
+    // 4. 更新 DrawResult
+    drawResult.orderId = order.id;
+    drawResult.addressSubmittedAt = new Date();
+    await this.drawResultRepository.save(drawResult);
+
+    // 5. 初始化物流时间线（3节点，第1个节点立即激活）
+    await this.logisticsService.initializePrizeShippingTimeline(order);
+
+    return { drawResult, order };
   }
 
   /**
-   * 生成发货订单号
+   * 获取用户待领取的实物奖品列表
    */
-  private generateShippingOrderNumber(): string {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `PRIZE${timestamp}${random}`;
+  async getMyPendingPhysicalPrizes(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    items: DrawResult[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const [items, total] = await this.drawResultRepository.findAndCount({
+      where: {
+        winnerUserId: userId,
+        prizeType: PrizeType.PHYSICAL,
+        orderId: IsNull(), // 未创建订单的
+      },
+      relations: ['drawRound', 'drawRound.product'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { items, total, page, limit };
   }
 
   /**
-   * 掩码电话号码
+   * 获取实物奖品订单详情（含物流信息）
    */
-  private maskPhoneNumber(phone: string): string {
-    if (!phone || phone.length < 7) return phone;
-    const start = phone.slice(0, 3);
-    const end = phone.slice(-4);
-    return `${start}****${end}`;
+  async getPhysicalPrizeOrder(
+    drawResultId: number,
+    userId: string,
+  ): Promise<{
+    drawResult: DrawResult;
+    order: Order | null;
+    logistics: LogisticsTimeline[];
+    currentStatus: LogisticsTimeline | null;
+  }> {
+    const drawResult = await this.drawResultRepository.findOne({
+      where: { id: drawResultId, winnerUserId: userId },
+      relations: ['drawRound', 'drawRound.product'],
+    });
+
+    if (!drawResult) {
+      throw new NotFoundException('Draw result not found');
+    }
+
+    let order: Order | null = null;
+    let logistics: LogisticsTimeline[] = [];
+    let currentStatus: LogisticsTimeline | null = null;
+
+    if (drawResult.orderId) {
+      order = await this.orderRepository.findOne({
+        where: { id: drawResult.orderId },
+        relations: ['shippingAddress'],
+      });
+
+      if (order) {
+        logistics =
+          await this.logisticsService.getOrderLogisticsTimeline(order.id);
+        currentStatus =
+          await this.logisticsService.getCurrentLogisticsStatus(order.id);
+      }
+    }
+
+    return { drawResult, order, logistics, currentStatus };
   }
 }

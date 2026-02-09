@@ -15,6 +15,7 @@ import {
   OrderType,
   InstantBuyOrderStatus,
   PaymentStatus,
+  PrizeShippingStatus,
 } from '../enums/ecommerce.enums';
 import { ShippingAddress } from './shipping-address.entity';
 import { LogisticsTimeline } from './logistics-timeline.entity';
@@ -86,12 +87,47 @@ export class Order {
   })
   instantBuyStatus: InstantBuyOrderStatus | null; // Instant Buy订单状态
 
+  // ========== 一元购实物奖品相关字段 ==========
+
+  @Column({
+    type: 'enum',
+    enum: PrizeShippingStatus,
+    nullable: true,
+    name: 'prize_shipping_status',
+  })
+  prizeShippingStatus: PrizeShippingStatus | null; // 一元购奖品发货状态
+
+  @Column({ type: 'int', nullable: true, name: 'draw_result_id' })
+  drawResultId: number | null; // 关联中奖记录（当 type = LUCKY_DRAW 时使用）
+
+  @Column({
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+    name: 'logistics_company',
+  })
+  logisticsCompany: string | null; // 物流公司（一元购实物奖品）
+
+  @Column({
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+    name: 'tracking_number',
+  })
+  trackingNumber: string | null; // 物流单号（一元购实物奖品）
+
+  // ========== 收货地址和物流 ==========
 
   @Column({ type: 'int', nullable: true, name: 'shipping_address_id' })
   shippingAddressId: number | null; // 收货地址ID
 
-  shippingAddress: ShippingAddress; // 收货地址
+  @ManyToOne(() => ShippingAddress, { eager: false, nullable: true })
+  @JoinColumn({ name: 'shipping_address_id' })
+  shippingAddress: ShippingAddress | null; // 收货地址
 
+  @OneToMany(() => LogisticsTimeline, (timeline) => timeline.order, {
+    eager: false,
+  })
   logisticsTimelines: LogisticsTimeline[]; // 物流时间线
 
   @Column({ type: 'timestamp', nullable: true, name: 'refund_requested_at' })

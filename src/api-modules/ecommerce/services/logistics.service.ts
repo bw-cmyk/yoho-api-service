@@ -3,11 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
 import { Order } from '../entities';
-import { DrawResult } from '../entities/draw-result.entity';
+import { DrawResult, PrizeStatus } from '../entities/draw-result.entity';
 import {
   LogisticsNodeKey,
   LogisticsSourceType,
   InstantBuyOrderStatus,
+  OrderType,
+  PrizeShippingStatus,
 } from '../enums/ecommerce.enums';
 import { NotificationService } from '../../notification/services/notification.service';
 
@@ -176,32 +178,54 @@ export class LogisticsService {
   constructor(
     @InjectRepository(LogisticsTimeline)
     private readonly timelineRepository: Repository<LogisticsTimeline>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+    @InjectRepository(DrawResult)
+    private readonly drawResultRepository: Repository<DrawResult>,
     private readonly notificationService: NotificationService,
   ) {}
 
   /**
-   * 为订单初始化物流时间线
+   * 为订单初始化物流时间线（根据订单类型选择节点配置）
    */
   async initializeLogisticsTimeline(
     order: Order,
   ): Promise<LogisticsTimeline[]> {
-    if (order.type !== 'INSTANT_BUY') {
+    let nodeConfigs: LogisticsNodeConfig[];
+
+    if (order.type === OrderType.INSTANT_BUY) {
+      nodeConfigs = NORMAL_LOGISTICS_NODES; // 15个节点
+    } else if (order.type === OrderType.LUCKY_DRAW) {
+      nodeConfigs = PRIZE_SHIPPING_NODES; // 3个节点
+    } else {
       return [];
     }
 
-    // 创建正常流程的节点
-    const nodes = NORMAL_LOGISTICS_NODES.map((config) =>
+    // 创建节点
+    const nodes = nodeConfigs.map((config) =>
       this.timelineRepository.create({
         orderId: order.id,
         nodeKey: config.key,
         title: config.title,
         description: config.description,
         dayIndex: config.dayIndex,
-        activatedAt: null,
+        activatedAt: config.dayIndex === 0 ? new Date() : null, // dayIndex=0 立即激活
       }),
     );
 
     return await this.timelineRepository.save(nodes);
+  }
+
+  /**
+   * 专门为一元购奖品初始化物流（便捷方法）
+   */
+  async initializePrizeShippingTimeline(
+    order: Order,
+  ): Promise<LogisticsTimeline[]> {
+    if (order.type !== OrderType.LUCKY_DRAW) {
+      throw new Error('Order is not a Lucky Draw prize');
+    }
+    return this.initializeLogisticsTimeline(order);
   }
 
   /**
@@ -367,45 +391,30 @@ export class LogisticsService {
     return activatedNodes[activatedNodes.length - 1];
   }
 
-  // ==================== 一元购实物奖品物流管理 ====================
-
-  /**
-   * 为一元购实物奖品初始化物流时间线
-   */
-  async initializePrizeShippingTimeline(
-    drawResult: DrawResult,
-  ): Promise<LogisticsTimeline[]> {
-    // 创建一元购物流节点
-    const nodes = PRIZE_SHIPPING_NODES.map((config) =>
-      this.timelineRepository.create({
-        orderId: null,
-        drawResultId: drawResult.id,
-        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
-        nodeKey: config.key,
-        title: config.title,
-        description: config.description,
-        dayIndex: config.dayIndex,
-        activatedAt: config.dayIndex === 0 ? new Date() : null, // dayIndex=0 立即激活
-      }),
-    );
-
-    return await this.timelineRepository.save(nodes);
-  }
+  // ==================== 一元购实物奖品物流管理（新方案：基于 Order） ====================
 
   /**
    * 一元购实物奖品发货
    */
   async shipPrize(
-    drawResult: DrawResult,
+    order: Order,
     logisticsCompany: string,
     trackingNumber: string,
-    productName?: string,
   ): Promise<void> {
-    // 激活"已发货"节点
+    if (order.type !== OrderType.LUCKY_DRAW) {
+      throw new Error('Order is not a Lucky Draw prize');
+    }
+
+    // 1. 更新订单物流信息
+    order.logisticsCompany = logisticsCompany;
+    order.trackingNumber = trackingNumber;
+    order.prizeShippingStatus = PrizeShippingStatus.SHIPPED;
+    await this.orderRepository.save(order);
+
+    // 2. 激活"已发货"节点
     const shippedNode = await this.timelineRepository.findOne({
       where: {
-        drawResultId: drawResult.id,
-        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
+        orderId: order.id,
         nodeKey: LogisticsNodeKey.PRIZE_SHIPPED,
       },
     });
@@ -414,21 +423,18 @@ export class LogisticsService {
       shippedNode.activatedAt = new Date();
       shippedNode.description = `Shipped via ${logisticsCompany}, Tracking: ${trackingNumber}`;
       await this.timelineRepository.save(shippedNode);
+    }
 
-      // 发送发货通知
-      if (drawResult.winnerUserId) {
-        try {
-          await this.notificationService.notifyShippingUpdate(
-            drawResult.winnerUserId,
-            {
-              orderNumber: drawResult.shippingOrderNumber || `PRIZE-${drawResult.id}`,
-              status: 'SHIPPED',
-              productName: productName || 'Your prize',
-            },
-          );
-        } catch (error) {
-          this.logger.error(`Failed to send shipping notification`, error);
-        }
+    // 3. 发送发货通知（可选）
+    if (order.userId) {
+      try {
+        await this.notificationService.notifyShippingUpdate(order.userId, {
+          orderNumber: order.orderNumber,
+          status: 'SHIPPED',
+          productName: order.productInfo.name,
+        });
+      } catch (error) {
+        this.logger.error('Failed to send shipping notification', error);
       }
     }
   }
@@ -436,15 +442,27 @@ export class LogisticsService {
   /**
    * 一元购实物奖品确认签收
    */
-  async confirmPrizeDelivery(
-    drawResult: DrawResult,
-    productName?: string,
-  ): Promise<void> {
-    // 激活"已签收"节点
+  async confirmPrizeDelivery(order: Order): Promise<void> {
+    if (order.type !== OrderType.LUCKY_DRAW) {
+      throw new Error('Order is not a Lucky Draw prize');
+    }
+
+    // 1. 更新订单状态
+    order.prizeShippingStatus = PrizeShippingStatus.DELIVERED;
+    order.deliveredAt = new Date();
+    await this.orderRepository.save(order);
+
+    // 2. 更新 DrawResult 状态为已发放
+    if (order.drawResultId) {
+      await this.drawResultRepository.update(order.drawResultId, {
+        prizeStatus: PrizeStatus.DISTRIBUTED,
+      });
+    }
+
+    // 3. 激活"已签收"节点
     const deliveredNode = await this.timelineRepository.findOne({
       where: {
-        drawResultId: drawResult.id,
-        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
+        orderId: order.id,
         nodeKey: LogisticsNodeKey.PRIZE_DELIVERED,
       },
     });
@@ -452,53 +470,19 @@ export class LogisticsService {
     if (deliveredNode && !deliveredNode.activatedAt) {
       deliveredNode.activatedAt = new Date();
       await this.timelineRepository.save(deliveredNode);
+    }
 
-      // 发送签收通知
-      if (drawResult.winnerUserId) {
-        try {
-          await this.notificationService.notifyShippingUpdate(
-            drawResult.winnerUserId,
-            {
-              orderNumber: drawResult.shippingOrderNumber || `PRIZE-${drawResult.id}`,
-              status: 'DELIVERED',
-              productName: productName || 'Your prize',
-            },
-          );
-        } catch (error) {
-          this.logger.error(`Failed to send delivery notification`, error);
-        }
+    // 4. 发送签收通知（可选）
+    if (order.userId) {
+      try {
+        await this.notificationService.notifyShippingUpdate(order.userId, {
+          orderNumber: order.orderNumber,
+          status: 'DELIVERED',
+          productName: order.productInfo.name,
+        });
+      } catch (error) {
+        this.logger.error('Failed to send delivery notification', error);
       }
     }
-  }
-
-  /**
-   * 获取一元购实物奖品的物流时间线
-   */
-  async getPrizeShippingTimeline(
-    drawResultId: number,
-  ): Promise<LogisticsTimeline[]> {
-    return await this.timelineRepository.find({
-      where: {
-        drawResultId,
-        sourceType: LogisticsSourceType.PRIZE_SHIPPING,
-      },
-      order: { createdAt: 'ASC' },
-    });
-  }
-
-  /**
-   * 获取一元购实物奖品当前物流状态
-   */
-  async getCurrentPrizeShippingStatus(
-    drawResultId: number,
-  ): Promise<LogisticsTimeline | null> {
-    const timelines = await this.getPrizeShippingTimeline(drawResultId);
-    const activatedNodes = timelines.filter((t) => t.isActivated());
-
-    if (activatedNodes.length === 0) {
-      return null;
-    }
-
-    return activatedNodes[activatedNodes.length - 1];
   }
 }

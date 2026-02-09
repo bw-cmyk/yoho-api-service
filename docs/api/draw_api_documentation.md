@@ -19,8 +19,10 @@
 - [获取期次详情](#5-获取期次详情)
 - [获取期次参与记录](#6-获取期次参与记录)
 - [获取我的参与记录](#7-获取我的参与记录)
-- [手动触发开奖](#8-手动触发开奖管理员)
-- [将实物奖品转换为现金](#9-将实物奖品转换为现金)
+- [获取我的中奖记录](#8-获取我的中奖记录)
+- [领取实物奖品（提交收货地址）](#9-领取实物奖品提交收货地址)
+- [获取实物奖品订单详情](#10-获取实物奖品订单详情)
+- [手动触发开奖](#11-手动触发开奖管理员)
 - [数据模型](#数据模型)
 - [错误码说明](#错误码说明)
 
@@ -513,7 +515,338 @@ Authorization: Bearer {token}
 
 ---
 
-## 8. 手动触发开奖（管理员）
+## 8. 获取我的中奖记录
+
+获取当前用户的所有中奖记录（实物奖品）。
+
+### 请求
+
+**Endpoint**: `GET /api/v1/ecommerce/draws/my-wins`
+
+**Headers**:
+```
+Authorization: Bearer {token}
+```
+
+**Query Parameters**:
+
+| 参数 | 类型 | 必填 | 说明 | 默认值 |
+|------|------|------|------|--------|
+| page | number | 否 | 页码 | 1 |
+| limit | number | 否 | 每页数量 | 20 |
+
+**示例**: `GET /api/v1/ecommerce/draws/my-wins?page=1&limit=20`
+
+### 响应
+
+**成功响应** (200):
+```json
+{
+  "items": [
+    {
+      "drawResultId": 1,
+      "drawRoundId": 1,
+      "winningNumber": 4,
+      "product": {
+        "id": 2,
+        "name": "0.005 BTC",
+        "thumbnail": "https://example.com/images/btc-thumbnail.jpg"
+      },
+      "prizeValue": "500.00",
+      "prizeStatus": "PENDING",
+      "prizeShippingStatus": "PENDING_ADDRESS",
+      "addressSubmittedAt": null,
+      "orderId": null,
+      "createdAt": "2025-12-12T03:37:28.638Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 20
+}
+```
+
+**字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| drawResultId | number | 中奖记录ID |
+| drawRoundId | number | 期次ID |
+| winningNumber | number | 中奖号码 |
+| product | object | 商品信息 |
+| prizeValue | string | 奖品价值（USD） |
+| prizeStatus | enum | 奖品状态：PENDING（待发放）、DISTRIBUTED（已发放）、CANCELLED（已取消） |
+| prizeShippingStatus | enum | 发货状态：PENDING_ADDRESS（待填写地址）、PENDING_SHIPMENT（待发货）、SHIPPED（已发货）、DELIVERED（已签收） |
+| addressSubmittedAt | string \| null | 地址提交时间 |
+| orderId | number \| null | 订单ID（已提交地址后创建） |
+| createdAt | string | 中奖时间 |
+
+**说明**:
+- 只返回实物奖品（`prizeType = PHYSICAL`）的中奖记录
+- 按中奖时间倒序排列
+- 用于用户查看自己的中奖记录并提交收货地址
+
+---
+
+## 9. 领取实物奖品（提交收货地址）
+
+提交收货地址并创建订单，用于领取实物奖品。
+
+### 请求
+
+**Endpoint**: `POST /api/v1/ecommerce/draws/prizes/physical/:drawResultId/claim`
+
+**Headers**:
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+**Path Parameters**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| drawResultId | number | 是 | 中奖记录ID |
+
+**Body**:
+```json
+{
+  "shippingAddressId": 8
+}
+```
+
+**参数说明**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| shippingAddressId | number | 是 | 收货地址ID（用户预先保存的地址） |
+
+**示例**: `POST /api/v1/ecommerce/draws/prizes/physical/1/claim`
+
+### 响应
+
+**成功响应** (200):
+```json
+{
+  "drawResult": {
+    "id": 1,
+    "drawRoundId": 1,
+    "winningNumber": 4,
+    "winnerUserId": "358801635322889216",
+    "winnerUserName": "Jilian",
+    "prizeType": "PHYSICAL",
+    "prizeValue": "500",
+    "prizeStatus": "PENDING",
+    "orderId": 8,
+    "addressSubmittedAt": "2026-02-09T09:22:09.849Z"
+  },
+  "order": {
+    "id": 8,
+    "orderNumber": "ORD1770628929609H7Z2R4",
+    "userId": "358801635322889216",
+    "type": "LUCKY_DRAW",
+    "productId": 2,
+    "productInfo": {
+      "name": "0.005 BTC",
+      "thumbnail": "https://example.com/images/btc-thumbnail.jpg"
+    },
+    "paymentAmount": "0",
+    "paymentStatus": "PAID",
+    "prizeShippingStatus": "PENDING_SHIPMENT",
+    "drawResultId": 1,
+    "shippingAddressId": 8,
+    "createdAt": "2026-02-09T01:22:09.720Z"
+  }
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "statusCode": 400,
+  "message": "该奖品不是实物奖品",
+  "error": "Bad Request"
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "statusCode": 400,
+  "message": "奖品不属于当前用户",
+  "error": "Bad Request"
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "statusCode": 400,
+  "message": "已提交过收货地址",
+  "error": "Bad Request"
+}
+```
+
+**错误响应** (404):
+```json
+{
+  "statusCode": 404,
+  "message": "收货地址不存在",
+  "error": "Not Found"
+}
+```
+
+### 业务逻辑
+
+1. 验证中奖记录是否属于当前用户
+2. 验证是否为实物奖品
+3. 验证是否已提交过收货地址
+4. 创建 LUCKY_DRAW 类型的订单（paymentAmount = 0, paymentStatus = PAID）
+5. 初始化物流时间线（3个节点：待发货、已发货、已签收）
+6. 更新 DrawResult 的 orderId 和 addressSubmittedAt
+
+**重要说明**:
+- 收货地址需要用户预先保存（通过地址管理接口）
+- 一个奖品只能提交一次收货地址
+- 订单金额为 0，支付状态为已支付
+- 订单类型为 LUCKY_DRAW，与即时购买订单共享同一个 Order 系统
+
+---
+
+## 10. 获取实物奖品订单详情
+
+获取实物奖品的订单详情和物流信息。
+
+### 请求
+
+**Endpoint**: `GET /api/v1/ecommerce/draws/prizes/physical/:drawResultId/order`
+
+**Headers**:
+```
+Authorization: Bearer {token}
+```
+
+**Path Parameters**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| drawResultId | number | 是 | 中奖记录ID |
+
+**示例**: `GET /api/v1/ecommerce/draws/prizes/physical/1/order`
+
+### 响应
+
+**成功响应** (200):
+```json
+{
+  "orderId": 8,
+  "orderNumber": "ORD1770628929609H7Z2R4",
+  "prizeShippingStatus": "PENDING_SHIPMENT",
+  "prizeStatus": "PENDING",
+  "drawRoundId": 1,
+  "roundNumber": 1,
+  "winningNumber": 4,
+  "product": {
+    "id": 2,
+    "name": "0.005 BTC",
+    "thumbnail": "https://example.com/images/btc-thumbnail.jpg",
+    "images": [
+      "https://example.com/images/btc-thumbnail.jpg"
+    ]
+  },
+  "winner": {
+    "userId": "358801635322889216",
+    "userName": "Jilian",
+    "avatar": null
+  },
+  "shippingAddress": {
+    "recipientName": "John Doe",
+    "phoneNumber": "+1234567890",
+    "country": "United States",
+    "state": "California",
+    "city": "San Francisco",
+    "streetAddress": "123 Main St",
+    "apartment": "Apt 4B",
+    "zipCode": "94102"
+  },
+  "logistics": {
+    "company": null,
+    "trackingNumber": null,
+    "deliveredAt": null
+  },
+  "timeline": [
+    {
+      "event": "WON",
+      "title": "Won Prize",
+      "time": "2025-12-12T03:37:28.638Z"
+    },
+    {
+      "event": "ADDRESS_SUBMITTED",
+      "title": "Address Submitted",
+      "time": "2026-02-09T09:22:09.849Z"
+    }
+  ],
+  "prizeValue": "500",
+  "addressSubmittedAt": "2026-02-09T09:22:09.849Z",
+  "createdAt": "2025-12-12T03:37:28.638Z"
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "statusCode": 400,
+  "message": "奖品尚未提交收货地址",
+  "error": "Bad Request"
+}
+```
+
+**错误响应** (404):
+```json
+{
+  "statusCode": 404,
+  "message": "中奖记录不存在",
+  "error": "Not Found"
+}
+```
+
+**字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| orderId | number | 订单ID |
+| orderNumber | string | 订单号 |
+| prizeShippingStatus | enum | 发货状态 |
+| prizeStatus | enum | 奖品状态 |
+| drawRoundId | number | 期次ID |
+| roundNumber | number | 期次编号 |
+| winningNumber | number | 中奖号码 |
+| product | object | 商品信息 |
+| winner | object | 中奖用户信息 |
+| shippingAddress | object | 收货地址信息 |
+| logistics | object | 物流信息 |
+| timeline | array | 订单时间线 |
+| prizeValue | string | 奖品价值 |
+| addressSubmittedAt | string | 地址提交时间 |
+| createdAt | string | 创建时间 |
+
+**物流时间线事件类型**:
+
+| 事件 | 说明 |
+|------|------|
+| WON | 中奖 |
+| ADDRESS_SUBMITTED | 已提交地址 |
+| SHIPPED | 已发货（管理员操作） |
+| DELIVERED | 已签收（管理员操作） |
+
+**说明**:
+- 只有提交收货地址后才能查看订单详情
+- 返回完整的物流时间线
+- 包含收货地址和物流信息
+
+---
+
+## 11. 手动触发开奖（管理员）
 
 手动触发指定期次的开奖（需要管理员权限）。
 
@@ -586,62 +919,6 @@ Authorization: Bearer {token}
 
 ---
 
-## 9. 将实物奖品转换为现金
-
-将实物奖品转换为等价的现金并发放给中奖用户。
-
-### 请求
-
-**Endpoint**: `POST /api/v1/ecommerce/draws/results/:id/convert-to-cash`
-
-**Headers**:
-```
-Authorization: Bearer {token}
-```
-
-**Path Parameters**:
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | number | 是 | 开奖结果ID |
-
-**示例**: `POST /api/v1/ecommerce/draws/results/12/convert-to-cash`
-
-### 响应
-
-**成功响应** (200):
-```json
-{
-  "message": "实物奖品已转换为现金并发放",
-  "drawResult": {
-    "id": 12,
-    "prizeType": "CASH",
-    "prizeStatus": "DISTRIBUTED",
-    "prizeDistributedAt": "2024-01-15T10:30:00.000Z"
-  }
-}
-```
-
-**错误响应** (400):
-```json
-{
-  "statusCode": 400,
-  "message": "该奖品不是实物奖品，无法转换",
-  "error": "Bad Request"
-}
-```
-
-**错误响应** (400):
-```json
-{
-  "statusCode": 400,
-  "message": "奖品已发放，无法转换",
-  "error": "Bad Request"
-}
-```
-
----
-
 ## 数据模型
 
 ### DrawRound（期次）
@@ -710,6 +987,56 @@ Authorization: Bearer {token}
 | createdAt | string (ISO 8601) | 创建时间 |
 | updatedAt | string (ISO 8601) | 更新时间 |
 
+**新增字段（Order-based 系统）**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| orderId | number \| null | 关联的订单ID（实物奖品提交地址后创建） |
+| addressSubmittedAt | string \| null | 收货地址提交时间 |
+
+### Order（订单）
+
+实物奖品提交收货地址后，会创建一个 LUCKY_DRAW 类型的订单。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | number | 订单ID |
+| orderNumber | string | 订单号（格式：ORD{timestamp}{random}） |
+| userId | string | 用户ID |
+| type | enum | 订单类型：INSTANT_BUY（即时购买）、LUCKY_DRAW（一元购奖品） |
+| productId | number | 商品ID |
+| productInfo | object | 商品信息快照（包含 name, thumbnail, images 等） |
+| quantity | number | 数量（一元购奖品固定为 1） |
+| paymentAmount | string (Decimal) | 支付金额（一元购奖品固定为 0） |
+| paymentStatus | enum | 支付状态：一元购奖品固定为 PAID |
+| prizeShippingStatus | enum \| null | 奖品发货状态（仅 LUCKY_DRAW 订单） |
+| drawResultId | number \| null | 关联的中奖记录ID（仅 LUCKY_DRAW 订单） |
+| shippingAddressId | number \| null | 收货地址ID |
+| logisticsCompany | string \| null | 物流公司 |
+| trackingNumber | string \| null | 物流单号 |
+| deliveredAt | string \| null | 签收时间 |
+| createdAt | string (ISO 8601) | 创建时间 |
+| updatedAt | string (ISO 8601) | 更新时间 |
+
+### PrizeShippingStatus（奖品发货状态）
+
+| 状态 | 说明 |
+|------|------|
+| PENDING_ADDRESS | 待填写地址（用户未提交收货地址） |
+| PENDING_SHIPMENT | 待发货（已提交地址，等待管理员发货） |
+| SHIPPED | 已发货（管理员已填写物流信息） |
+| DELIVERED | 已签收（管理员确认签收） |
+
+### 物流时间线节点
+
+一元购实物奖品的物流时间线包含以下 3 个节点：
+
+| 节点键 | 名称 | 说明 |
+|--------|------|------|
+| PRIZE_PENDING_SHIPMENT | Pending Shipment | 提交地址后立即激活 |
+| PRIZE_SHIPPED | Shipped | 管理员发货时激活 |
+| PRIZE_DELIVERED | Delivered | 管理员确认签收时激活 |
+
 ---
 
 ## 错误码说明
@@ -736,6 +1063,11 @@ Authorization: Bearer {token}
 | 游戏余额不足，请先充值 | 用户游戏余额不足 | 充值后再购买 |
 | 期次尚未满员，无法开奖 | 期次未满员 | 等待期次满员 |
 | 期次 {id} 不存在 | 期次不存在 | 检查期次ID |
+| 该奖品不是实物奖品 | 尝试对非实物奖品操作 | 检查奖品类型 |
+| 奖品不属于当前用户 | 尝试操作他人的奖品 | 检查登录状态 |
+| 已提交过收货地址 | 重复提交地址 | 检查订单状态 |
+| 收货地址不存在 | 地址ID无效 | 检查地址是否已删除 |
+| 奖品尚未提交收货地址 | 尝试查看未提交地址的订单 | 先提交收货地址 |
 
 ---
 
@@ -853,20 +1185,99 @@ async function getMyParticipations(productId?: number) {
   if (productId) {
     url += `&productId=${productId}`;
   }
-  
+
   const response = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${token}`,
     },
   });
-  
+
   return await response.json();
 }
+
+// 获取我的中奖记录（实物奖品）
+async function getMyWins() {
+  const response = await fetch('/api/v1/ecommerce/draws/my-wins?page=1&limit=20', {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  return await response.json();
+}
+
+// 领取实物奖品（提交收货地址）
+async function claimPhysicalPrize(drawResultId: number, shippingAddressId: number) {
+  const response = await fetch(
+    `/api/v1/ecommerce/draws/prizes/physical/${drawResultId}/claim`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        shippingAddressId,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message);
+  }
+
+  return await response.json();
+}
+
+// 获取实物奖品订单详情
+async function getPhysicalPrizeOrder(drawResultId: number) {
+  const response = await fetch(
+    `/api/v1/ecommerce/draws/prizes/physical/${drawResultId}/order`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  );
+
+  return await response.json();
+}
+```
+
+**完整示例流程**：
+
+```typescript
+// 1. 获取用户的中奖记录
+const wins = await getMyWins();
+
+// 2. 对于未提交地址的奖品，提交收货地址
+for (const win of wins.items) {
+  if (win.prizeShippingStatus === 'PENDING_ADDRESS') {
+    // 假设用户已经保存了收货地址，ID 为 8
+    const result = await claimPhysicalPrize(win.drawResultId, 8);
+    console.log('订单创建成功:', result.order.orderNumber);
+  }
+}
+
+// 3. 查看订单详情
+const orderDetail = await getPhysicalPrizeOrder(1);
+console.log('发货状态:', orderDetail.prizeShippingStatus);
+console.log('物流信息:', orderDetail.logistics);
 ```
 
 ---
 
 ## 更新日志
+
+### v2.0.0 (2026-02-09)
+- **重大更新**：实物奖品发货系统改用 Order-based 架构
+- 新增：获取我的中奖记录接口
+- 新增：提交收货地址并创建订单接口
+- 新增：获取实物奖品订单详情接口
+- 实物奖品与即时购买订单共享同一个 Order 系统
+- 支持物流时间线跟踪（3个节点）
+- 移除：将实物奖品转换为现金功能（改用实物发货）
 
 ### v1.0.0 (2024-01-15)
 - 初始版本

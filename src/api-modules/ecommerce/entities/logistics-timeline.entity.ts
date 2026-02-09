@@ -23,6 +23,13 @@ export class LogisticsTimeline {
   @Column({ type: 'int', name: 'order_id', nullable: true })
   orderId: number | null; // 关联 Order（Instant Buy）
 
+  @ManyToOne(() => Order, (order) => order.logisticsTimelines, {
+    eager: false,
+    nullable: true,
+  })
+  @JoinColumn({ name: 'order_id' })
+  order: Order | null; // 关联 Order
+
   @Column({ type: 'int', name: 'draw_result_id', nullable: true })
   drawResultId: number | null; // 关联 DrawResult（一元购实物奖品）
 

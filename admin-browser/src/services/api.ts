@@ -522,22 +522,51 @@ export interface PrizeOrder {
   createdAt: string;
 }
 
-export interface PrizeOrderDetail extends PrizeOrder {
+export interface PrizeOrderDetail {
+  drawResultId: number;
+  orderId: number | null;
+  orderNumber: string | null;
+  prizeShippingStatus: PrizeShippingStatus | null;
+  prizeStatus: string;
   drawRoundId: number;
   roundNumber: number;
   winningNumber: number;
+  product: {
+    id: number;
+    name: string;
+    thumbnail: string;
+    images: string[];
+  } | null;
+  winner: {
+    userId: string;
+    userName: string | null;
+    avatar: string | null;
+  };
+  shippingAddress: {
+    recipientName: string;
+    phoneNumber: string;
+    country: string;
+    state: string;
+    city: string;
+    streetAddress: string;
+    apartment?: string;
+    zipCode?: string;
+    fullAddress: string;
+  } | null;
+  logistics: {
+    company: string | null;
+    trackingNumber: string | null;
+    deliveredAt: string | null;
+  } | null;
   timeline: Array<{
     event: string;
     title: string;
     description?: string;
     time: string;
   }>;
-  logisticsTimeline: Array<{
-    nodeKey: string;
-    title: string;
-    description: string;
-    activatedAt: string | null;
-  }>;
+  prizeValue: string;
+  addressSubmittedAt: string | null;
+  createdAt: string;
 }
 
 export interface PrizeOrdersResponse {
@@ -568,12 +597,12 @@ export const prizeOrderApi = {
   getDetail: (drawResultId: number) =>
     request.get<PrizeOrderDetail>(`/draws/prize-orders/${drawResultId}`),
   ship: (drawResultId: number, data: { logisticsCompany: string; trackingNumber: string }) =>
-    request.post<{ success: boolean; drawResultId: number; prizeShippingStatus: PrizeShippingStatus; shippedAt: string }>(
+    request.post<{ success: boolean; orderId: number; prizeShippingStatus: PrizeShippingStatus }>(
       `/draws/prize-orders/${drawResultId}/ship`,
       data
     ),
   confirmDelivery: (drawResultId: number) =>
-    request.post<{ success: boolean; drawResultId: number; prizeStatus: string; prizeShippingStatus: PrizeShippingStatus; deliveredAt: string }>(
+    request.post<{ success: boolean; orderId: number; prizeStatus: string; prizeShippingStatus: PrizeShippingStatus; deliveredAt: string }>(
       `/draws/prize-orders/${drawResultId}/confirm-delivery`
     ),
   batchShip: (orders: Array<{ drawResultId: number; logisticsCompany: string; trackingNumber: string }>) =>
