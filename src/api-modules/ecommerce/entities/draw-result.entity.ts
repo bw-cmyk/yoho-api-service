@@ -129,14 +129,6 @@ export class DrawResult {
   @Column({ type: 'int', nullable: true, name: 'order_id' })
   orderId: number | null; // 关联订单（领取实物奖品时创建，新方案使用）
 
-  @Column({
-    type: 'enum',
-    enum: PrizeShippingStatus,
-    nullable: true,
-    name: 'prize_shipping_status',
-  })
-  prizeShippingStatus: PrizeShippingStatus | null; // 实物奖品发货状态（旧字段，保留兼容）
-
   @Column({ type: 'int', nullable: true, name: 'shipping_address_id' })
   shippingAddressId: number | null; // 收货地址ID
 

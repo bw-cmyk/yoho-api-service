@@ -5,7 +5,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThanOrEqual, In, IsNull, Not } from 'typeorm';
+import {
+  Repository,
+  DataSource,
+  LessThanOrEqual,
+  In,
+  IsNull,
+  Not,
+} from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DrawRound, DrawRoundStatus } from '../entities/draw-round.entity';
@@ -507,17 +514,19 @@ export class DrawService {
 
         // 发送中奖通知
         try {
-          await this.notificationService.notifyPrizeWon(drawResult.winnerUserId, {
-            drawResultId: drawResult.id,
-            productName: drawRound.product.name,
-            productImage: drawRound.product.thumbnail || drawRound.product.images?.[0],
-          });
+          await this.notificationService.notifyPrizeWon(
+            drawResult.winnerUserId,
+            {
+              drawResultId: drawResult.id,
+              productName: drawRound.product.name,
+              productImage:
+                drawRound.product.thumbnail || drawRound.product.images?.[0],
+            },
+          );
         } catch (notifyError) {
           this.logger.error(`Failed to send prize notification`, notifyError);
         }
       } else if (drawResult.prizeType === PrizeType.PHYSICAL) {
-        // 实物奖品：设置为待填写地址状态
-        drawResult.prizeShippingStatus = PrizeShippingStatus.PENDING_ADDRESS;
         await this.drawResultRepository.save(drawResult);
 
         this.logger.log(
@@ -526,13 +535,20 @@ export class DrawService {
 
         // 发送实物中奖通知
         try {
-          await this.notificationService.notifyPrizeWon(drawResult.winnerUserId, {
-            drawResultId: drawResult.id,
-            productName: drawRound.product.name,
-            productImage: drawRound.product.thumbnail || drawRound.product.images?.[0],
-          });
+          await this.notificationService.notifyPrizeWon(
+            drawResult.winnerUserId,
+            {
+              drawResultId: drawResult.id,
+              productName: drawRound.product.name,
+              productImage:
+                drawRound.product.thumbnail || drawRound.product.images?.[0],
+            },
+          );
         } catch (notifyError) {
-          this.logger.error(`Failed to send physical prize notification`, notifyError);
+          this.logger.error(
+            `Failed to send physical prize notification`,
+            notifyError,
+          );
         }
       }
     } catch (error) {
@@ -879,7 +895,7 @@ export class DrawService {
     let chance = await this.newUserDrawChanceRepository.findOne({
       where: { userId },
     });
-    console.log(chance)
+    console.log(chance);
     if (chance) {
       // 检查过期
       if (
@@ -1154,7 +1170,7 @@ export class DrawService {
   /**
    * 获取最近中奖记录（用于跑马灯展示）
    */
-  async getRecentWinners(limit: number = 50): Promise<
+  async getRecentWinners(limit = 50): Promise<
     Array<{
       winnerUserName: string;
       winnerUserAvatar: string | null;
@@ -1297,7 +1313,6 @@ export class DrawService {
     // 4. 更新 DrawResult
     drawResult.orderId = order.id;
     drawResult.addressSubmittedAt = new Date();
-    drawResult.prizeShippingStatus = PrizeShippingStatus.PENDING_SHIPMENT;
     await this.drawResultRepository.save(drawResult);
 
     // 5. 初始化物流时间线（3节点，第1个节点立即激活）
@@ -1311,8 +1326,8 @@ export class DrawService {
    */
   async getMyPendingPhysicalPrizes(
     userId: string,
-    page: number = 1,
-    limit: number = 20,
+    page = 1,
+    limit = 20,
   ): Promise<{
     items: DrawResult[];
     total: number;
@@ -1366,10 +1381,12 @@ export class DrawService {
       });
 
       if (order) {
-        logistics =
-          await this.logisticsService.getOrderLogisticsTimeline(order.id);
-        currentStatus =
-          await this.logisticsService.getCurrentLogisticsStatus(order.id);
+        logistics = await this.logisticsService.getOrderLogisticsTimeline(
+          order.id,
+        );
+        currentStatus = await this.logisticsService.getCurrentLogisticsStatus(
+          order.id,
+        );
       }
     }
 
