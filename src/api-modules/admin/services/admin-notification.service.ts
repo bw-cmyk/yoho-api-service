@@ -11,6 +11,7 @@ import {
   SendUserNotificationDto,
   QueryAdminNotificationsDto,
   NotificationStatsDto,
+  UpdateNotificationDto,
 } from '../dto/admin-notification.dto';
 
 @Injectable()
@@ -35,6 +36,7 @@ export class AdminNotificationService {
       imageUrl: dto.imageUrl || null,
       actionType: dto.actionType || null,
       actionValue: dto.actionValue || null,
+      metadata: dto.metadata || null,
     });
 
     return await this.notificationRepository.save(notification);
@@ -55,6 +57,49 @@ export class AdminNotificationService {
       actionValue: dto.actionValue || null,
       metadata: dto.metadata || null,
     });
+
+    return await this.notificationRepository.save(notification);
+  }
+
+  /**
+   * 更新通知（支持 metadata 部分合并）
+   */
+  async updateNotification(
+    id: number,
+    dto: UpdateNotificationDto,
+  ): Promise<Notification> {
+    const notification = await this.notificationRepository.findOne({
+      where: { id },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    // 更新基本字段
+    if (dto.title !== undefined) {
+      notification.title = dto.title;
+    }
+    if (dto.content !== undefined) {
+      notification.content = dto.content;
+    }
+    if (dto.imageUrl !== undefined) {
+      notification.imageUrl = dto.imageUrl;
+    }
+    if (dto.actionType !== undefined) {
+      notification.actionType = dto.actionType;
+    }
+    if (dto.actionValue !== undefined) {
+      notification.actionValue = dto.actionValue;
+    }
+
+    // metadata 部分合并更新
+    if (dto.metadata !== undefined) {
+      notification.metadata = {
+        ...(notification.metadata || {}),
+        ...dto.metadata,
+      };
+    }
 
     return await this.notificationRepository.save(notification);
   }

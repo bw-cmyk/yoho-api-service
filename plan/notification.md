@@ -130,6 +130,7 @@ CreateSystemNotificationDto:
   - imageUrl?: string
   - actionType?: string
   - actionValue?: string
+  - metadata?: object (可选附加数据)
 
 SendUserNotificationDto:
   - userId: string (必填)
@@ -149,6 +150,14 @@ QueryAdminNotificationsDto:
   - keyword?: string
   - page?: number
   - limit?: number
+
+UpdateNotificationDto:
+  - title?: string
+  - content?: string
+  - imageUrl?: string
+  - actionType?: string
+  - actionValue?: string
+  - metadata?: object (支持部分更新，合并到现有 metadata)
 ```
 
 ---
@@ -188,6 +197,7 @@ export class NotificationService {
 export class AdminNotificationService {
   createSystemNotification(dto): Promise<Notification>
   sendToUser(dto): Promise<Notification>
+  updateNotification(id, dto): Promise<Notification>  // 更新通知（含 metadata）
   getAllNotifications(query): Promise<PaginatedResult>
   getStats(): Promise<Stats>
   deleteNotification(id): Promise<void>
@@ -210,13 +220,14 @@ DELETE /:id               - 删除通知
 ```
 
 ### 4.2 管理员控制器
-**路径:** `GET|POST|DELETE /api/v1/admin/notifications`
+**路径:** `GET|POST|PATCH|DELETE /api/v1/admin/notifications`
 
 ```
 GET  /                    - 获取所有通知（分页）
 GET  /stats               - 获取统计数据
-POST /system              - 创建系统公告
-POST /user                - 发送给指定用户
+POST /system              - 创建系统公告（支持 metadata）
+POST /user                - 发送给指定用户（支持 metadata）
+PATCH /:id                - 更新通知（含 metadata 部分更新）
 DELETE /:id               - 删除通知
 ```
 

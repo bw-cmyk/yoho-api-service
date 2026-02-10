@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -22,6 +23,7 @@ import {
   SendUserNotificationDto,
   QueryAdminNotificationsDto,
   NotificationStatsDto,
+  UpdateNotificationDto,
 } from '../dto/admin-notification.dto';
 import { Notification } from '../../notification/entities/notification.entity';
 
@@ -77,6 +79,16 @@ export class AdminNotificationController {
   @ApiResponse({ status: 201, type: Notification })
   async sendToUser(@Body() dto: SendUserNotificationDto): Promise<Notification> {
     return await this.adminNotificationService.sendToUser(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: '更新通知（含 metadata 部分更新）' })
+  @ApiResponse({ status: 200, type: Notification })
+  async updateNotification(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateNotificationDto,
+  ): Promise<Notification> {
+    return await this.adminNotificationService.updateNotification(id, dto);
   }
 
   @Delete(':id')

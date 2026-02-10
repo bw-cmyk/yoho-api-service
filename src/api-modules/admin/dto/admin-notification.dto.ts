@@ -49,6 +49,11 @@ export class CreateSystemNotificationDto {
   @IsString()
   @IsOptional()
   actionValue?: string;
+
+  @ApiPropertyOptional({ description: '附加数据' })
+  @IsObject()
+  @IsOptional()
+  metadata?: Record<string, any>;
 }
 
 export class SendUserNotificationDto {
@@ -149,4 +154,37 @@ export class NotificationStatsDto {
 
   @ApiProperty({ description: '今日发送数' })
   todaySent: number;
+}
+
+export class UpdateNotificationDto {
+  @ApiPropertyOptional({ description: '标题', maxLength: 255 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  title?: string;
+
+  @ApiPropertyOptional({ description: '内容' })
+  @IsString()
+  @IsOptional()
+  content?: string;
+
+  @ApiPropertyOptional({ description: '图片URL' })
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
+
+  @ApiPropertyOptional({ description: '操作类型 (ROUTER, EXTERNAL_LINK)' })
+  @IsString()
+  @IsOptional()
+  actionType?: string;
+
+  @ApiPropertyOptional({ description: '操作值 (路由路径或URL)' })
+  @IsString()
+  @IsOptional()
+  actionValue?: string;
+
+  @ApiPropertyOptional({ description: '附加数据 (会与现有 metadata 合并)' })
+  @IsObject()
+  @IsOptional()
+  metadata?: Record<string, any>;
 }
