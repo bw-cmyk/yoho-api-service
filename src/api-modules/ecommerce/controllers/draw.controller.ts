@@ -91,7 +91,7 @@ export class DrawController {
       items: [],
       total: 0,
       page: query.page || 1,
-      limit: query.limit || 20,
+      limit: query.limit || 30,
     };
   }
 

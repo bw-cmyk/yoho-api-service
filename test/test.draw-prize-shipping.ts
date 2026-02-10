@@ -57,7 +57,7 @@ async function getMyPendingPhysicalPrizes() {
 
   try {
     const response = await fetch(
-      `${endpoint}/api/v1/ecommerce/draws/my-wins`,
+      `${endpoint}/api/v1/ecommerce/draws/participations/me?page=1&limit=30`,
       {
         method: 'GET',
         headers: userAuthHeader,
@@ -71,7 +71,7 @@ async function getMyPendingPhysicalPrizes() {
     }
 
     const data = await response.json();
-    console.log('待领取实物奖品列表:', JSON.stringify(data, null, 2));
+    // console.log('待领取实物奖品列表:', JSON.stringify(data, null, 2));
     console.log('\n');
 
     return data.items;
@@ -413,45 +413,47 @@ async function testUserClaimPrizeFlow() {
       return;
     }
 
-    const firstPrize = prizes[0];
-    console.log('第一个待领取奖品:', {
-      drawResultId: firstPrize.drawResultId,
-      // productName: firstPrize.product.name,
-      winningNumber: firstPrize.winningNumber,
-    });
-    console.log('\n');
+    console.log(prizes);
 
-    // 2. 提交收货地址并创建订单（需要先有收货地址，这里使用假的ID演示）
-    const shippingAddressId = 8; // 替换为实际的收货地址ID
-    console.log(
-      `准备领取奖品，使用收货地址ID: ${shippingAddressId}\n（注意：需要先创建收货地址）\n`,
-    );
+    // const firstPrize = prizes[0];
+    // console.log('第一个待领取奖品:', {
+    //   drawResultId: firstPrize.drawResultId,
+    //   // productName: firstPrize.product.name,
+    //   winningNumber: firstPrize.winningNumber,
+    // });
+    // console.log('\n');
 
-    // 注释掉实际领取操作，避免误操作
-    const claimResult = await claimPhysicalPrize(
-      firstPrize.drawResultId,
-      shippingAddressId,
-    );
-    if (!claimResult) {
-      console.error('领取奖品失败');
-      return;
-    }
+    // // 2. 提交收货地址并创建订单（需要先有收货地址，这里使用假的ID演示）
+    // const shippingAddressId = 8; // 替换为实际的收货地址ID
+    // console.log(
+    //   `准备领取奖品，使用收货地址ID: ${shippingAddressId}\n（注意：需要先创建收货地址）\n`,
+    // );
 
-    console.log('订单创建成功:', {
-      orderId: claimResult.order.id,
-      orderNumber: claimResult.order.orderNumber,
-      prizeShippingStatus: claimResult.order.prizeShippingStatus,
-    });
-    console.log('\n');
+    // // 注释掉实际领取操作，避免误操作
+    // const claimResult = await claimPhysicalPrize(
+    //   firstPrize.drawResultId,
+    //   shippingAddressId,
+    // );
+    // if (!claimResult) {
+    //   console.error('领取奖品失败');
+    //   return;
+    // }
 
-    // 3. 获取订单详情
-    const orderDetail = await getPhysicalPrizeOrder(firstPrize.drawResultId);
-    if (orderDetail) {
-      console.log('订单详情获取成功');
-      console.log('物流时间线节点数:', orderDetail.timeline.length);
-    }
+    // console.log('订单创建成功:', {
+    //   orderId: claimResult.order.id,
+    //   orderNumber: claimResult.order.orderNumber,
+    //   prizeShippingStatus: claimResult.order.prizeShippingStatus,
+    // });
+    // console.log('\n');
 
-    console.log('=== 用户领取实物奖品完整流程测试完成 ===\n');
+    // // 3. 获取订单详情
+    // const orderDetail = await getPhysicalPrizeOrder(firstPrize.drawResultId);
+    // if (orderDetail) {
+    //   console.log('订单详情获取成功');
+    //   console.log('物流时间线节点数:', orderDetail.timeline.length);
+    // }
+
+    // console.log('=== 用户领取实物奖品完整流程测试完成 ===\n');
   } catch (error) {
     console.error('用户领取流程测试失败:', error);
   }

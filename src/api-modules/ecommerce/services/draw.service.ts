@@ -683,7 +683,7 @@ export class DrawService {
     userId: string,
     productId?: number,
     page = 1,
-    limit = 20,
+    limit = 30,
   ): Promise<{
     items: DrawParticipation[];
     total: number;
@@ -718,6 +718,7 @@ export class DrawService {
         drawRoundId: In(roundIds),
       },
     });
+
     const resultMap = new Map(results.map((item) => [item.drawRoundId, item]));
     items.forEach((item) => {
       item.drawRound.drawResult = resultMap.get(item.drawRoundId);

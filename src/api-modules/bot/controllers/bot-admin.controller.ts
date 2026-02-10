@@ -33,7 +33,7 @@ import {
   GetTaskLogsQueryDto,
 } from '../dto/bot-admin.dto';
 
-@Controller('admin/bot')
+@Controller('api/v1/admin/bot')
 @UseGuards(AdminJwtGuard)
 export class BotAdminController {
   constructor(

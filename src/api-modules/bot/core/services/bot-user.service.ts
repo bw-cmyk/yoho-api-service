@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { BotUser } from '../entities/bot-user.entity';
 import { User, Role } from '../../../user/entity/user.entity';
@@ -161,32 +161,46 @@ export class BotUserService {
   }): Promise<{ items: BotUser[]; total: number }> {
     const { enabled, hasBalance, page = 1, limit = 20 } = options || {};
 
+    // 构建 base query
     const queryBuilder = this.botUserRepository
       .createQueryBuilder('bot')
       .leftJoinAndSelect('bot.user', 'user')
-      .orderBy('bot.created_at', 'DESC');
+      .addOrderBy('bot.createdAt', 'DESC');
 
     if (enabled !== undefined) {
       queryBuilder.andWhere('bot.enabled = :enabled', { enabled });
     }
 
-    // 如果需要筛选有余额的用户，需要 join asset 表
-    if (hasBalance) {
-      // 这里简化处理，实际可能需要更复杂的查询
-      queryBuilder
-        .leftJoin(
-          'yoho_user_assets',
-          'asset',
-          'asset.user_id = bot.user_id AND asset.currency = :currency',
-          { currency: Currency.USD },
-        )
-        .andWhere('asset.balance_real > 0');
-    }
+    // 如果需要筛选有余额的用户，先获取所有符合条件的用户再过滤
+    let items: BotUser[];
+    let total: number;
 
-    const [items, total] = await queryBuilder
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+    if (hasBalance) {
+      // 获取所有符合条件的 bots (不分页)
+      const allBots = await queryBuilder.getMany();
+
+      // 检查每个 bot 的余额
+      const botsWithBalance: BotUser[] = [];
+      for (const bot of allBots) {
+        const assets = await this.assetService.getUserAssets(bot.userId);
+        const usdAsset = assets.find((a) => a.currency === Currency.USD);
+        if (usdAsset && usdAsset.balanceReal.gt(0)) {
+          botsWithBalance.push(bot);
+        }
+      }
+
+      // 手动分页
+      total = botsWithBalance.length;
+      const startIndex = (page - 1) * limit;
+      items = botsWithBalance.slice(startIndex, startIndex + limit);
+    } else {
+      const result = await queryBuilder
+        .skip((page - 1) * limit)
+        .take(limit)
+        .getManyAndCount();
+      items = result[0];
+      total = result[1];
+    }
 
     return { items, total };
   }
