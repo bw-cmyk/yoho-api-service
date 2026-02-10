@@ -657,8 +657,9 @@ export const notificationApi = {
     imageUrl?: string;
     actionType?: string;
     actionValue?: string;
+    metadata?: Record<string, unknown>;
   }) =>
-    request.post<{ success: boolean; notificationId: number; recipientCount: number }>('/notifications/system', data),
+    request.post<Notification>('/notifications/system', data),
   sendToUser: (data: {
     userId: string;
     title: string;
@@ -667,8 +668,18 @@ export const notificationApi = {
     imageUrl?: string;
     actionType?: string;
     actionValue?: string;
+    metadata?: Record<string, unknown>;
   }) =>
-    request.post<{ success: boolean; notificationId: number }>('/notifications/user', data),
+    request.post<Notification>('/notifications/user', data),
+  update: (id: number, data: {
+    title?: string;
+    content?: string;
+    imageUrl?: string;
+    actionType?: string;
+    actionValue?: string;
+    metadata?: Record<string, unknown>;
+  }) =>
+    request.patch<Notification>(`/notifications/${id}`, data),
   delete: (id: number) =>
     request.delete<{ success: boolean }>(`/notifications/${id}`),
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Bell, Send, Eye, Trash2, Filter, RefreshCw, Plus } from 'lucide-react'
+import { Bell, Send, Eye, Trash2, Filter, RefreshCw, Plus, Edit2, X } from 'lucide-react'
 import { notificationApi, type Notification, type NotificationStats } from '../services/api'
 
 type NotificationType = 'SYSTEM' | 'PRIZE_WON' | 'SHIPPING_UPDATE' | 'ORDER_UPDATE' | 'ACCOUNT' | 'PROMOTION'
@@ -42,6 +42,19 @@ export default function Notifications() {
     imageUrl: '',
     actionType: '',
     actionValue: '',
+    metadataStr: '', // JSON 字符串形式
+  })
+
+  // 编辑通知对话框
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingNotification, setEditingNotification] = useState<Notification | null>(null)
+  const [editForm, setEditForm] = useState({
+    title: '',
+    content: '',
+    imageUrl: '',
+    actionType: '',
+    actionValue: '',
+    metadataStr: '',
   })
 
   const limit = 20
@@ -77,10 +90,27 @@ export default function Notifications() {
     }
   }
 
+  const parseMetadata = (str: string): Record<string, unknown> | undefined => {
+    if (!str.trim()) return undefined
+    try {
+      return JSON.parse(str)
+    } catch {
+      throw new Error('Metadata 格式错误，请输入有效的 JSON')
+    }
+  }
+
   const handleCreateNotification = async () => {
     try {
       if (!createForm.title || !createForm.content) {
         alert('请填写标题和内容')
+        return
+      }
+
+      let metadata: Record<string, unknown> | undefined
+      try {
+        metadata = parseMetadata(createForm.metadataStr)
+      } catch (e: any) {
+        alert(e.message)
         return
       }
 
@@ -92,6 +122,7 @@ export default function Notifications() {
           imageUrl: createForm.imageUrl || undefined,
           actionType: createForm.actionType || undefined,
           actionValue: createForm.actionValue || undefined,
+          metadata,
         })
       } else {
         if (!createForm.userId) {
@@ -106,6 +137,7 @@ export default function Notifications() {
           imageUrl: createForm.imageUrl || undefined,
           actionType: createForm.actionType || undefined,
           actionValue: createForm.actionValue || undefined,
+          metadata,
         })
       }
 
@@ -119,11 +151,55 @@ export default function Notifications() {
         imageUrl: '',
         actionType: '',
         actionValue: '',
+        metadataStr: '',
       })
       loadNotifications()
       loadStats()
     } catch (error: any) {
       alert('发送失败: ' + (error.response?.data?.message || error.message))
+    }
+  }
+
+  const handleOpenEdit = (notification: Notification) => {
+    setEditingNotification(notification)
+    setEditForm({
+      title: notification.title,
+      content: notification.content,
+      imageUrl: notification.imageUrl || '',
+      actionType: notification.actionType || '',
+      actionValue: notification.actionValue || '',
+      metadataStr: notification.metadata ? JSON.stringify(notification.metadata, null, 2) : '',
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateNotification = async () => {
+    if (!editingNotification) return
+
+    try {
+      let metadata: Record<string, unknown> | undefined
+      try {
+        metadata = parseMetadata(editForm.metadataStr)
+      } catch (e: any) {
+        alert(e.message)
+        return
+      }
+
+      await notificationApi.update(editingNotification.id, {
+        title: editForm.title || undefined,
+        content: editForm.content || undefined,
+        imageUrl: editForm.imageUrl || undefined,
+        actionType: editForm.actionType || undefined,
+        actionValue: editForm.actionValue || undefined,
+        metadata,
+      })
+
+      alert('更新成功')
+      setShowEditModal(false)
+      setEditingNotification(null)
+      loadNotifications()
+    } catch (error: any) {
+      alert('更新失败: ' + (error.response?.data?.message || error.message))
     }
   }
 
@@ -278,6 +354,7 @@ export default function Notifications() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">标题</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">内容</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">用户ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metadata</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
                 </tr>
@@ -303,13 +380,28 @@ export default function Notifications() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {notification.userId || '-'}
                     </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-[150px]">
+                      {notification.metadata ? (
+                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded truncate block" title={JSON.stringify(notification.metadata)}>
+                          {JSON.stringify(notification.metadata).slice(0, 30)}...
+                        </span>
+                      ) : '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(notification.createdAt).toLocaleString('zh-CN')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
+                      <button
+                        onClick={() => handleOpenEdit(notification)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="编辑"
+                      >
+                        <Edit2 size={18} />
+                      </button>
                       <button
                         onClick={() => handleDeleteNotification(notification.id)}
                         className="text-red-600 hover:text-red-800"
+                        title="删除"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -465,6 +557,18 @@ export default function Notifications() {
               </div>
             </div>
 
+            {/* Metadata (可选) */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Metadata (可选, JSON格式)</label>
+              <textarea
+                value={createForm.metadataStr}
+                onChange={(e) => setCreateForm({ ...createForm, metadataStr: e.target.value })}
+                placeholder='{"key": "value"}'
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
+              />
+            </div>
+
             {/* 按钮 */}
             <div className="flex justify-end space-x-3">
               <button
@@ -478,6 +582,126 @@ export default function Notifications() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 发送通知
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 编辑通知模态框 */}
+      {showEditModal && editingNotification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">编辑通知</h2>
+              <button
+                onClick={() => {
+                  setShowEditModal(false)
+                  setEditingNotification(null)
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">ID:</span> {editingNotification.id} |{' '}
+                <span className="font-medium">类型:</span> {TYPE_LABELS[editingNotification.type]} |{' '}
+                <span className="font-medium">目标:</span> {TARGET_TYPE_LABELS[editingNotification.targetType]}
+                {editingNotification.userId && (
+                  <> | <span className="font-medium">用户ID:</span> {editingNotification.userId}</>
+                )}
+              </p>
+            </div>
+
+            {/* 标题 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">标题</label>
+              <input
+                type="text"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                maxLength={255}
+              />
+            </div>
+
+            {/* 内容 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">内容</label>
+              <textarea
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+
+            {/* 图片URL */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">图片URL</label>
+              <input
+                type="text"
+                value={editForm.imageUrl}
+                onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+
+            {/* 操作类型和值 */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">操作类型</label>
+                <input
+                  type="text"
+                  value={editForm.actionType}
+                  onChange={(e) => setEditForm({ ...editForm, actionType: e.target.value })}
+                  placeholder="如: ROUTER"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">操作值</label>
+                <input
+                  type="text"
+                  value={editForm.actionValue}
+                  onChange={(e) => setEditForm({ ...editForm, actionValue: e.target.value })}
+                  placeholder="如: /products/123"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
+
+            {/* Metadata */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Metadata (JSON格式，会与现有数据合并)</label>
+              <textarea
+                value={editForm.metadataStr}
+                onChange={(e) => setEditForm({ ...editForm, metadataStr: e.target.value })}
+                placeholder='{"key": "value"}'
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
+              />
+            </div>
+
+            {/* 按钮 */}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowEditModal(false)
+                  setEditingNotification(null)
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleUpdateNotification}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                保存修改
               </button>
             </div>
           </div>
