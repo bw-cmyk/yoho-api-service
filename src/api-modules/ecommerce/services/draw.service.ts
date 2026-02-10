@@ -1279,6 +1279,16 @@ export class DrawService {
       paymentStatus: PaymentStatus.PAID, // 直接标记为已支付
       prizeShippingStatus: PrizeShippingStatus.PENDING_SHIPMENT, // 待发货
       shippingAddressId,
+      shippingAddressSnapshot: {
+        recipientName: shippingAddress.recipientName,
+        phoneNumber: shippingAddress.phoneNumber,
+        country: shippingAddress.country,
+        state: shippingAddress.state,
+        city: shippingAddress.city,
+        streetAddress: shippingAddress.streetAddress,
+        apartment: shippingAddress.apartment,
+        zipCode: shippingAddress.zipCode,
+      },
       drawResultId: drawResult.id,
     });
 
@@ -1287,6 +1297,7 @@ export class DrawService {
     // 4. 更新 DrawResult
     drawResult.orderId = order.id;
     drawResult.addressSubmittedAt = new Date();
+    drawResult.prizeShippingStatus = PrizeShippingStatus.PENDING_SHIPMENT;
     await this.drawResultRepository.save(drawResult);
 
     // 5. 初始化物流时间线（3节点，第1个节点立即激活）

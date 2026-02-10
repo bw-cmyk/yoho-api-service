@@ -121,6 +121,18 @@ export class Order {
   @Column({ type: 'int', nullable: true, name: 'shipping_address_id' })
   shippingAddressId: number | null; // 收货地址ID
 
+  @Column({ type: 'json', nullable: true, name: 'shipping_address_snapshot' })
+  shippingAddressSnapshot: {
+    recipientName: string;
+    phoneNumber: string;
+    country: string;
+    state: string;
+    city: string;
+    streetAddress: string;
+    apartment?: string;
+    zipCode?: string;
+  } | null; // 收货地址快照
+
   @ManyToOne(() => ShippingAddress, { eager: false, nullable: true })
   @JoinColumn({ name: 'shipping_address_id' })
   shippingAddress: ShippingAddress | null; // 收货地址
