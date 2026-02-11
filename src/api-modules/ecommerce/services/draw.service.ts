@@ -532,6 +532,7 @@ export class DrawService {
               totalParticipants: drawRound.soldSpots,
               userTicketCount: drawResult.winnerQuantity,
               winnerUserName: drawResult.winnerUserName,
+              participationId: drawResult.winnerParticipationId,
             },
           );
         } catch (notifyError) {
@@ -563,6 +564,7 @@ export class DrawService {
               totalParticipants: drawRound.soldSpots,
               userTicketCount: drawResult.winnerQuantity,
               winnerUserName: drawResult.winnerUserName,
+              participationId: drawResult.winnerParticipationId,
             },
           );
         } catch (notifyError) {

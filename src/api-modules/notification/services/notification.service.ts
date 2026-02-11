@@ -236,6 +236,7 @@ export class NotificationService {
       totalParticipants?: number;
       userTicketCount?: number;
       winnerUserName?: string;
+      participationId?: number;
     },
   ): Promise<Notification> {
     return this.sendToUser({
@@ -259,6 +260,7 @@ export class NotificationService {
           id: data.drawRoundId,
           roundNumber: data.roundNumber,
           totalParticipants: data.totalParticipants,
+          participationId: data.participationId,
         },
         // 中奖结果
         result: {

@@ -357,7 +357,8 @@ Authorization: Bearer {token}
   "drawRound": {
     "id": 5,
     "roundNumber": 1,
-    "totalParticipants": 1000
+    "totalParticipants": 1000,
+    "participationId": 456
   },
   "result": {
     "winningNumber": 150,
@@ -378,6 +379,7 @@ Authorization: Bearer {token}
 | drawRound.id | number | 轮次ID |
 | drawRound.roundNumber | number | 轮次号 |
 | drawRound.totalParticipants | number | 总参与人数（已售份数） |
+| drawRound.participationId | number | 中奖参与记录ID |
 | result.winningNumber | number | 中奖号码 |
 | result.prizeType | string | 奖品类型：`CASH`、`CRYPTO`、`PHYSICAL` |
 | result.prizeValue | string | 奖品价值（USD） |
@@ -686,7 +688,7 @@ function useNotifications() {
 ### v1.1.0 (2024-02)
 - **PRIZE_WON 通知 metadata 增强**
   - 新增 `product` 对象（id, name, image）
-  - 新增 `drawRound` 对象（id, roundNumber, totalParticipants）
+  - 新增 `drawRound` 对象（id, roundNumber, totalParticipants, participationId）
   - 新增 `result` 对象（winningNumber, prizeType, prizeValue, userTicketCount, winnerUserName）
 - **SHIPPING_UPDATE 通知 metadata 增强**
   - 新增 `product` 对象（id, name, image）
