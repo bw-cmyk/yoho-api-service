@@ -226,6 +226,16 @@ export class NotificationService {
       drawResultId: number;
       productName: string;
       productImage?: string;
+      // 新增字段
+      productId?: number;
+      drawRoundId?: number;
+      roundNumber?: number;
+      winningNumber?: number;
+      prizeType?: string;
+      prizeValue?: string;
+      totalParticipants?: number;
+      userTicketCount?: number;
+      winnerUserName?: string;
     },
   ): Promise<Notification> {
     return this.sendToUser({
@@ -236,7 +246,29 @@ export class NotificationService {
       imageUrl: data.productImage,
       actionType: 'ROUTER',
       actionValue: `/orders/draw/${data.drawResultId}`,
-      metadata: { drawResultId: data.drawResultId },
+      metadata: {
+        drawResultId: data.drawResultId,
+        // 产品信息
+        product: {
+          id: data.productId,
+          name: data.productName,
+          image: data.productImage,
+        },
+        // 轮次信息
+        drawRound: {
+          id: data.drawRoundId,
+          roundNumber: data.roundNumber,
+          totalParticipants: data.totalParticipants,
+        },
+        // 中奖结果
+        result: {
+          winningNumber: data.winningNumber,
+          prizeType: data.prizeType,
+          prizeValue: data.prizeValue,
+          userTicketCount: data.userTicketCount,
+          winnerUserName: data.winnerUserName,
+        },
+      },
     });
   }
 
@@ -250,6 +282,15 @@ export class NotificationService {
       orderNumber: string;
       status: string;
       productName: string;
+      // 新增字段
+      productId?: number;
+      productImage?: string;
+      drawResultId?: number;
+      drawRoundId?: number;
+      roundNumber?: number;
+      logisticsCompany?: string;
+      trackingNumber?: string;
+      prizeValue?: string;
     },
   ): Promise<Notification> {
     const statusMessages: Record<string, string> = {
@@ -267,9 +308,33 @@ export class NotificationService {
       title: 'Shipping Update',
       content: message,
       type: NotificationType.SHIPPING_UPDATE,
+      imageUrl: data.productImage,
       actionType: 'ROUTER',
       actionValue: `/orders/${data.orderId || data.orderNumber}`,
-      metadata: { orderId: data.orderId, orderNumber: data.orderNumber },
+      metadata: {
+        orderId: data.orderId,
+        orderNumber: data.orderNumber,
+        // 产品信息
+        product: {
+          id: data.productId,
+          name: data.productName,
+          image: data.productImage,
+        },
+        // 抽奖关联
+        draw: {
+          resultId: data.drawResultId,
+          roundId: data.drawRoundId,
+          roundNumber: data.roundNumber,
+        },
+        // 物流信息
+        logistics: {
+          status: data.status,
+          company: data.logisticsCompany,
+          trackingNumber: data.trackingNumber,
+        },
+        // 奖品价值
+        prizeValue: data.prizeValue,
+      },
     });
   }
 

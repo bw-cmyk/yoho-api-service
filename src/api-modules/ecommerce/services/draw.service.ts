@@ -43,6 +43,7 @@ import { LogisticsService } from './logistics.service';
 import { ShippingAddressService } from './shipping-address.service';
 import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
 import { NotificationService } from '../../notification/services/notification.service';
+import { ParticipationDetailResponseDto } from '../dto/draw.dto';
 
 @Injectable()
 export class DrawService {
@@ -521,6 +522,16 @@ export class DrawService {
               productName: drawRound.product.name,
               productImage:
                 drawRound.product.thumbnail || drawRound.product.images?.[0],
+              // 新增字段
+              productId: drawRound.product.id,
+              drawRoundId: drawRound.id,
+              roundNumber: drawRound.roundNumber,
+              winningNumber: drawResult.winningNumber,
+              prizeType: drawResult.prizeType,
+              prizeValue: drawResult.prizeValue?.toString(),
+              totalParticipants: drawRound.soldSpots,
+              userTicketCount: drawResult.winnerQuantity,
+              winnerUserName: drawResult.winnerUserName,
             },
           );
         } catch (notifyError) {
@@ -542,6 +553,16 @@ export class DrawService {
               productName: drawRound.product.name,
               productImage:
                 drawRound.product.thumbnail || drawRound.product.images?.[0],
+              // 新增字段
+              productId: drawRound.product.id,
+              drawRoundId: drawRound.id,
+              roundNumber: drawRound.roundNumber,
+              winningNumber: drawResult.winningNumber,
+              prizeType: drawResult.prizeType,
+              prizeValue: drawResult.prizeValue?.toString(),
+              totalParticipants: drawRound.soldSpots,
+              userTicketCount: drawResult.winnerQuantity,
+              winnerUserName: drawResult.winnerUserName,
             },
           );
         } catch (notifyError) {
@@ -1391,5 +1412,140 @@ export class DrawService {
     }
 
     return { drawResult, order, logistics, currentStatus };
+  }
+
+  // ==================== 参与详情 API ====================
+
+  /**
+   * 获取用户参与详情
+   */
+  async getParticipationDetail(
+    participationId: number,
+    userId: string,
+  ): Promise<ParticipationDetailResponseDto> {
+    // 1. 查询参与记录，验证归属权
+    const participation = await this.participationRepository.findOne({
+      where: { id: participationId, userId },
+      relations: ['drawRound', 'drawRound.product'],
+    });
+
+    if (!participation) {
+      throw new NotFoundException('Participation not found');
+    }
+
+    // 2. 查询开奖结果
+    const drawResult = await this.drawResultRepository.findOne({
+      where: { drawRoundId: participation.drawRoundId },
+    });
+
+    // 3. 如果用户中奖且是实物奖品，查询订单
+    let prizeOrder: Order | null = null;
+    if (
+      drawResult?.winnerUserId === userId &&
+      drawResult.prizeType === PrizeType.PHYSICAL &&
+      drawResult.orderId
+    ) {
+      prizeOrder = await this.orderRepository.findOne({
+        where: { id: drawResult.orderId },
+      });
+    }
+
+    // 4. 组装响应
+    return this.buildParticipationDetailResponse(
+      participation,
+      drawResult,
+      prizeOrder,
+      userId,
+    );
+  }
+
+  /**
+   * 构建参与详情响应
+   */
+  private buildParticipationDetailResponse(
+    participation: DrawParticipation,
+    drawResult: DrawResult | null,
+    prizeOrder: Order | null,
+    userId: string,
+  ): ParticipationDetailResponseDto {
+    const drawRound = participation.drawRound;
+    const product = drawRound?.product;
+
+    // 生成号码数组
+    const ticketNumbers: number[] = [];
+    for (let i = participation.startNumber; i <= participation.endNumber; i++) {
+      ticketNumbers.push(i);
+    }
+
+    // 判断是否中奖
+    const isWinner =
+      drawResult?.winnerUserId === userId &&
+      drawResult?.winningNumber >= participation.startNumber &&
+      drawResult?.winningNumber <= participation.endNumber;
+
+    const response: ParticipationDetailResponseDto = {
+      participationId: participation.id,
+      orderNumber: participation.orderNumber,
+      quantity: participation.quantity,
+      startNumber: participation.startNumber,
+      endNumber: participation.endNumber,
+      ticketNumbers,
+      totalAmount: participation.totalAmount.toString(),
+      isNewUserChance: participation.isNewUserChance || false,
+      participatedAt: participation.createdAt,
+      drawRound: {
+        id: drawRound.id,
+        roundNumber: drawRound.roundNumber,
+        totalSpots: drawRound.totalSpots,
+        soldSpots: drawRound.soldSpots,
+        pricePerSpot: drawRound.pricePerSpot.toString(),
+        prizeValue: drawRound.prizeValue.toString(),
+        status: drawRound.status,
+        completedAt: drawRound.completedAt,
+        drawnAt: drawRound.drawnAt,
+        product: {
+          id: product?.id,
+          name: product?.name || '',
+          imageUrl: product?.thumbnail || product?.images?.[0] || '',
+          prizeType: this.determinePrizeType(product).toString(),
+        },
+      },
+    };
+
+    // 添加开奖结果（如已开奖）
+    if (drawResult) {
+      response.drawResult = {
+        id: drawResult.id,
+        winningNumber: drawResult.winningNumber,
+        isWinner,
+        prizeType: drawResult.prizeType,
+        prizeValue: drawResult.prizeValue?.toString() || '0',
+        prizeStatus: drawResult.prizeStatus,
+        drawnAt: drawResult.createdAt,
+        verification: drawResult.targetBlockHeight
+          ? {
+              targetBlockHeight: drawResult.targetBlockHeight,
+              targetBlockHash: drawResult.targetBlockHash || '',
+              hashLast6Digits: drawResult.hashLast6Digits || '',
+              verificationUrl: drawResult.verificationUrl || '',
+            }
+          : undefined,
+      };
+    }
+
+    // 添加奖品订单（如中奖且为实物）
+    if (prizeOrder && isWinner) {
+      response.prizeOrder = {
+        orderId: prizeOrder.id,
+        orderNumber: prizeOrder.orderNumber,
+        shippingStatus: prizeOrder.prizeShippingStatus || 'PENDING',
+        logisticsCompany: prizeOrder.logisticsCompany,
+        trackingNumber: prizeOrder.trackingNumber,
+        deliveredAt: prizeOrder.deliveredAt,
+        shippingAddress: prizeOrder.shippingAddressSnapshot,
+      };
+    }
+
+    return response;
   }
 }

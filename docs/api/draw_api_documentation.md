@@ -19,10 +19,11 @@
 - [获取期次详情](#5-获取期次详情)
 - [获取期次参与记录](#6-获取期次参与记录)
 - [获取我的参与记录](#7-获取我的参与记录)
-- [获取我的中奖记录](#8-获取我的中奖记录)
-- [领取实物奖品（提交收货地址）](#9-领取实物奖品提交收货地址)
-- [获取实物奖品订单详情](#10-获取实物奖品订单详情)
-- [手动触发开奖](#11-手动触发开奖管理员)
+- [获取参与详情](#8-获取参与详情)
+- [获取我的中奖记录](#9-获取我的中奖记录)
+- [领取实物奖品（提交收货地址）](#10-领取实物奖品提交收货地址)
+- [获取实物奖品订单详情](#11-获取实物奖品订单详情)
+- [手动触发开奖](#12-手动触发开奖管理员)
 - [数据模型](#数据模型)
 - [错误码说明](#错误码说明)
 
@@ -515,7 +516,170 @@ Authorization: Bearer {token}
 
 ---
 
-## 8. 获取我的中奖记录
+## 8. 获取参与详情
+
+获取用户指定参与记录的完整详情，包括轮次信息、开奖结果、物流状态等。
+
+### 请求
+
+**Endpoint**: `GET /api/v1/ecommerce/draws/participations/:id/detail`
+
+**Headers**:
+```
+Authorization: Bearer {token}
+```
+
+**Path Parameters**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | number | 是 | 参与记录ID |
+
+**示例**: `GET /api/v1/ecommerce/draws/participations/123/detail`
+
+### 响应
+
+**成功响应** (200):
+```json
+{
+  "participationId": 123,
+  "orderNumber": "DRAW1707836542ABC",
+  "quantity": 10,
+  "startNumber": 145,
+  "endNumber": 154,
+  "ticketNumbers": [145, 146, 147, 148, 149, 150, 151, 152, 153, 154],
+  "totalAmount": "1.00",
+  "isNewUserChance": false,
+  "participatedAt": "2024-02-10T10:30:00.000Z",
+
+  "drawRound": {
+    "id": 5,
+    "roundNumber": 1,
+    "totalSpots": 1000,
+    "soldSpots": 1000,
+    "pricePerSpot": "0.10",
+    "prizeValue": "899.00",
+    "status": "DRAWN",
+    "completedAt": "2024-02-10T11:00:00.000Z",
+    "drawnAt": "2024-02-10T12:00:00.000Z",
+    "product": {
+      "id": 10,
+      "name": "iPhone 15 Pro",
+      "imageUrl": "https://example.com/images/iphone15.jpg",
+      "prizeType": "PHYSICAL"
+    }
+  },
+
+  "drawResult": {
+    "id": 789,
+    "winningNumber": 150,
+    "isWinner": true,
+    "prizeType": "PHYSICAL",
+    "prizeValue": "899.00",
+    "prizeStatus": "PENDING",
+    "drawnAt": "2024-02-10T12:00:00.000Z",
+    "verification": {
+      "targetBlockHeight": 880123,
+      "targetBlockHash": "0000000000000000000234abc...",
+      "hashLast6Digits": "000150",
+      "verificationUrl": "https://mempool.space/block/880123"
+    }
+  },
+
+  "prizeOrder": {
+    "orderId": 456,
+    "orderNumber": "ORD1707840000XYZ",
+    "shippingStatus": "SHIPPED",
+    "logisticsCompany": "SF Express",
+    "trackingNumber": "SF1234567890",
+    "deliveredAt": null,
+    "shippingAddress": {
+      "recipientName": "John Doe",
+      "phoneNumber": "+1234567890",
+      "country": "United States",
+      "state": "California",
+      "city": "San Francisco",
+      "streetAddress": "123 Main St"
+    }
+  }
+}
+```
+
+**字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| participationId | number | 参与记录ID |
+| orderNumber | string | 参与订单号 |
+| quantity | number | 购买的号码数量 |
+| startNumber | number | 起始号码 |
+| endNumber | number | 结束号码（包含） |
+| ticketNumbers | number[] | 所有号码列表 |
+| totalAmount | string | 总支付金额 |
+| isNewUserChance | boolean | 是否为新用户抽奖机会 |
+| participatedAt | string | 参与时间 |
+| drawRound | object | 轮次信息 |
+| drawResult | object \| null | 开奖结果（如已开奖） |
+| prizeOrder | object \| null | 奖品订单（如中奖且为实物奖品） |
+
+**drawRound 字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | number | 轮次ID |
+| roundNumber | number | 轮次编号 |
+| totalSpots | number | 总号码数 |
+| soldSpots | number | 已售号码数 |
+| pricePerSpot | string | 每个号码价格 |
+| prizeValue | string | 奖品价值 |
+| status | string | 轮次状态：ONGOING, COMPLETED, DRAWN, CANCELLED |
+| completedAt | string \| null | 售罄时间 |
+| drawnAt | string \| null | 开奖时间 |
+| product | object | 商品信息 |
+
+**drawResult 字段说明**（仅当已开奖时存在）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | number | 开奖结果ID |
+| winningNumber | number | 中奖号码 |
+| isWinner | boolean | 当前用户是否中奖 |
+| prizeType | string | 奖品类型：CASH, CRYPTO, PHYSICAL |
+| prizeValue | string | 奖品价值 |
+| prizeStatus | string | 奖品状态：PENDING, DISTRIBUTED, CANCELLED |
+| drawnAt | string | 开奖时间 |
+| verification | object \| null | 区块链验证信息 |
+
+**prizeOrder 字段说明**（仅当中奖且为实物奖品时存在）:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| orderId | number | 订单ID |
+| orderNumber | string | 订单号 |
+| shippingStatus | string | 发货状态：PENDING, PENDING_SHIPMENT, SHIPPED, DELIVERED |
+| logisticsCompany | string \| null | 物流公司 |
+| trackingNumber | string \| null | 物流单号 |
+| deliveredAt | string \| null | 签收时间 |
+| shippingAddress | object \| null | 收货地址快照 |
+
+**错误响应** (404):
+```json
+{
+  "statusCode": 404,
+  "message": "Participation not found",
+  "error": "Not Found"
+}
+```
+
+**说明**:
+- 只能查看自己的参与记录
+- 如果轮次尚未开奖，`drawResult` 为 null
+- 如果用户未中奖或奖品非实物，`prizeOrder` 为 null
+- 收货地址信息只对中奖用户本人可见
+
+---
+
+## 9. 获取我的中奖记录
 
 获取当前用户的所有中奖记录（实物奖品）。
 

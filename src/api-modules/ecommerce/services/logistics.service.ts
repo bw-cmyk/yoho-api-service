@@ -425,13 +425,33 @@ export class LogisticsService {
       await this.timelineRepository.save(shippedNode);
     }
 
-    // 3. 发送发货通知（可选）
+    // 3. 查询关联的 DrawResult 以获取轮次信息
+    let drawResult: DrawResult | null = null;
+    if (order.drawResultId) {
+      drawResult = await this.drawResultRepository.findOne({
+        where: { id: order.drawResultId },
+        relations: ['drawRound'],
+      });
+    }
+
+    // 4. 发送发货通知
     if (order.userId) {
       try {
         await this.notificationService.notifyShippingUpdate(order.userId, {
+          orderId: order.id,
           orderNumber: order.orderNumber,
           status: 'SHIPPED',
           productName: order.productInfo.name,
+          // 新增字段
+          productId: order.productId,
+          productImage:
+            order.productInfo.thumbnail || order.productInfo.images?.[0],
+          drawResultId: order.drawResultId,
+          drawRoundId: drawResult?.drawRoundId,
+          roundNumber: drawResult?.drawRound?.roundNumber,
+          logisticsCompany,
+          trackingNumber,
+          prizeValue: order.productInfo.originalPrice,
         });
       } catch (error) {
         this.logger.error('Failed to send shipping notification', error);
@@ -472,13 +492,33 @@ export class LogisticsService {
       await this.timelineRepository.save(deliveredNode);
     }
 
-    // 4. 发送签收通知（可选）
+    // 4. 查询关联的 DrawResult 以获取轮次信息
+    let drawResult: DrawResult | null = null;
+    if (order.drawResultId) {
+      drawResult = await this.drawResultRepository.findOne({
+        where: { id: order.drawResultId },
+        relations: ['drawRound'],
+      });
+    }
+
+    // 5. 发送签收通知
     if (order.userId) {
       try {
         await this.notificationService.notifyShippingUpdate(order.userId, {
+          orderId: order.id,
           orderNumber: order.orderNumber,
           status: 'DELIVERED',
           productName: order.productInfo.name,
+          // 新增字段
+          productId: order.productId,
+          productImage:
+            order.productInfo.thumbnail || order.productInfo.images?.[0],
+          drawResultId: order.drawResultId,
+          drawRoundId: drawResult?.drawRoundId,
+          roundNumber: drawResult?.drawRound?.roundNumber,
+          logisticsCompany: order.logisticsCompany,
+          trackingNumber: order.trackingNumber,
+          prizeValue: order.productInfo.originalPrice,
         });
       } catch (error) {
         this.logger.error('Failed to send delivery notification', error);

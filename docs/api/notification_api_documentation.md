@@ -317,14 +317,14 @@ Authorization: Bearer {token}
 
 ### NotificationType（通知类型）
 
-| 类型 | 说明 | metadata 内容示例 |
+| 类型 | 说明 | metadata 主要内容 |
 |------|------|-------------------|
 | SYSTEM | 系统公告 | - |
-| PRIZE_WON | 中奖通知 | `{ drawResultId, drawRoundId, prizeValue, prizeType }` |
-| SHIPPING_UPDATE | 发货更新 | `{ orderId, logisticsCompany, trackingNumber }` |
-| ORDER_UPDATE | 订单更新 | `{ orderId, oldStatus, newStatus }` |
-| ACCOUNT | 账户通知 | `{ reason, amount }` |
-| PROMOTION | 促销通知 | `{ promotionId, endDate }` |
+| PRIZE_WON | 中奖通知 | `product`, `drawRound`, `result` (含 winnerUserName) |
+| SHIPPING_UPDATE | 发货更新 | `product`, `draw`, `logistics`, `prizeValue` |
+| ORDER_UPDATE | 订单更新 | `orderId`, `orderNumber` |
+| ACCOUNT | 账户通知 | `reason`, `amount`, `currency` |
+| PROMOTION | 促销通知 | `promotionId`, `title`, `endDate` |
 
 ### NotificationStatus（通知状态）
 
@@ -348,28 +348,86 @@ Authorization: Bearer {token}
 #### PRIZE_WON（中奖通知）
 ```json
 {
-  "drawResultId": 45,
-  "drawRoundId": 12,
-  "prizeValue": "500.00",
-  "prizeType": "PHYSICAL"  // CASH, CRYPTO, PHYSICAL
+  "drawResultId": 789,
+  "product": {
+    "id": 10,
+    "name": "iPhone 15 Pro",
+    "image": "https://example.com/images/iphone15.jpg"
+  },
+  "drawRound": {
+    "id": 5,
+    "roundNumber": 1,
+    "totalParticipants": 1000
+  },
+  "result": {
+    "winningNumber": 150,
+    "prizeType": "PHYSICAL",
+    "prizeValue": "899.00",
+    "userTicketCount": 10,
+    "winnerUserName": "John Doe"
+  }
 }
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| drawResultId | number | 中奖记录ID |
+| product.id | number | 商品ID |
+| product.name | string | 商品名称 |
+| product.image | string | 商品图片URL |
+| drawRound.id | number | 轮次ID |
+| drawRound.roundNumber | number | 轮次号 |
+| drawRound.totalParticipants | number | 总参与人数（已售份数） |
+| result.winningNumber | number | 中奖号码 |
+| result.prizeType | string | 奖品类型：`CASH`、`CRYPTO`、`PHYSICAL` |
+| result.prizeValue | string | 奖品价值（USD） |
+| result.userTicketCount | number | 用户购买的号码数量 |
+| result.winnerUserName | string | 中奖者名称 |
 
 #### SHIPPING_UPDATE（发货更新）
 ```json
 {
-  "orderId": 88,
-  "logisticsCompany": "顺丰速运",
-  "trackingNumber": "SF1234567890"
+  "orderId": 456,
+  "orderNumber": "ORD1707840000XYZ",
+  "product": {
+    "id": 10,
+    "name": "iPhone 15 Pro",
+    "image": "https://example.com/images/iphone15.jpg"
+  },
+  "draw": {
+    "resultId": 789,
+    "roundId": 5,
+    "roundNumber": 1
+  },
+  "logistics": {
+    "status": "SHIPPED",
+    "company": "SF Express",
+    "trackingNumber": "SF1234567890"
+  },
+  "prizeValue": "899.00"
 }
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| orderId | number | 订单ID |
+| orderNumber | string | 订单号 |
+| product.id | number | 商品ID |
+| product.name | string | 商品名称 |
+| product.image | string | 商品图片URL |
+| draw.resultId | number | 中奖记录ID |
+| draw.roundId | number | 轮次ID |
+| draw.roundNumber | number | 轮次号 |
+| logistics.status | string | 物流状态：`SHIPPED`、`DELIVERED`、`IN_TRANSIT` |
+| logistics.company | string | 物流公司 |
+| logistics.trackingNumber | string | 物流单号 |
+| prizeValue | string | 奖品价值（USD） |
 
 #### ORDER_UPDATE（订单更新）
 ```json
 {
   "orderId": 88,
-  "oldStatus": "PENDING_PAYMENT",
-  "newStatus": "PAID"
+  "orderNumber": "ORD1707840000ABC"
 }
 ```
 
@@ -625,7 +683,18 @@ function useNotifications() {
 
 ## 更新日志
 
-### v1.0.0 (TBD)
+### v1.1.0 (2024-02)
+- **PRIZE_WON 通知 metadata 增强**
+  - 新增 `product` 对象（id, name, image）
+  - 新增 `drawRound` 对象（id, roundNumber, totalParticipants）
+  - 新增 `result` 对象（winningNumber, prizeType, prizeValue, userTicketCount, winnerUserName）
+- **SHIPPING_UPDATE 通知 metadata 增强**
+  - 新增 `product` 对象（id, name, image）
+  - 新增 `draw` 对象（resultId, roundId, roundNumber）
+  - 新增 `logistics` 对象（status, company, trackingNumber）
+  - 新增 `prizeValue` 字段
+
+### v1.0.0 (2024-01)
 - 初始版本
 - 支持获取通知列表
 - 支持获取未读数量

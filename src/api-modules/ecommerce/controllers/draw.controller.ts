@@ -21,6 +21,7 @@ import {
   RecentWinnersQueryDto,
   MyPhysicalPrizesQueryDto,
   ClaimPhysicalPrizeDto,
+  ParticipationDetailResponseDto,
 } from '../dto/draw.dto';
 
 @ApiTags('一元购抽奖')
@@ -108,6 +109,20 @@ export class DrawController {
       query.productId,
       query.page || 1,
       query.limit || 20,
+    );
+  }
+
+  @Get('participations/:id/detail')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '获取参与详情' })
+  async getParticipationDetail(
+    @Request() req: ExpressRequest,
+    @Param('id', ParseIntPipe) participationId: number,
+  ): Promise<ParticipationDetailResponseDto> {
+    const { id: userId } = req.user as any;
+    return await this.drawService.getParticipationDetail(
+      participationId,
+      userId,
     );
   }
 
