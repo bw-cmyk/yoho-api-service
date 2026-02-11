@@ -113,6 +113,8 @@ export class ShowcaseService {
       isPinned: item.isPinned,
       isWinnerShowcase: item.isWinnerShowcase,
       isVerified: item.isVerified,
+      ipAddress: item.ipAddress,
+      location: item.location,
       createdAt: item.createdAt,
     }));
 
@@ -413,6 +415,8 @@ export class ShowcaseService {
       winningNumber: item.winningNumber,
       prizeType: item.prizeType,
       prizeValue: item.prizeValue,
+      ipAddress: item.ipAddress,
+      location: item.location,
       createdAt: item.createdAt,
     }));
 
