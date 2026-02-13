@@ -68,6 +68,8 @@ export class DrawParticipation {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
+  @ManyToOne(() => DrawRound)
+  @JoinColumn({ name: 'draw_round_id' })
   drawRound: DrawRound;
 
   /**

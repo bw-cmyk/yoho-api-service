@@ -69,14 +69,32 @@ export class AssetController {
   // get balance history
   @Get('/balance-history')
   @UseGuards(JwtAuthGuard)
-  async getBalanceHistory(@Request() req: ExpressRequest) {
+  async getBalanceHistory(
+    @Request() req: ExpressRequest,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
     const { id: userId } = req.user as any;
-    const balanceHistory = await this.assetService.getTransactionHistory(
-      userId,
-    );
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+
+    const { transactions, total } =
+      await this.assetService.getTransactionHistory(
+        userId,
+        undefined,
+        pageNum,
+        limitNum,
+      );
+
     return {
       user_id: userId,
-      balanceHistory: balanceHistory,
+      balanceHistory: transactions,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
     };
   }
 

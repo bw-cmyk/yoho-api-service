@@ -56,6 +56,15 @@ async function getMyPendingPhysicalPrizes() {
   console.log('--- 获取我的待领取实物奖品 ---\n');
 
   try {
+    const rsp = await fetch(
+      `${endpoint}/api/v1/ecommerce/draws/participations/2/detail`,
+      {
+        method: 'GET',
+        headers: userAuthHeader,
+      },
+    );
+    console.log(await rsp.json())
+
     const response = await fetch(
       `${endpoint}/api/v1/ecommerce/draws/participations/me?page=1&limit=30`,
       {
@@ -413,7 +422,7 @@ async function testUserClaimPrizeFlow() {
       return;
     }
 
-    console.log(prizes);
+    // console.log(prizes);
 
     // const firstPrize = prizes[0];
     // console.log('第一个待领取奖品:', {
