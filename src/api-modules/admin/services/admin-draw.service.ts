@@ -572,7 +572,7 @@ export class AdminDrawService {
       order.logisticsCompany = logisticsCompany;
       order.trackingNumber = trackingNumber;
       order.prizeShippingStatus = PrizeShippingStatus.SHIPPED;
-      console.log('ssssssss2')
+
       await manager.save(order);
 
       // 更新物流时间线（传入事务管理器）
@@ -582,7 +582,6 @@ export class AdminDrawService {
         trackingNumber,
         manager,
       );
-      console.log('ssssssss')
 
       return {
         success: true,

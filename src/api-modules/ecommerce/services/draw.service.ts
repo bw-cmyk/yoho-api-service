@@ -964,7 +964,7 @@ export class DrawService {
     });
 
     if (!chance || !chance.canClaim()) {
-      throw new BadRequestException('无法认领机会');
+      throw new BadRequestException('You have no chance to claim');
     }
 
     chance.status = NewUserDrawChanceStatus.CLAIMED;
@@ -983,19 +983,19 @@ export class DrawService {
     });
 
     if (!chance || !chance.canUse()) {
-      throw new BadRequestException('无法使用机会');
+      throw new BadRequestException('You have no chance to use');
     }
 
     const drawRound = await this.getOrCreateCurrentRound(productId);
     if (drawRound.remainingSpots < 1) {
-      throw new BadRequestException('当前期次已满');
+      throw new BadRequestException('The current round is full');
     }
 
     // 检查用户余额是否足够支付0.1元
     const userAssets = await this.assetService.getUserAssets(userId);
     const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
     if (!usdAsset || !usdAsset.hasEnoughBalance(chance.chanceAmount)) {
-      throw new BadRequestException('余额不足，请先充值');
+      throw new BadRequestException('Insufficient balance, please recharge');
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -1005,7 +1005,7 @@ export class DrawService {
       });
 
       if (lockedRound.remainingSpots < 1) {
-        throw new BadRequestException('当前期次已满');
+        throw new BadRequestException('The current round is full');
       }
 
       const startNumber = lockedRound.soldSpots + 1;
@@ -1033,7 +1033,7 @@ export class DrawService {
         type: TransactionType.LUCKY_DRAW,
         amount: chance.chanceAmount,
         game_id: `NEW_USER_DRAW`,
-        description: `新用户抽奖参与费用`,
+        description: `New user draw participation fee`,
         metadata: {
           drawRoundId: lockedRound.id,
           roundNumber: lockedRound.roundNumber,
@@ -1061,7 +1061,7 @@ export class DrawService {
       // 触发开奖
       if (lockedRound.isFull) {
         this.processDraw(lockedRound.id).catch((e) =>
-          this.logger.error(`开奖失败`, e),
+          this.logger.error(`Draw failed`, e),
         );
       }
 
