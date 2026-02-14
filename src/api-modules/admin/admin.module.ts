@@ -10,7 +10,8 @@ import { DrawResult } from '../ecommerce/entities/draw-result.entity';
 import { UserAsset } from '../assets/entities/balance/user-asset.entity';
 import { Transaction } from '../assets/entities/balance/transaction.entity';
 import { UserChainAsset } from '../assets/entities/onchain/user-chain-asset.entity';
-import { Order } from '../assets/entities/balance/order.entity';
+import { Order as DepositWithdrawOrder } from '../assets/entities/balance/order.entity';
+import { Order as EcommerceOrder } from '../ecommerce/entities/order.entity';
 import { Showcase } from '../ecommerce/entities/showcase.entity';
 import { ShowcaseComment } from '../ecommerce/entities/showcase-comment.entity';
 import { ShowcaseShare } from '../ecommerce/entities/showcase-share.entity';
@@ -53,7 +54,8 @@ import { AdminNotificationService } from './services/admin-notification.service'
       UserAsset,
       Transaction,
       UserChainAsset,
-      Order,
+      DepositWithdrawOrder,
+      EcommerceOrder,
       Showcase,
       ShowcaseComment,
       ShowcaseShare,

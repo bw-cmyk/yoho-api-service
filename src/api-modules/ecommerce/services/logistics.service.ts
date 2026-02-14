@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
 import { Order } from '../entities';
 import { DrawResult, PrizeStatus } from '../entities/draw-result.entity';
@@ -187,9 +187,12 @@ export class LogisticsService {
 
   /**
    * 为订单初始化物流时间线（根据订单类型选择节点配置）
+   * @param order 订单
+   * @param manager 可选的事务管理器，用于在事务中调用
    */
   async initializeLogisticsTimeline(
     order: Order,
+    manager?: EntityManager,
   ): Promise<LogisticsTimeline[]> {
     let nodeConfigs: LogisticsNodeConfig[];
 
@@ -201,9 +204,13 @@ export class LogisticsService {
       return [];
     }
 
+    const repo = manager
+      ? manager.getRepository(LogisticsTimeline)
+      : this.timelineRepository;
+
     // 创建节点
     const nodes = nodeConfigs.map((config) =>
-      this.timelineRepository.create({
+      repo.create({
         orderId: order.id,
         nodeKey: config.key,
         title: config.title,
@@ -213,7 +220,7 @@ export class LogisticsService {
       }),
     );
 
-    return await this.timelineRepository.save(nodes);
+    return await repo.save(nodes);
   }
 
   /**
@@ -221,11 +228,12 @@ export class LogisticsService {
    */
   async initializePrizeShippingTimeline(
     order: Order,
+    manager?: EntityManager,
   ): Promise<LogisticsTimeline[]> {
     if (order.type !== OrderType.LUCKY_DRAW) {
       throw new Error('Order is not a Lucky Draw prize');
     }
-    return this.initializeLogisticsTimeline(order);
+    return this.initializeLogisticsTimeline(order, manager);
   }
 
   /**

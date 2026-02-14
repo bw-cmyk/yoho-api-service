@@ -177,8 +177,8 @@ export class OrderService {
       // 减少库存
       await this.productService.decreaseStock(product.id, dto.quantity);
 
-      // 初始化物流时间线
-      await this.logisticsService.initializeLogisticsTimeline(savedOrder);
+      // 初始化物流时间线（传入事务管理器）
+      await this.logisticsService.initializeLogisticsTimeline(savedOrder, manager);
 
       this.logger.log(`用户 ${userId} 创建订单成功: ${savedOrder.orderNumber}`);
 

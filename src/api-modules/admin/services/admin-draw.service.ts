@@ -154,12 +154,20 @@ export class AdminDrawService {
     delivered: number;
     total: number;
   }> {
-    const results = await this.orderRepo
-      .createQueryBuilder('order')
+    console.log(this.orderRepo
+      .createQueryBuilder()
       .select('"prize_shipping_status"', 'status')
       .addSelect('COUNT(*)', 'count')
-      .where('order.type = :type', { type: OrderType.LUCKY_DRAW })
-      .andWhere('order."drawResultId" IS NOT NULL')
+      .where('type = :type', { type: OrderType.LUCKY_DRAW })
+      .andWhere('draw_result_id IS NOT NULL')
+      .addGroupBy('"prize_shipping_status"').getSql())
+
+    const results = await this.orderRepo
+      .createQueryBuilder()
+      .select('"prize_shipping_status"', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .where('type = :type', { type: OrderType.LUCKY_DRAW })
+      .andWhere('draw_result_id IS NOT NULL')
       .addGroupBy('"prize_shipping_status"')
       .getRawMany();
 
@@ -283,12 +291,12 @@ export class AdminDrawService {
 
     // 构建查询条件
     const qb = this.orderRepo
-      .createQueryBuilder('order')
-      .where('order.type = :type', { type: OrderType.LUCKY_DRAW })
-      .andWhere('order.drawResultId IS NOT NULL');
+      .createQueryBuilder()
+      .where('type = :type', { type: OrderType.LUCKY_DRAW })
+      // .andWhere('draw_result_id IS NOT NULL');
 
     if (status) {
-      qb.andWhere('"prize_shipping_status" = :status', { status });
+      qb.andWhere('prize_shipping_status = :status', { status });
     }
 
     // 关键词搜索

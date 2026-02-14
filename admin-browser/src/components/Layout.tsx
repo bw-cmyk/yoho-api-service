@@ -46,16 +46,16 @@ export default function Layout() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const navigate = useNavigate()
 
+  const handleLogout = () => {
+    navigate('/login')
+  }
+
   useEffect(() => {
     authApi.me().then(setUserInfo).catch(() => {
+      localStorage.removeItem('admin_token')
       handleLogout()
     })
   }, [])
-
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token')
-    navigate('/login')
-  }
 
   const displayName = userInfo?.nickname || userInfo?.username || userInfo?.email || 'Admin'
 
