@@ -403,24 +403,30 @@ export class LogisticsService {
 
   /**
    * 一元购实物奖品发货
+   * @param order 订单（调用方应已更新并保存订单的物流信息）
+   * @param logisticsCompany 物流公司
+   * @param trackingNumber 运单号
+   * @param manager 可选的事务管理器
    */
   async shipPrize(
     order: Order,
     logisticsCompany: string,
     trackingNumber: string,
+    manager?: EntityManager,
   ): Promise<void> {
     if (order.type !== OrderType.LUCKY_DRAW) {
       throw new Error('Order is not a Lucky Draw prize');
     }
 
-    // 1. 更新订单物流信息
-    order.logisticsCompany = logisticsCompany;
-    order.trackingNumber = trackingNumber;
-    order.prizeShippingStatus = PrizeShippingStatus.SHIPPED;
-    await this.orderRepository.save(order);
+    const timelineRepo = manager
+      ? manager.getRepository(LogisticsTimeline)
+      : this.timelineRepository;
+    const drawResultRepo = manager
+      ? manager.getRepository(DrawResult)
+      : this.drawResultRepository;
 
-    // 2. 激活"已发货"节点
-    const shippedNode = await this.timelineRepository.findOne({
+    // 激活"已发货"节点
+    const shippedNode = await timelineRepo.findOne({
       where: {
         orderId: order.id,
         nodeKey: LogisticsNodeKey.PRIZE_SHIPPED,
@@ -430,13 +436,13 @@ export class LogisticsService {
     if (shippedNode && !shippedNode.activatedAt) {
       shippedNode.activatedAt = new Date();
       shippedNode.description = `Shipped via ${logisticsCompany}, Tracking: ${trackingNumber}`;
-      await this.timelineRepository.save(shippedNode);
+      await timelineRepo.save(shippedNode);
     }
 
-    // 3. 查询关联的 DrawResult 以获取轮次信息
+    // 查询关联的 DrawResult 以获取轮次信息
     let drawResult: DrawResult | null = null;
     if (order.drawResultId) {
-      drawResult = await this.drawResultRepository.findOne({
+      drawResult = await drawResultRepo.findOne({
         where: { id: order.drawResultId },
         relations: ['drawRound'],
       });
