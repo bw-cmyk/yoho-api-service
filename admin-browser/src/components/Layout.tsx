@@ -57,18 +57,19 @@ interface UserInfo {
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
   const location = useLocation()
 
   // Auto-expand group if current path matches a child
-  useEffect(() => {
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>()
     for (const item of menuItems) {
       if (item.type === 'group' && item.children.some((c) => location.pathname.startsWith(c.path))) {
-        setExpandedGroups((prev) => new Set(prev).add(item.key))
+        initial.add(item.key)
       }
     }
-  }, [location.pathname])
+    return initial
+  })
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
