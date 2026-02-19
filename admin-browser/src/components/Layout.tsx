@@ -18,6 +18,7 @@ import {
   BotMessageSquare,
   ScrollText,
   Target,
+  Megaphone,
 } from 'lucide-react'
 import { authApi } from '../services/api'
 import type { LucideIcon } from 'lucide-react'
@@ -29,13 +30,29 @@ type MenuItem =
 const menuItems: MenuItem[] = [
   { type: 'link', path: '/dashboard', icon: LayoutDashboard, label: '仪表盘' },
   { type: 'link', path: '/users', icon: Users, label: '用户管理' },
-  { type: 'link', path: '/products', icon: Package, label: '商品管理' },
-  { type: 'link', path: '/prize-orders', icon: Gift, label: '奖品发货' },
-  { type: 'link', path: '/showcases', icon: Image, label: '晒单管理' },
-  { type: 'link', path: '/banners', icon: MonitorPlay, label: 'Banner管理' },
+  {
+    type: 'group',
+    key: 'products',
+    icon: Package,
+    label: '商品管理',
+    children: [
+      { path: '/products', icon: Package, label: '商品列表' },
+      { path: '/prize-orders', icon: Gift, label: '奖品发货' },
+      { path: '/showcases', icon: Image, label: '晒单管理' },
+    ],
+  },
+  {
+    type: 'group',
+    key: 'operations',
+    icon: Megaphone,
+    label: '运营管理',
+    children: [
+      { path: '/banners', icon: MonitorPlay, label: 'Banner管理' },
+      { path: '/notifications', icon: Bell, label: '通知管理' },
+      { path: '/campaigns', icon: Target, label: '活动管理' },
+    ],
+  },
   { type: 'link', path: '/currencies', icon: DollarSign, label: '货币管理' },
-  { type: 'link', path: '/notifications', icon: Bell, label: '通知管理' },
-  { type: 'link', path: '/campaigns', icon: Target, label: '活动管理' },
   {
     type: 'group',
     key: 'bot',
@@ -186,7 +203,7 @@ export default function Layout() {
                 {/* Children */}
                 <div
                   className={`overflow-hidden transition-all duration-200 ${
-                    isExpanded ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                    isExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
                   }`}
                 >
                   {item.children.map((child) => (
