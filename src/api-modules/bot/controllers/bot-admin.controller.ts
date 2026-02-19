@@ -86,10 +86,7 @@ export class BotAdminController {
   }
 
   @Post('users/:id/recharge')
-  async rechargeBotUser(
-    @Param('id') id: string,
-    @Body() dto: RechargeDto,
-  ) {
+  async rechargeBotUser(@Param('id') id: string, @Body() dto: RechargeDto) {
     await this.botUserService.rechargeBotUser(id, new Decimal(dto.amount));
 
     return {
@@ -127,10 +124,7 @@ export class BotAdminController {
   }
 
   @Patch('users/:id/toggle')
-  async toggleBotStatus(
-    @Param('id') id: string,
-    @Body() dto: ToggleStatusDto,
-  ) {
+  async toggleBotStatus(@Param('id') id: string, @Body() dto: ToggleStatusDto) {
     await this.botUserService.toggleBotStatus(id, dto.enabled);
 
     return {
@@ -227,7 +221,9 @@ export class BotAdminController {
   }
 
   @Get('lucky-draw/configs/:productId')
-  async getLuckyDrawConfig(@Param('productId', ParseIntPipe) productId: number) {
+  async getLuckyDrawConfig(
+    @Param('productId', ParseIntPipe) productId: number,
+  ) {
     let config = await this.luckyDrawConfigRepository.findOne({
       where: { productId },
     });
@@ -305,7 +301,9 @@ export class BotAdminController {
   }
 
   @Post('lucky-draw/configs/:productId/enable')
-  async enableLuckyDrawBot(@Param('productId', ParseIntPipe) productId: number) {
+  async enableLuckyDrawBot(
+    @Param('productId', ParseIntPipe) productId: number,
+  ) {
     const config = await this.luckyDrawConfigRepository.findOne({
       where: { productId },
     });
@@ -317,17 +315,25 @@ export class BotAdminController {
     config.enabled = true;
     await this.luckyDrawConfigRepository.save(config);
 
-    // 启动对应的任务
-    const task = await this.botTaskRepository.findOne({
+    // 启动对应的任务（如果不存在则自动创建）
+    let task = await this.botTaskRepository.findOne({
       where: {
         taskType: BOT_TASK_TYPES.LUCKY_DRAW,
         targetId: productId.toString(),
       },
     });
 
-    if (task) {
-      await this.schedulerService.startTask(task.id);
+    if (!task) {
+      task = this.botTaskRepository.create({
+        taskType: BOT_TASK_TYPES.LUCKY_DRAW,
+        targetId: productId.toString(),
+        enabled: false,
+        config: {},
+      });
+      await this.botTaskRepository.save(task);
     }
+
+    await this.schedulerService.startTask(task.id);
 
     return {
       success: true,
@@ -336,7 +342,9 @@ export class BotAdminController {
   }
 
   @Post('lucky-draw/configs/:productId/disable')
-  async disableLuckyDrawBot(@Param('productId', ParseIntPipe) productId: number) {
+  async disableLuckyDrawBot(
+    @Param('productId', ParseIntPipe) productId: number,
+  ) {
     const config = await this.luckyDrawConfigRepository.findOne({
       where: { productId },
     });

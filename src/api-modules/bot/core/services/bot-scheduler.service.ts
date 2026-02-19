@@ -60,10 +60,7 @@ export class BotSchedulerService implements OnModuleInit {
     // 并发执行所有任务
     const promises = tasks.map((task) =>
       this.executeTask(task).catch((error) => {
-        this.logger.error(
-          `Task execution failed for task ${task.id}`,
-          error,
-        );
+        this.logger.error(`Task execution failed for task ${task.id}`, error);
       }),
     );
 

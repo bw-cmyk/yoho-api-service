@@ -154,13 +154,6 @@ export class AdminDrawService {
     delivered: number;
     total: number;
   }> {
-    console.log(this.orderRepo
-      .createQueryBuilder()
-      .select('"prize_shipping_status"', 'status')
-      .addSelect('COUNT(*)', 'count')
-      .where('type = :type', { type: OrderType.LUCKY_DRAW })
-      .andWhere('draw_result_id IS NOT NULL')
-      .addGroupBy('"prize_shipping_status"').getSql())
 
     const results = await this.orderRepo
       .createQueryBuilder()
@@ -292,8 +285,8 @@ export class AdminDrawService {
     // 构建查询条件
     const qb = this.orderRepo
       .createQueryBuilder()
-      .where('type = :type', { type: OrderType.LUCKY_DRAW })
-      // .andWhere('draw_result_id IS NOT NULL');
+      .where('type = :type', { type: OrderType.LUCKY_DRAW });
+    // .andWhere('draw_result_id IS NOT NULL');
 
     if (status) {
       qb.andWhere('prize_shipping_status = :status', { status });
@@ -354,7 +347,9 @@ export class AdminDrawService {
     const shippingAddresses = await this.dataSource
       .getRepository('ShippingAddress')
       .findByIds(shippingAddressIds as number[]);
-    const shippingAddressMap = new Map(shippingAddresses.map((sa) => [sa.id, sa]));
+    const shippingAddressMap = new Map(
+      shippingAddresses.map((sa) => [sa.id, sa]),
+    );
 
     // 获取统计数据
     const stats = await this.getPrizeOrderStats();

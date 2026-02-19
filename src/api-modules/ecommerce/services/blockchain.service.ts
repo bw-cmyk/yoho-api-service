@@ -19,10 +19,10 @@ export class BlockchainService {
    */
   async getLatestBlockHeight(): Promise<number> {
     try {
-      // const response = await axios.get(`${this.baseUrl}/latestblock`, {
-      //   timeout: 10000,
-      // });
-      return 10000000;
+      const response = await axios.get(`https://blockchain.info/latestblock`, {
+        timeout: 10000,
+      });
+      return response.data.height;
     } catch (error) {
       this.logger.error('获取最新区块高度失败', error);
       throw new Error('无法获取比特币区块信息');
@@ -35,14 +35,14 @@ export class BlockchainService {
   async getBlockByHeight(height: number): Promise<BitcoinBlock> {
     try {
       const response = await axios.get(
-        `${this.baseUrl}/block-height/${height}?format=json`,
+        `https://blockchain.info/block-height/${height}?format=json`,
         {
           timeout: 10000,
         },
       );
 
       // API返回的是数组，取第一个
-      const blocks = response.data;
+      const blocks = response.data.blocks;
       if (!blocks || blocks.length === 0) {
         throw new Error(`区块 ${height} 不存在`);
       }

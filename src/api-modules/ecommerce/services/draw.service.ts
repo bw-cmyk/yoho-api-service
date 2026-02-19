@@ -364,14 +364,13 @@ export class DrawService {
       );
 
       // 获取目标区块信息
-      // const targetBlock = await this.blockchainService.getBlockByHeight(
-      //   targetBlockHeight,
-      // );
+      const targetBlock = await this.blockchainService.getBlockByHeight(
+        targetBlockHeight,
+      );
 
       // 提取区块哈希最后6位数字
       const hashLast6Digits = this.blockchainService.extractLast6Digits(
-        // targetBlock.hash,
-        '00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09',
+        targetBlock.hash,
       );
 
       // 计算中奖号码：Winner = (Block n Hash Last 6 Digits % Total) + 1
