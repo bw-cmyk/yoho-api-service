@@ -17,6 +17,7 @@ import Notifications from './pages/Notifications'
 import BotUserManagement from './pages/bot/BotUserManagement'
 import LuckyDrawBotConfig from './pages/bot/LuckyDrawBotConfig'
 import BotTaskLogs from './pages/bot/BotTaskLogs'
+import Campaigns from './pages/Campaigns'
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
         <Route path="currencies" element={<CurrencyRates />} />
         <Route path="prize-orders" element={<PrizeOrders />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="campaigns" element={<Campaigns />} />
         <Route path="bot/users" element={<BotUserManagement />} />
         <Route path="bot/lucky-draw" element={<LuckyDrawBotConfig />} />
         <Route path="bot/logs" element={<BotTaskLogs />} />

@@ -40,8 +40,15 @@ import { AdminAssetService } from './services/admin-asset.service';
 import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { Notification } from '../notification/entities/notification.entity';
+import { Campaign } from '../task/entities/campaign.entity';
+import { Task } from '../task/entities/task.entity';
+import { TaskReward } from '../task/entities/task-reward.entity';
+import { UserCampaignProgress } from '../task/entities/user-campaign-progress.entity';
+import { TaskCompletion } from '../task/entities/task-completion.entity';
 import { AdminNotificationController } from './controllers/admin-notification.controller';
+import { AdminCampaignController } from './controllers/admin-campaign.controller';
 import { AdminNotificationService } from './services/admin-notification.service';
+import { AdminCampaignService } from './services/admin-campaign.service';
 
 @Module({
   imports: [
@@ -61,6 +68,11 @@ import { AdminNotificationService } from './services/admin-notification.service'
       ShowcaseShare,
       Banner,
       Notification,
+      Campaign,
+      Task,
+      TaskReward,
+      UserCampaignProgress,
+      TaskCompletion,
     ]),
     PassportModule.register({ defaultStrategy: 'admin-google' }),
     JwtModule.register({
@@ -84,6 +96,7 @@ import { AdminNotificationService } from './services/admin-notification.service'
     AdminCurrencyController,
     AdminBannerController,
     AdminNotificationController,
+    AdminCampaignController,
   ],
   providers: [
     AdminUserService,
@@ -96,6 +109,7 @@ import { AdminNotificationService } from './services/admin-notification.service'
     AdminGoogleStrategy,
     AdminJwtGuard,
     AdminNotificationService,
+    AdminCampaignService,
   ],
   exports: [AdminUserService, AdminProductService, AdminAuthService],
 })

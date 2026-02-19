@@ -17,6 +17,7 @@ import {
   Bot,
   BotMessageSquare,
   ScrollText,
+  Target,
 } from 'lucide-react'
 import { authApi } from '../services/api'
 import type { LucideIcon } from 'lucide-react'
@@ -34,6 +35,7 @@ const menuItems: MenuItem[] = [
   { type: 'link', path: '/banners', icon: MonitorPlay, label: 'Banner管理' },
   { type: 'link', path: '/currencies', icon: DollarSign, label: '货币管理' },
   { type: 'link', path: '/notifications', icon: Bell, label: '通知管理' },
+  { type: 'link', path: '/campaigns', icon: Target, label: '活动管理' },
   {
     type: 'group',
     key: 'bot',

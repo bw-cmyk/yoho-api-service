@@ -791,4 +791,181 @@ export const botApi = {
     request.get<{ items: BotTaskLog[]; total: number; page: number; limit: number }>('/bot/logs', params),
 };
 
+// ==================== 活动任务管理 API ====================
+
+export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ENDED';
+export type TaskType = 'REGISTER' | 'DEPOSIT' | 'CHECK_IN' | 'ADD_BOTIM_FRIEND' | 'FOLLOW_BOTIM_OFFICIAL' | 'TRADE_BTC' | 'PLAY_PREDICTION' | 'TRADE_VOLUME' | 'GAME_VOLUME' | 'CUSTOM' | 'TRADE_VOLUME_FIRST_DEPOSIT';
+export type TaskRepeatType = 'ONCE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'UNLIMITED';
+export type RewardType = 'CASH' | 'POINTS' | 'BONUS' | 'CUSTOM';
+export type RewardGrantType = 'FIXED' | 'RANDOM' | 'PROGRESSIVE' | 'FIRST_DEPOSIT';
+
+export interface Campaign {
+  id: number;
+  name: string;
+  description: string | null;
+  code: string | null;
+  status: CampaignStatus;
+  startTime: string | null;
+  endTime: string | null;
+  participationConditions: Record<string, unknown> | null;
+  rewardConfig: {
+    totalRewardAmount?: number;
+    currency?: string;
+    rewardType?: string;
+    requireClaim?: boolean;
+    claimExpiryDays?: number;
+  } | null;
+  sortOrder: number;
+  isVisible: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tasks?: CampaignTask[];
+}
+
+export interface CampaignTask {
+  id: number;
+  campaignId: number;
+  name: string;
+  description: string | null;
+  type: TaskType;
+  repeatType: TaskRepeatType;
+  maxCompletions: number;
+  completionConditions: Record<string, unknown> | null;
+  deadline: string | null;
+  redirectUrl: string | null;
+  sortOrder: number;
+  isLocked: boolean;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  rewards?: TaskReward[];
+}
+
+export interface TaskReward {
+  id: number;
+  campaignId: number;
+  taskId: number;
+  rewardType: RewardType;
+  grantType: RewardGrantType;
+  amount: number | null;
+  amountConfig: Record<string, unknown> | null;
+  currency: string | null;
+  targetBalance: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignStats {
+  total: number;
+  active: number;
+  draft: number;
+  paused: number;
+  ended: number;
+}
+
+export const campaignApi = {
+  // Campaign CRUD
+  getList: (params: { page?: number; limit?: number; keyword?: string; status?: CampaignStatus }) =>
+    request.get<PaginatedResponse<Campaign>>('/campaigns', params),
+  getStats: () =>
+    request.get<CampaignStats>('/campaigns/stats'),
+  getOne: (id: number) =>
+    request.get<Campaign>(`/campaigns/${id}`),
+  create: (data: {
+    name: string;
+    description?: string;
+    code?: string;
+    status?: CampaignStatus;
+    startTime?: string;
+    endTime?: string;
+    participationConditions?: Record<string, unknown>;
+    rewardConfig?: Record<string, unknown>;
+    sortOrder?: number;
+    isVisible?: boolean;
+  }) => request.post<Campaign>('/campaigns', data),
+  update: (id: number, data: {
+    name?: string;
+    description?: string;
+    code?: string;
+    status?: CampaignStatus;
+    startTime?: string | null;
+    endTime?: string | null;
+    participationConditions?: Record<string, unknown>;
+    rewardConfig?: Record<string, unknown>;
+    sortOrder?: number;
+    isVisible?: boolean;
+  }) => request.patch<Campaign>(`/campaigns/${id}`, data),
+  delete: (id: number) =>
+    request.delete<{ success: boolean; message: string }>(`/campaigns/${id}`),
+  setActive: (id: number) =>
+    request.post<Campaign>(`/campaigns/${id}/active`),
+  setPaused: (id: number) =>
+    request.post<Campaign>(`/campaigns/${id}/pause`),
+  setEnded: (id: number) =>
+    request.post<Campaign>(`/campaigns/${id}/end`),
+
+  // Task CRUD
+  getTasks: (campaignId: number, params?: { page?: number; limit?: number }) =>
+    request.get<PaginatedResponse<CampaignTask>>(`/campaigns/${campaignId}/tasks`, params),
+  getTask: (taskId: number) =>
+    request.get<CampaignTask>(`/campaigns/tasks/${taskId}`),
+  createTask: (campaignId: number, data: {
+    name: string;
+    description?: string;
+    type: TaskType;
+    repeatType?: TaskRepeatType;
+    maxCompletions?: number;
+    completionConditions?: Record<string, unknown>;
+    deadline?: string;
+    redirectUrl?: string;
+    sortOrder?: number;
+    isLocked?: boolean;
+    status?: string;
+    rewards?: Array<{
+      rewardType: RewardType;
+      grantType: RewardGrantType;
+      amount?: number;
+      amountConfig?: Record<string, unknown>;
+      currency?: string;
+      targetBalance?: string;
+    }>;
+  }) => request.post<CampaignTask>(`/campaigns/${campaignId}/tasks`, data),
+  updateTask: (taskId: number, data: {
+    name?: string;
+    description?: string;
+    type?: TaskType;
+    repeatType?: TaskRepeatType;
+    maxCompletions?: number;
+    completionConditions?: Record<string, unknown>;
+    deadline?: string | null;
+    redirectUrl?: string;
+    sortOrder?: number;
+    isLocked?: boolean;
+    status?: string;
+  }) => request.patch<CampaignTask>(`/campaigns/tasks/${taskId}`, data),
+  deleteTask: (taskId: number) =>
+    request.delete<{ success: boolean; message: string }>(`/campaigns/tasks/${taskId}`),
+
+  // Task Reward CRUD
+  addTaskReward: (taskId: number, data: {
+    rewardType: RewardType;
+    grantType: RewardGrantType;
+    amount?: number;
+    amountConfig?: Record<string, unknown>;
+    currency?: string;
+    targetBalance?: string;
+  }) => request.post<TaskReward>(`/campaigns/tasks/${taskId}/rewards`, data),
+  updateTaskReward: (rewardId: number, data: {
+    rewardType?: RewardType;
+    grantType?: RewardGrantType;
+    amount?: number;
+    amountConfig?: Record<string, unknown>;
+    currency?: string;
+    targetBalance?: string;
+  }) => request.patch<TaskReward>(`/campaigns/rewards/${rewardId}`, data),
+  deleteTaskReward: (rewardId: number) =>
+    request.delete<{ success: boolean; message: string }>(`/campaigns/rewards/${rewardId}`),
+};
+
 export default api;
