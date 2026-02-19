@@ -154,7 +154,6 @@ export class AdminDrawService {
     delivered: number;
     total: number;
   }> {
-
     const results = await this.orderRepo
       .createQueryBuilder()
       .select('"prize_shipping_status"', 'status')
