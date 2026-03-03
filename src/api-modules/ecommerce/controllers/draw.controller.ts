@@ -9,7 +9,12 @@ import {
   Request,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 import { DrawService } from '../services/draw.service';
@@ -22,6 +27,7 @@ import {
   MyPhysicalPrizesQueryDto,
   ClaimPhysicalPrizeDto,
   ParticipationDetailResponseDto,
+  GuaranteedWinStatusResponseDto,
 } from '../dto/draw.dto';
 
 @ApiTags('一元购抽奖')
@@ -145,6 +151,34 @@ export class DrawController {
   @ApiOperation({ summary: '将物理奖品转换成 Cash 奖品' })
   async convertPhysicalPrizeToCashPrize(@Param('id', ParseIntPipe) id: number) {
     return await this.drawService.convertPhysicalPrizeToCashPrize(id);
+  }
+
+  // ==================== 保底中奖 ====================
+
+  @Get('guaranteed-win/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '获取当前用户保底中奖状态',
+    description:
+      '查询当前登录用户是否符合保底中奖条件，以及距离触发保底还需参与几次。' +
+      '\n\n**字段说明：**\n' +
+      '- `enabled`：系统保底功能开关\n' +
+      '- `onNthParticipation`：第几次常规参与触发保底（全局配置，默认为 1）\n' +
+      '- `currentGlobalParticipationCount`：用户当前累计常规参与次数\n' +
+      '- `hasTriggered`：是否已触发过保底中奖\n' +
+      '- `isEligible`：当前是否符合保底条件（功能开启 + 未触发过 + 未达第N次）\n' +
+      '- `remainingUntilGuarantee`：距触发保底还需参与几次（已触发则为 0）',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '返回保底中奖状态',
+    type: GuaranteedWinStatusResponseDto,
+  })
+  async getMyGuaranteedWinStatus(
+    @Request() req: ExpressRequest,
+  ): Promise<GuaranteedWinStatusResponseDto> {
+    const { id: userId } = req.user as any;
+    return await this.drawService.getMyGuaranteedWinStatus(userId);
   }
 
   // ==================== 新用户抽奖 ====================

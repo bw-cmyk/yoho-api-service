@@ -78,11 +78,12 @@ export class DrawService {
    * 获取或创建当前进行中的期次
    */
   async getOrCreateCurrentRound(productId: number): Promise<DrawRound> {
-    // 查找当前进行中的期次
+    // 查找当前进行中的期次（排除私有轮次）
     let currentRound = await this.drawRoundRepository.findOne({
       where: {
         productId,
         status: DrawRoundStatus.ONGOING,
+        isPrivate: false,
       },
       order: { roundNumber: 'DESC' },
     });
@@ -143,7 +144,7 @@ export class DrawService {
    */
   async getAllOngoingRounds(): Promise<DrawRound[]> {
     const rounds = await this.drawRoundRepository.find({
-      where: { status: DrawRoundStatus.ONGOING },
+      where: { status: DrawRoundStatus.ONGOING, isPrivate: false },
     });
     // find product by productId
     const products = await this.productRepository.find({
@@ -162,7 +163,7 @@ export class DrawService {
    */
   async getOngoingRoundDetail(productId: number): Promise<DrawRound> {
     return await this.drawRoundRepository.findOne({
-      where: { productId, status: DrawRoundStatus.ONGOING },
+      where: { productId, status: DrawRoundStatus.ONGOING, isPrivate: false },
     });
   }
   /**
@@ -209,92 +210,104 @@ export class DrawService {
     }
 
     // 在事务中处理购买
-    return await this.dataSource.transaction(async (manager) => {
-      // 使用悲观锁获取期次
-      const lockedRound = await manager.findOne(DrawRound, {
-        where: { id: drawRound.id },
-        lock: { mode: 'pessimistic_write' },
-      });
+    return await this.dataSource
+      .transaction(async (manager) => {
+        // 使用悲观锁获取期次
+        const lockedRound = await manager.findOne(DrawRound, {
+          where: { id: drawRound.id },
+          lock: { mode: 'pessimistic_write' },
+        });
 
-      if (!lockedRound.canPurchase()) {
-        throw new BadRequestException(
-          'The round status has changed, cannot purchase',
-        );
-      }
+        if (!lockedRound.canPurchase()) {
+          throw new BadRequestException(
+            'The round status has changed, cannot purchase',
+          );
+        }
 
-      if (lockedRound.remainingSpots < quantity) {
-        throw new BadRequestException(
-          `The remaining number is not enough, only ${lockedRound.remainingSpots} left`,
-        );
-      }
+        if (lockedRound.remainingSpots < quantity) {
+          throw new BadRequestException(
+            `The remaining number is not enough, only ${lockedRound.remainingSpots} left`,
+          );
+        }
 
-      // 分配号码（从已售号码数+1开始）
-      const startNumber = lockedRound.soldSpots + 1;
-      const endNumber = lockedRound.soldSpots + quantity;
+        // 分配号码（从已售号码数+1开始）
+        const startNumber = lockedRound.soldSpots + 1;
+        const endNumber = lockedRound.soldSpots + quantity;
 
-      // 创建参与记录
-      const participation = manager.create(DrawParticipation, {
-        drawRoundId: lockedRound.id,
-        userId,
-        productId,
-        quantity,
-        startNumber,
-        endNumber,
-        totalAmount,
-        orderNumber: this.generateOrderNumber(),
-        timestampSum: Date.now(),
-      });
-
-      await manager.save(participation);
-
-      // 更新期次已售号码数
-      lockedRound.soldSpots += quantity;
-
-      // 检查是否已满员
-      if (lockedRound.isFull) {
-        lockedRound.status = DrawRoundStatus.COMPLETED;
-        lockedRound.completedAt = new Date();
-      }
-
-      await manager.save(lockedRound);
-
-      // 扣款（使用bet方法，从游戏余额扣除）
-      await this.assetService.bet({
-        userId,
-        currency: Currency.USD,
-        type: TransactionType.LUCKY_DRAW,
-        amount: totalAmount,
-        game_id: `LUCKY_DRAW`,
-        description: `购买抽奖号码: ${quantity}个`,
-        metadata: {
+        // 创建参与记录
+        const participation = manager.create(DrawParticipation, {
           drawRoundId: lockedRound.id,
-          roundNumber: lockedRound.roundNumber,
+          userId,
           productId,
-          participationId: participation.id,
-          spots: quantity,
+          quantity,
           startNumber,
           endNumber,
-        },
-      });
-
-      this.logger.log(
-        `用户 ${userId} 购买 ${quantity} 个号码，期次 ${lockedRound.roundNumber}`,
-      );
-
-      // 如果已满员，触发开奖检查
-      if (lockedRound.isFull) {
-        // 异步触发开奖（不等待完成）
-        this.processDraw(lockedRound.id).catch((error) => {
-          this.logger.error(`期次 ${lockedRound.id} 开奖失败`, error);
+          totalAmount,
+          orderNumber: this.generateOrderNumber(),
+          timestampSum: Date.now(),
         });
-      }
 
-      return {
-        participation,
-        drawRound: lockedRound,
-        orderNumber: participation.orderNumber,
-      };
-    });
+        await manager.save(participation);
+
+        // 更新期次已售号码数
+        lockedRound.soldSpots += quantity;
+
+        // 检查是否已满员
+        if (lockedRound.isFull) {
+          lockedRound.status = DrawRoundStatus.COMPLETED;
+          lockedRound.completedAt = new Date();
+        }
+
+        await manager.save(lockedRound);
+
+        // 扣款（使用bet方法，从游戏余额扣除）
+        await this.assetService.bet({
+          userId,
+          currency: Currency.USD,
+          type: TransactionType.LUCKY_DRAW,
+          amount: totalAmount,
+          game_id: `LUCKY_DRAW`,
+          description: `购买抽奖号码: ${quantity}个`,
+          metadata: {
+            drawRoundId: lockedRound.id,
+            roundNumber: lockedRound.roundNumber,
+            productId,
+            participationId: participation.id,
+            spots: quantity,
+            startNumber,
+            endNumber,
+          },
+        });
+
+        this.logger.log(
+          `用户 ${userId} 购买 ${quantity} 个号码，期次 ${lockedRound.roundNumber}`,
+        );
+
+        // 如果已满员，触发开奖检查
+        if (lockedRound.isFull) {
+          // 异步触发开奖（不等待完成）
+          this.processDraw(lockedRound.id).catch((error) => {
+            this.logger.error(`期次 ${lockedRound.id} 开奖失败`, error);
+          });
+        }
+
+        return {
+          participation,
+          drawRound: lockedRound,
+          orderNumber: participation.orderNumber,
+        };
+      })
+      .then(async (result) => {
+        // 事务提交后异步检查保底中奖（不阻塞响应）
+        this.checkAndCreateGuaranteedWin(
+          userId,
+          productId,
+          result.participation.id,
+        ).catch((error) =>
+          this.logger.error('Failed to process guaranteed win check', error),
+        );
+        return result;
+      });
   }
 
   /**
@@ -403,11 +416,11 @@ export class DrawService {
         prizeType: this.determinePrizeType(drawRound.product),
         prizeValue: drawRound.prizeValue,
         prizeStatus: PrizeStatus.PENDING,
-        timestampSum: 11111,
+        timestampSum: timestampSum,
         blockDistance,
-        targetBlockHeight: 10000,
-        targetBlockHash: '7e2a3dd146f6ed09',
-        hashLast6Digits: '111',
+        targetBlockHeight: targetBlockHeight,
+        targetBlockHash: targetBlock.hash,
+        hashLast6Digits: hashLast6Digits,
         completionTime,
         blockTime: new Date(),
         verificationUrl: this.blockchainService.getBlockVerificationUrl(
@@ -665,6 +678,11 @@ export class DrawService {
       throw new NotFoundException(`Round ${drawRoundId} not found`);
     }
 
+    // 私有轮次：只有归属用户本人可见
+    if (drawRound.isPrivate && drawRound.privateUserId !== userId) {
+      throw new NotFoundException(`Round ${drawRoundId} not found`);
+    }
+
     // 获取参与记录
     const participations = await this.participationRepository.find({
       where: { drawRoundId },
@@ -705,7 +723,7 @@ export class DrawService {
     limit: number;
   }> {
     const [items, total] = await this.drawRoundRepository.findAndCount({
-      where: { productId },
+      where: { productId, isPrivate: false },
       order: { roundNumber: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -844,6 +862,247 @@ export class DrawService {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `DRAW${timestamp}${random}`;
+  }
+
+  // ==================== 保底中奖功能 ====================
+
+  private readonly GUARANTEED_WIN_CONFIG_KEY = 'draw:guaranteed_win_config';
+
+  /**
+   * 查询当前用户是否符合保底中奖条件
+   */
+  async getMyGuaranteedWinStatus(userId: string): Promise<{
+    enabled: boolean;
+    onNthParticipation: number;
+    currentGlobalParticipationCount: number;
+    hasTriggered: boolean;
+    isEligible: boolean;
+    remainingUntilGuarantee: number;
+  }> {
+    const config = await this.getGuaranteedWinConfig();
+
+    const currentCount = await this.participationRepository.count({
+      where: { userId, isNewUserChance: false, isGuaranteedWin: false },
+    });
+
+    const existingGuaranteed = await this.participationRepository.findOne({
+      where: { userId, isGuaranteedWin: true },
+    });
+
+    const hasTriggered = !!existingGuaranteed;
+    const isEligible =
+      config.enabled &&
+      !hasTriggered &&
+      currentCount < config.onNthParticipation;
+    const remainingUntilGuarantee = hasTriggered
+      ? 0
+      : Math.max(0, config.onNthParticipation - currentCount);
+
+    return {
+      enabled: config.enabled,
+      onNthParticipation: config.onNthParticipation,
+      currentGlobalParticipationCount: currentCount,
+      hasTriggered,
+      isEligible,
+      remainingUntilGuarantee,
+    };
+  }
+
+  /**
+   * 获取保底中奖全局配置
+   */
+  async getGuaranteedWinConfig(): Promise<{
+    enabled: boolean;
+    onNthParticipation: number;
+  }> {
+    return new Promise((resolve) => {
+      redisClient.get(this.GUARANTEED_WIN_CONFIG_KEY, (err, value) => {
+        if (err || !value) {
+          resolve({ enabled: true, onNthParticipation: 1 });
+        } else {
+          try {
+            resolve(JSON.parse(value));
+          } catch {
+            resolve({ enabled: true, onNthParticipation: 1 });
+          }
+        }
+      });
+    });
+  }
+
+  /**
+   * 设置保底中奖全局配置
+   */
+  async setGuaranteedWinConfig(config: {
+    enabled: boolean;
+    onNthParticipation: number;
+  }): Promise<void> {
+    return new Promise((resolve, reject) => {
+      redisClient.set(
+        this.GUARANTEED_WIN_CONFIG_KEY,
+        JSON.stringify(config),
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        },
+      );
+    });
+  }
+
+  /**
+   * 检查并触发保底中奖（在 purchaseSpots 事务提交后异步调用）
+   */
+  private async checkAndCreateGuaranteedWin(
+    userId: string,
+    productId: number,
+    participationId: number,
+  ): Promise<void> {
+    const config = await this.getGuaranteedWinConfig();
+    if (!config.enabled) return;
+
+    // 统计用户全局常规参与总次数（含本次）
+    // 排除：新用户机会参与（isNewUserChance）、保底私有轮次参与（isGuaranteedWin）
+    const globalCount = await this.participationRepository.count({
+      where: { userId, isNewUserChance: false, isGuaranteedWin: false },
+    });
+
+    // 记录全局参与次数快照到本次参与记录
+    await this.participationRepository.update(participationId, {
+      userGlobalParticipationCount: globalCount,
+    });
+
+    // if (globalCount !== config.onNthParticipation) return;
+    console.log('globalCount', globalCount, config.onNthParticipation);
+
+    // 防止并发重复触发：检查是否已有保底参与记录
+    const existingGuaranteed = await this.participationRepository.findOne({
+      where: { userId, isGuaranteedWin: true },
+    });
+    if (existingGuaranteed) return;
+
+    await this.createGuaranteedWinRound(userId, productId, globalCount);
+  }
+
+  /**
+   * 创建保底中奖私有轮次并立即开奖
+   */
+  private async createGuaranteedWinRound(
+    userId: string,
+    productId: number,
+    globalParticipationCount: number,
+  ): Promise<void> {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+    if (!product) return;
+
+    // 私有轮次固定 1 个号码，用户独占
+    const quantity = 1;
+    const totalAmount = new Decimal(product.salePrice).times(quantity);
+
+    // 检查用户余额
+    const userAssets = await this.assetService.getUserAssets(userId);
+    const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
+    if (!usdAsset || !usdAsset.hasEnoughBalance(totalAmount)) {
+      this.logger.warn(
+        `User ${userId} has insufficient balance for guaranteed win round`,
+      );
+      return;
+    }
+
+    const user = await this.userService.getUser(userId);
+
+    await this.dataSource.transaction(async (manager) => {
+      // 创建私有轮次
+      const privateRound = manager.create(DrawRound, {
+        productId,
+        roundNumber: Math.floor(Date.now() / 1000),
+        totalSpots: quantity,
+        soldSpots: quantity,
+        pricePerSpot: product.salePrice,
+        prizeValue: product.originalPrice,
+        status: DrawRoundStatus.COMPLETED,
+        completedAt: new Date(),
+        autoCreateNext: false,
+        isPrivate: true,
+        privateUserId: userId,
+      });
+      await manager.save(privateRound);
+      privateRound.product = product;
+
+      // 创建参与记录
+      const participation = manager.create(DrawParticipation, {
+        drawRoundId: privateRound.id,
+        userId,
+        productId,
+        quantity,
+        startNumber: 1,
+        endNumber: quantity,
+        totalAmount,
+        orderNumber: this.generateOrderNumber(),
+        timestampSum: Date.now(),
+        isGuaranteedWin: true,
+        userGlobalParticipationCount: globalParticipationCount,
+      });
+      await manager.save(participation);
+
+      // 扣款
+      await this.assetService.bet({
+        userId,
+        currency: Currency.USD,
+        type: TransactionType.LUCKY_DRAW,
+        amount: totalAmount,
+        game_id: `LUCKY_DRAW_GUARANTEED`,
+        description: `保底中奖参与费用`,
+        metadata: {
+          drawRoundId: privateRound.id,
+          productId,
+          participationId: participation.id,
+          isGuaranteedWin: true,
+        },
+      });
+
+      // 创建开奖结果（直接中奖，号码 = startNumber = 1）
+      const drawResult = manager.create(DrawResult, {
+        drawRoundId: privateRound.id,
+        winningNumber: 1,
+        winnerUserId: userId,
+        winnerUserName: user?.nickname || user?.botimName || user?.username,
+        winnerUserAvatar: user?.botimAvatar,
+        winnerParticipationId: participation.id,
+        winnerQuantity: quantity,
+        prizeType: this.determinePrizeType(product),
+        prizeValue: product.originalPrice,
+        prizeStatus: PrizeStatus.PENDING,
+        isGuaranteedWin: true,
+        timestampSum: null,
+        blockDistance: null,
+        targetBlockHeight: null,
+        targetBlockHash: null,
+        hashLast6Digits: null,
+        completionTime: null,
+        blockTime: null,
+        verificationUrl: null,
+      });
+      await manager.save(drawResult);
+
+      // 更新私有轮次状态为已开奖
+      privateRound.status = DrawRoundStatus.DRAWN;
+      privateRound.drawnAt = new Date();
+      await manager.save(privateRound);
+
+      this.logger.log(
+        `用户 ${userId} 第 ${globalParticipationCount} 次参与，保底中奖私有轮次 ${privateRound.id} 已创建`,
+      );
+
+      // 异步发放奖品
+      this.distributePrize(drawResult, privateRound).catch((error) => {
+        this.logger.error(
+          `Failed to distribute guaranteed win prize for user ${userId}`,
+          error,
+        );
+      });
+    });
   }
 
   private async getLock(productId: number): Promise<boolean> {
@@ -1218,6 +1477,7 @@ export class DrawService {
         'product.id = round.product_id',
       )
       .where('result.winner_user_id IS NOT NULL')
+      .andWhere('result.is_guaranteed_win = false')
       .orderBy('result.created_at', 'DESC')
       .limit(Math.min(limit, 100)) // 最多返回100条
       .getRawMany();

@@ -4,6 +4,7 @@ import {
   IsString,
   IsEnum,
   IsArray,
+  IsBoolean,
   ValidateNested,
   Min,
   IsDateString,
@@ -86,4 +87,15 @@ export class BatchShipPrizeOrdersDto {
   @ValidateNested({ each: true })
   @Type(() => BatchShipOrderItemDto)
   orders: BatchShipOrderItemDto[];
+}
+
+export class UpdateGuaranteedWinConfigDto {
+  @ApiProperty({ description: '是否开启保底中奖' })
+  @IsBoolean()
+  enabled: boolean;
+
+  @ApiProperty({ description: '第几次全局参与触发保底（最小值 1）' })
+  @IsNumber()
+  @Min(1)
+  onNthParticipation: number;
 }

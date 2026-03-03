@@ -1,9 +1,4 @@
-import {
-  IsNumber,
-  IsOptional,
-  Min,
-  IsInt,
-} from 'class-validator';
+import { IsNumber, IsOptional, Min, IsInt } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -260,3 +255,33 @@ export class ParticipationDetailResponseDto {
   prizeOrder?: ParticipationDetailPrizeOrderDto;
 }
 
+// ==================== 保底中奖响应 DTO ====================
+
+export class GuaranteedWinStatusResponseDto {
+  @ApiProperty({ description: '保底功能是否开启' })
+  enabled: boolean;
+
+  @ApiProperty({ description: '第几次全局参与触发保底（配置值）', example: 1 })
+  onNthParticipation: number;
+
+  @ApiProperty({
+    description: '用户当前常规参与次数（不含新用户机会、不含保底参与）',
+    example: 0,
+  })
+  currentGlobalParticipationCount: number;
+
+  @ApiProperty({ description: '是否已触发过保底中奖' })
+  hasTriggered: boolean;
+
+  @ApiProperty({
+    description:
+      '是否符合保底条件（功能开启 + 未触发过 + 当前参与次数未达到第N次）',
+  })
+  isEligible: boolean;
+
+  @ApiProperty({
+    description: '距离触发保底还需参与次数（已触发则为 0）',
+    example: 1,
+  })
+  remainingUntilGuarantee: number;
+}

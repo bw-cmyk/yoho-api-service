@@ -685,4 +685,17 @@ export class AdminDrawService {
 
     return { success, failed, errors };
   }
+
+  // ==================== 保底中奖配置 ====================
+
+  async getGuaranteedWinConfig() {
+    return this.drawService.getGuaranteedWinConfig();
+  }
+
+  async setGuaranteedWinConfig(config: {
+    enabled: boolean;
+    onNthParticipation: number;
+  }) {
+    return this.drawService.setGuaranteedWinConfig(config);
+  }
 }

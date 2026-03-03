@@ -96,27 +96,30 @@ export class DrawResult {
   })
   prizeStatus: PrizeStatus; // 奖品发放状态
 
-  // 开奖计算相关字段
-  @Column({ type: 'bigint', name: 'timestamp_sum' })
-  timestampSum: number; // 所有参与时间戳之和
+  @Column({ type: 'boolean', default: false, name: 'is_guaranteed_win' })
+  isGuaranteedWin: boolean; // 是否为保底中奖（私有轮次触发，非区块链开奖）
 
-  @Column({ type: 'int', name: 'block_distance' })
-  blockDistance: number; // 区块距离 n = (timestampSum最后2位) + 6
+  // 开奖计算相关字段（保底中奖时为 null）
+  @Column({ type: 'bigint', name: 'timestamp_sum', nullable: true, default: null })
+  timestampSum: number | null; // 所有参与时间戳之和
 
-  @Column({ type: 'bigint', name: 'target_block_height' })
-  targetBlockHeight: number; // 目标区块高度
+  @Column({ type: 'int', name: 'block_distance', nullable: true, default: null })
+  blockDistance: number | null; // 区块距离 n = (timestampSum最后2位) + 6
 
-  @Column({ type: 'varchar', length: 128, name: 'target_block_hash' })
-  targetBlockHash: string; // 目标区块哈希
+  @Column({ type: 'bigint', name: 'target_block_height', nullable: true, default: null })
+  targetBlockHeight: number | null; // 目标区块高度
 
-  @Column({ type: 'varchar', length: 32, name: 'hash_last_6_digits' })
-  hashLast6Digits: string; // 区块哈希最后6位数字
+  @Column({ type: 'varchar', length: 128, name: 'target_block_hash', nullable: true, default: null })
+  targetBlockHash: string | null; // 目标区块哈希
 
-  @Column({ type: 'timestamp', name: 'completion_time' })
-  completionTime: Date; // 满员完成时间（UTC）
+  @Column({ type: 'varchar', length: 32, name: 'hash_last_6_digits', nullable: true, default: null })
+  hashLast6Digits: string | null; // 区块哈希最后6位数字
 
-  @Column({ type: 'timestamp', name: 'block_time' })
-  blockTime: Date; // 目标区块时间（UTC）
+  @Column({ type: 'timestamp', name: 'completion_time', nullable: true, default: null })
+  completionTime: Date | null; // 满员完成时间（UTC）
+
+  @Column({ type: 'timestamp', name: 'block_time', nullable: true, default: null })
+  blockTime: Date | null; // 目标区块时间（UTC）
 
   @Column({ type: 'text', nullable: true, name: 'verification_url' })
   verificationUrl: string | null; // 区块链验证链接

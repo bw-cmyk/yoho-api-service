@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
@@ -15,6 +16,7 @@ import {
   QueryPrizeOrdersDto,
   ShipPrizeOrderDto,
   BatchShipPrizeOrdersDto,
+  UpdateGuaranteedWinConfigDto,
 } from '../dto/draw.dto';
 
 @ApiTags('Admin - 抽奖管理')
@@ -110,5 +112,23 @@ export class AdminDrawController {
   @ApiOperation({ summary: '批量发货' })
   async batchShipPrizeOrders(@Body() dto: BatchShipPrizeOrdersDto) {
     return this.drawService.batchShipPrizeOrders(dto.orders);
+  }
+
+  // ==================== 保底中奖配置 ====================
+
+  @Get('guaranteed-win-config')
+  @ApiOperation({ summary: '获取保底中奖全局配置' })
+  async getGuaranteedWinConfig() {
+    return this.drawService.getGuaranteedWinConfig();
+  }
+
+  @Patch('guaranteed-win-config')
+  @ApiOperation({ summary: '更新保底中奖全局配置' })
+  async updateGuaranteedWinConfig(@Body() dto: UpdateGuaranteedWinConfigDto) {
+    await this.drawService.setGuaranteedWinConfig({
+      enabled: dto.enabled,
+      onNthParticipation: dto.onNthParticipation,
+    });
+    return { success: true };
   }
 }

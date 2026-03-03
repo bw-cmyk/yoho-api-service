@@ -76,8 +76,8 @@ import { AdminCampaignService } from './services/admin-campaign.service';
     ]),
     PassportModule.register({ defaultStrategy: 'admin-google' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'admin-secret-key',
-      signOptions: { expiresIn: '24h' },
+      secret: 'P-w8Iewr3efdfd8r-dsdsrew4556y6vwq=',
+      signOptions: { expiresIn: '7d' },
     }),
     EcommerceModule,
     AssetsModule,

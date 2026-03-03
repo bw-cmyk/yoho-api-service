@@ -37,8 +37,8 @@ export class DrawRound {
   @JoinColumn({ name: 'product_id' })
   product: Product; // 奖品
 
-  @Column({ type: 'int', name: 'round_number' })
-  roundNumber: number; // 期次编号，从1开始
+  @Column({ type: 'int', name: 'round_number', nullable: true })
+  roundNumber: number | null; // 期次编号，从1开始；私有轮次为 null
 
   @Column({ type: 'int', name: 'total_spots' })
   totalSpots: number; // 总号码数
@@ -87,6 +87,12 @@ export class DrawRound {
 
   @Column({ type: 'boolean', default: true, name: 'auto_create_next' })
   autoCreateNext: boolean; // 是否自动创建下一期（人工干预可关闭）
+
+  @Column({ type: 'boolean', default: false, name: 'is_private' })
+  isPrivate: boolean; // 是否为私有轮次（保底中奖专用，仅 privateUserId 用户可见）
+
+  @Column({ type: 'varchar', length: 64, nullable: true, name: 'private_user_id' })
+  privateUserId: string | null; // 私有轮次归属用户 ID
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
