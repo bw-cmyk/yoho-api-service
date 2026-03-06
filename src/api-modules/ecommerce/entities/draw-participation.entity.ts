@@ -65,7 +65,11 @@ export class DrawParticipation {
   @Column({ type: 'boolean', default: false, name: 'is_guaranteed_win' })
   isGuaranteedWin: boolean; // 是否为保底中奖参与（私有轮次）
 
-  @Column({ type: 'int', nullable: true, name: 'user_global_participation_count' })
+  @Column({
+    type: 'int',
+    nullable: true,
+    name: 'user_global_participation_count',
+  })
   userGlobalParticipationCount: number | null; // 用户全局第几次参与（快照）
 
   @CreateDateColumn({ name: 'created_at' })
