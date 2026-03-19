@@ -63,7 +63,7 @@ export class Order {
     precision: 18,
     scale: 2,
     transformer: {
-      to: (value: Decimal) => value.toString(),
+      to: (value: Decimal) => (value != null ? value.toString() : value),
       from: (value: string) => new Decimal(value || '0'),
     },
     name: 'payment_amount',
