@@ -64,7 +64,7 @@ export class Product {
     precision: 18,
     scale: 2,
     transformer: {
-      to: (value: Decimal) => value.toString(),
+      to: (value: Decimal) => (value != null ? value.toString() : value),
       from: (value: string) => new Decimal(value || '0'),
     },
     name: 'sale_price',
@@ -95,7 +95,7 @@ export class Product {
     scale: 2,
     default: 0,
     transformer: {
-      to: (value: Decimal) => value.toString(),
+      to: (value: Decimal) => (value != null ? value.toString() : value),
       from: (value: string) => new Decimal(value || '0'),
     },
     name: 'total_rating',
