@@ -40,7 +40,7 @@ import { IdModule } from '../../common-modules/id/id.module';
       BotLuckyDrawConfig,
     ]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'admin-secret-key',
+      secret: 'P-w8Iewr3efdfd8r-dsdsrew4556y6vwq=',
       signOptions: { expiresIn: '24h' },
     }),
     UserModule,
