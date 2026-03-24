@@ -111,13 +111,20 @@ export class DrawService {
 
       const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
 
-      // 计算总号码数（默认溢价10%）
+      // 计算总号码数
       const pricePerSpot = product.salePrice; // 每个号码价格
       const prizeValue = product.originalPrice; // 奖品价值
-      const totalRevenue = prizeValue.times(1.1); // 溢价10%
-      const totalSpots = Math.ceil(
-        totalRevenue.dividedBy(pricePerSpot).toNumber(),
-      );
+
+      let totalSpots: number;
+      if (pricePerSpot.isZero()) {
+        // 0 元购：沿用上一轮的 totalSpots，若无上一轮则默认 10
+        totalSpots = latestRound?.totalSpots ?? 10;
+      } else {
+        const totalRevenue = prizeValue.times(1.1); // 溢价10%
+        totalSpots = Math.ceil(
+          totalRevenue.dividedBy(pricePerSpot).toNumber(),
+        );
+      }
 
       currentRound = this.drawRoundRepository.create({
         productId,
