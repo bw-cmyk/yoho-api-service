@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminDrawService } from '../services/admin-draw.service';
 import { AdminJwtGuard } from '../guards/admin-jwt.guard';
 import {
+  CreateRoundDto,
   QueryPrizeOrdersDto,
   ShipPrizeOrderDto,
   BatchShipPrizeOrdersDto,
@@ -53,9 +54,12 @@ export class AdminDrawController {
   }
 
   @Post('products/:productId/create-round')
-  @ApiOperation({ summary: '创建新轮次' })
-  async createRound(@Param('productId', ParseIntPipe) productId: number) {
-    return this.drawService.createRound(productId);
+  @ApiOperation({ summary: '创建新轮次（可指定 totalSpots）' })
+  async createRound(
+    @Param('productId', ParseIntPipe) productId: number,
+    @Body() dto: CreateRoundDto,
+  ) {
+    return this.drawService.createRound(productId, dto.totalSpots);
   }
 
   // ==================== 实物奖品订单管理 ====================

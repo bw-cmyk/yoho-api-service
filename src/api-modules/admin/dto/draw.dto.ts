@@ -13,6 +13,16 @@ import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PrizeShippingStatus } from '../../ecommerce/enums/ecommerce.enums';
 
+// ==================== 创建轮次 DTOs ====================
+
+export class CreateRoundDto {
+  @ApiPropertyOptional({ description: '指定轮次的总号码数（不传则按默认公式计算）' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  totalSpots?: number;
+}
+
 // ==================== 实物奖品订单管理 DTOs ====================
 
 export class QueryPrizeOrdersDto {

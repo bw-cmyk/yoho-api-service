@@ -138,8 +138,8 @@ export class AdminDrawService {
     return this.drawService.processDraw(id);
   }
 
-  async createRound(productId: number) {
-    return this.drawService.getOrCreateCurrentRound(productId);
+  async createRound(productId: number, totalSpots?: number) {
+    return this.drawService.adminCreateRound(productId, totalSpots);
   }
 
   // ==================== 实物奖品订单管理 ====================

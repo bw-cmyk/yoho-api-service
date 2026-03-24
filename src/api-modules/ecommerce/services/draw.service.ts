@@ -140,6 +140,68 @@ export class DrawService {
   }
 
   /**
+   * 管理员创建新轮次（可指定 totalSpots）
+   */
+  async adminCreateRound(
+    productId: number,
+    totalSpots?: number,
+  ): Promise<DrawRound> {
+    const product = await this.productService.findById(productId);
+
+    if (product.type !== 'LUCKY_DRAW') {
+      throw new BadRequestException('Product type does not match');
+    }
+
+    // 检查是否已有进行中的轮次
+    const existingOngoing = await this.drawRoundRepository.findOne({
+      where: {
+        productId,
+        status: DrawRoundStatus.ONGOING,
+        isPrivate: false,
+      },
+    });
+    if (existingOngoing) {
+      throw new BadRequestException(
+        'There is already an ongoing round for this product',
+      );
+    }
+
+    // 获取最新期次号
+    const latestRound = await this.drawRoundRepository.findOne({
+      where: { productId },
+      order: { roundNumber: 'DESC' },
+    });
+
+    const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
+
+    const pricePerSpot = product.salePrice;
+    const prizeValue = product.originalPrice;
+
+    // 如果管理员指定了 totalSpots 则使用，否则按默认公式计算
+    const computedTotalSpots =
+      totalSpots ??
+      Math.ceil(prizeValue.times(1.1).dividedBy(pricePerSpot).toNumber());
+
+    const newRound = this.drawRoundRepository.create({
+      productId,
+      roundNumber: nextRoundNumber,
+      totalSpots: computedTotalSpots,
+      soldSpots: 0,
+      pricePerSpot,
+      prizeValue,
+      status: DrawRoundStatus.ONGOING,
+      autoCreateNext: true,
+    });
+
+    await this.drawRoundRepository.save(newRound);
+    this.logger.log(
+      `管理员创建新期次: 商品 ${productId}, 期次 ${nextRoundNumber}, 总号码数 ${computedTotalSpots}`,
+    );
+
+    return newRound;
+  }
+
+  /**
    * 获取当前期次
    */
   async getAllOngoingRounds(): Promise<DrawRound[]> {
@@ -199,6 +261,16 @@ export class DrawService {
       throw new BadRequestException('The round is not available for purchase');
     }
 
+    // 每轮每用户只能购买一次
+    const existingParticipation = await this.participationRepository.findOne({
+      where: { drawRoundId: drawRound.id, userId },
+    });
+    if (existingParticipation) {
+      throw new BadRequestException(
+        'You have already purchased in this round',
+      );
+    }
+
     // 检查剩余号码数
     if (drawRound.remainingSpots < quantity) {
       throw new BadRequestException(
@@ -208,14 +280,17 @@ export class DrawService {
 
     // 计算支付金额
     const totalAmount = drawRound.pricePerSpot.times(quantity);
+    const isFree = totalAmount.isZero();
 
-    // 检查用户余额（使用游戏余额）
-    const userAssets = await this.assetService.getUserAssets(userId);
-    const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
-    if (!usdAsset || !usdAsset.hasEnoughBalance(totalAmount)) {
-      throw new BadRequestException(
-        'The game balance is not enough, please recharge',
-      );
+    // 检查用户余额（价格为0时跳过）
+    if (!isFree) {
+      const userAssets = await this.assetService.getUserAssets(userId);
+      const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
+      if (!usdAsset || !usdAsset.hasEnoughBalance(totalAmount)) {
+        throw new BadRequestException(
+          'The game balance is not enough, please recharge',
+        );
+      }
     }
 
     // 在事务中处理购买
@@ -236,6 +311,16 @@ export class DrawService {
         if (lockedRound.remainingSpots < quantity) {
           throw new BadRequestException(
             `The remaining number is not enough, only ${lockedRound.remainingSpots} left`,
+          );
+        }
+
+        // 事务内再次检查每轮每用户只能购买一次（防并发）
+        const existingInTx = await manager.findOne(DrawParticipation, {
+          where: { drawRoundId: lockedRound.id, userId },
+        });
+        if (existingInTx) {
+          throw new BadRequestException(
+            'You have already purchased in this round',
           );
         }
 
@@ -269,24 +354,26 @@ export class DrawService {
 
         await manager.save(lockedRound);
 
-        // 扣款（使用bet方法，从游戏余额扣除）
-        await this.assetService.bet({
-          userId,
-          currency: Currency.USD,
-          type: TransactionType.LUCKY_DRAW,
-          amount: totalAmount,
-          game_id: `LUCKY_DRAW`,
-          description: `购买抽奖号码: ${quantity}个`,
-          metadata: {
-            drawRoundId: lockedRound.id,
-            roundNumber: lockedRound.roundNumber,
-            productId,
-            participationId: participation.id,
-            spots: quantity,
-            startNumber,
-            endNumber,
-          },
-        });
+        // 扣款（价格为0时跳过）
+        if (!isFree) {
+          await this.assetService.bet({
+            userId,
+            currency: Currency.USD,
+            type: TransactionType.LUCKY_DRAW,
+            amount: totalAmount,
+            game_id: `LUCKY_DRAW`,
+            description: `购买抽奖号码: ${quantity}个`,
+            metadata: {
+              drawRoundId: lockedRound.id,
+              roundNumber: lockedRound.roundNumber,
+              productId,
+              participationId: participation.id,
+              spots: quantity,
+              startNumber,
+              endNumber,
+            },
+          });
+        }
 
         this.logger.log(
           `用户 ${userId} 购买 ${quantity} 个号码，期次 ${lockedRound.roundNumber}`,
