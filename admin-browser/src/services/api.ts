@@ -251,8 +251,8 @@ export const drawApi = {
     request.get<DrawRound>(`/draws/rounds/${id}`),
   processDraw: (id: number) =>
     request.post<{ success: boolean; result: unknown }>(`/draws/rounds/${id}/process`),
-  createRound: (productId: number) =>
-    request.post<DrawRound>(`/draws/products/${productId}/create-round`),
+  createRound: (productId: number, totalSpots?: number) =>
+    request.post<DrawRound>(`/draws/products/${productId}/create-round`, totalSpots ? { totalSpots } : {}),
 };
 
 // 用户资产 API

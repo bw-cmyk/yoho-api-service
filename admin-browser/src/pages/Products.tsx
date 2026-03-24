@@ -44,6 +44,7 @@ export default function Products() {
   const [rounds, setRounds] = useState<DrawRound[]>([])
   const [roundsLoading, setRoundsLoading] = useState(false)
   const [processingRound, setProcessingRound] = useState<number | null>(null)
+  const [newRoundTotalSpots, setNewRoundTotalSpots] = useState<string>('')
   const [specifications, setSpecifications] = useState<SpecItem[]>([])
   const [formData, setFormData] = useState({
     name: '',
@@ -222,11 +223,17 @@ export default function Products() {
   const handleCreateRound = async () => {
     if (!roundsProduct) return
     try {
-      await drawApi.createRound(roundsProduct.id)
+      const totalSpots = newRoundTotalSpots ? parseInt(newRoundTotalSpots) : undefined
+      if (newRoundTotalSpots && (!totalSpots || totalSpots < 1)) {
+        alert('总号码数必须为大于 0 的整数')
+        return
+      }
+      await drawApi.createRound(roundsProduct.id, totalSpots)
+      setNewRoundTotalSpots('')
       await fetchRounds(roundsProduct.id, 1)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create round:', error)
-      alert('创建轮次失败')
+      alert(error?.response?.data?.message || '创建轮次失败')
     }
   }
 
@@ -748,13 +755,23 @@ export default function Products() {
         <div className="space-y-5">
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500">管理商品的抽奖轮次，可手动开奖</p>
-            <button
-              onClick={handleCreateRound}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center text-sm"
-            >
-              <Plus size={16} className="mr-1" />
-              新建轮次
-            </button>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                placeholder="总号码数（选填）"
+                value={newRoundTotalSpots}
+                onChange={(e) => setNewRoundTotalSpots(e.target.value)}
+                className="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleCreateRound}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center text-sm"
+              >
+                <Plus size={16} className="mr-1" />
+                新建轮次
+              </button>
+            </div>
           </div>
 
           {roundsLoading ? (
