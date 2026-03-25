@@ -644,20 +644,20 @@ export class DrawService {
         drawResult.prizeType === PrizeType.CASH ||
         drawResult.prizeType === PrizeType.CRYPTO
       ) {
-        // 现金或数字货币：直接发放到账户
-        await this.assetService.deposit({
-          userId: drawResult.winnerUserId,
-          currency: Currency.USD,
-          amount: drawResult.prizeValue,
-          reference_id: `DRAW_${drawRound.roundNumber}`,
-          description: `Draw winning: ${drawRound.product.name} Round ${drawRound.roundNumber}`,
-          metadata: {
-            drawRoundId: drawRound.id,
-            roundNumber: drawRound.roundNumber,
-            winningNumber: drawResult.winningNumber,
-            prizeType: drawResult.prizeType,
-          },
-        });
+        // // 现金或数字货币：直接发放到账户
+        // await this.assetService.deposit({
+        //   userId: drawResult.winnerUserId,
+        //   currency: Currency.USD,
+        //   amount: drawResult.prizeValue,
+        //   reference_id: `DRAW_${drawRound.roundNumber}`,
+        //   description: `Draw winning: ${drawRound.product.name} Round ${drawRound.roundNumber}`,
+        //   metadata: {
+        //     drawRoundId: drawRound.id,
+        //     roundNumber: drawRound.roundNumber,
+        //     winningNumber: drawResult.winningNumber,
+        //     prizeType: drawResult.prizeType,
+        //   },
+        // });
 
         // 更新奖品状态
         drawResult.prizeStatus = PrizeStatus.DISTRIBUTED;
@@ -1009,19 +1009,7 @@ export class DrawService {
       return product.prizeType as unknown as PrizeType;
     }
 
-    // 兜底：根据商品名称关键词推断
-    const name = product.name?.toLowerCase() || '';
-    if (name.includes('usdt') || name.includes('cash')) {
-      return PrizeType.CASH;
-    }
-    if (
-      name.includes('btc') ||
-      name.includes('eth') ||
-      name.includes('crypto')
-    ) {
-      return PrizeType.CRYPTO;
-    }
-    return PrizeType.PHYSICAL;
+    return PrizeType.CRYPTO;
   }
 
   /**
@@ -1146,11 +1134,25 @@ export class DrawService {
     const config = await this.getGuaranteedWinConfig();
     if (!config.enabled) return null;
 
+    // 查出所有实物奖品商品ID，保底计数需要排除
+    const allProducts = await this.productRepository.find();
+    const physicalProductIds = allProducts
+      .filter((p) => this.determinePrizeType(p) === PrizeType.PHYSICAL)
+      .map((p) => p.id);
+
     // 统计用户全局常规参与总次数（含本次）
-    // 排除：新用户机会参与（isNewUserChance）、保底私有轮次参与（isGuaranteedWin）
-    const globalCount = await this.participationRepository.count({
-      where: { userId, isNewUserChance: false, isGuaranteedWin: false },
-    });
+    // 排除：新用户机会参与、保底私有轮次参与、实物奖品参与
+    const globalCountQuery = this.participationRepository
+      .createQueryBuilder('p')
+      .where('p.userId = :userId', { userId })
+      .andWhere('p.isNewUserChance = false')
+      .andWhere('p.isGuaranteedWin = false');
+    if (physicalProductIds.length > 0) {
+      globalCountQuery.andWhere('p.productId NOT IN (:...physicalProductIds)', {
+        physicalProductIds,
+      });
+    }
+    const globalCount = await globalCountQuery.getCount();
 
     // 记录全局参与次数快照到本次参与记录
     await this.participationRepository.update(participationId, {
