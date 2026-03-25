@@ -1122,6 +1122,14 @@ export class DrawService {
     productName: string;
     productImage: string;
   } | null> {
+    // 实物奖品不走保底中奖逻辑
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+    if (product && this.determinePrizeType(product) === PrizeType.PHYSICAL) {
+      return null;
+    }
+
     const config = await this.getGuaranteedWinConfig();
     if (!config.enabled) return null;
 
