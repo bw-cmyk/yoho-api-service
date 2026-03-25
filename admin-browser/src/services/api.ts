@@ -41,6 +41,7 @@ export interface User {
 
 export type ProductType = 'INSTANT_BUY' | 'LUCKY_DRAW';
 export type ProductStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'PAUSED' | 'SOLD_OUT' | 'ARCHIVED';
+export type LuckyDrawPrizeType = 'CASH' | 'CRYPTO' | 'PHYSICAL';
 
 export interface Product {
   id: number;
@@ -59,6 +60,7 @@ export interface Product {
   saleStartTime: string;
   saleEndTime: string;
   purchaseLimit: number;
+  prizeType: LuckyDrawPrizeType | null;
   totalRating: string;
   reviewCount: number;
   createdAt: string;

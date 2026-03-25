@@ -5,6 +5,12 @@ export enum ProductType {
   LUCKY_DRAW = 'LUCKY_DRAW',
 }
 
+export enum LuckyDrawPrizeType {
+  CASH = 'CASH', // 现金（USDT）
+  CRYPTO = 'CRYPTO', // 虚拟奖品（数字货币）
+  PHYSICAL = 'PHYSICAL', // 实物奖品
+}
+
 export enum ProductStatus {
   DRAFT = 'DRAFT',
   SCHEDULED = 'SCHEDULED',

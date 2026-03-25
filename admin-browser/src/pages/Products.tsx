@@ -55,6 +55,7 @@ export default function Products() {
     thumbnail: '',
     badge: '',
     priority: '0',
+    prizeType: '' as '' | 'CASH' | 'CRYPTO' | 'PHYSICAL',
   })
   const [keyword, setKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProductStatus | ''>('')
@@ -180,6 +181,7 @@ export default function Products() {
       thumbnail: product.thumbnail || '',
       badge: product.badge || '',
       priority: String(product.priority || 0),
+      prizeType: product.prizeType || '',
     })
     setShowModal(true)
   }
@@ -309,7 +311,7 @@ export default function Products() {
 
   const handleSave = async () => {
     try {
-      const data = {
+      const data: any = {
         type: activeTab,
         name: formData.name,
         description: formData.description || undefined,
@@ -319,6 +321,9 @@ export default function Products() {
         thumbnail: formData.thumbnail || undefined,
         badge: formData.badge || undefined,
         priority: parseInt(formData.priority) || 0,
+      }
+      if (activeTab === 'LUCKY_DRAW' && formData.prizeType) {
+        data.prizeType = formData.prizeType
       }
 
       if (editingProduct) {
@@ -345,6 +350,7 @@ export default function Products() {
       thumbnail: '',
       badge: '',
       priority: '0',
+      prizeType: '',
     })
     setShowModal(true)
   }
@@ -567,6 +573,21 @@ export default function Products() {
               />
             </div>
           </div>
+          {activeTab === 'LUCKY_DRAW' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">奖品类型</label>
+              <select
+                value={formData.prizeType}
+                onChange={(e) => setFormData({ ...formData, prizeType: e.target.value as '' | 'CASH' | 'CRYPTO' | 'PHYSICAL' })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="">自动判断（按名称）</option>
+                <option value="CASH">现金（USDT）</option>
+                <option value="CRYPTO">虚拟奖品（数字货币）</option>
+                <option value="PHYSICAL">实物奖品</option>
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">库存</label>

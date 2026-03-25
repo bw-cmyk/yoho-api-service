@@ -99,6 +99,8 @@ export class AdminShowcaseController {
       }>;
       productId?: number;
       prizeInfo?: string;
+      location?: string;
+      ipAddress?: string;
     },
   ) {
     const showcase = this.showcaseRepo.create({
@@ -109,10 +111,41 @@ export class AdminShowcaseController {
       media: data.media,
       productId: data.productId,
       prizeInfo: data.prizeInfo,
+      location: data.location,
+      ipAddress: data.ipAddress,
       status: ShowcaseStatus.APPROVED, // 管理员创建的直接通过
     });
 
     return await this.showcaseRepo.save(showcase);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: '编辑晒单' })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body()
+    data: {
+      content?: string;
+      media?: Array<{
+        type: MediaType;
+        url: string;
+        thumbnailUrl?: string;
+        cloudflareId?: string;
+      }>;
+      prizeInfo?: string;
+      location?: string;
+      ipAddress?: string;
+    },
+  ) {
+    const updateData: any = {};
+    if (data.content !== undefined) updateData.content = data.content;
+    if (data.media !== undefined) updateData.media = data.media;
+    if (data.prizeInfo !== undefined) updateData.prizeInfo = data.prizeInfo;
+    if (data.location !== undefined) updateData.location = data.location;
+    if (data.ipAddress !== undefined) updateData.ipAddress = data.ipAddress;
+
+    await this.showcaseRepo.update(id, updateData);
+    return await this.showcaseRepo.findOne({ where: { id } });
   }
 
   @Get(':id')

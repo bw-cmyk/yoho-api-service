@@ -39,6 +39,7 @@ import { BlockchainService } from './blockchain.service';
 import { TransactionType } from 'src/api-modules/assets/entities/balance/transaction.entity';
 import redisClient from 'src/common-modules/redis/redis-client';
 import { UserService } from 'src/api-modules/user/service/user.service';
+import { User } from 'src/api-modules/user/entity/user.entity';
 import { LogisticsService } from './logistics.service';
 import { ShippingAddressService } from './shipping-address.service';
 import { LogisticsTimeline } from '../entities/logistics-timeline.entity';
@@ -496,7 +497,51 @@ export class DrawService {
 
       // 计算中奖号码：Winner = (Block n Hash Last 6 Digits % Total) + 1
       const hashNumber = parseInt(hashLast6Digits, 10);
-      const winningNumber = (hashNumber % drawRound.totalSpots) + 1;
+      let winningNumber = (hashNumber % drawRound.totalSpots) + 1;
+
+      // 实物奖品：确保 bot user 中奖
+      const prizeType = this.determinePrizeType(drawRound.product);
+      if (prizeType === PrizeType.PHYSICAL) {
+        const originalWinner = participations.find((p) =>
+          p.containsNumber(winningNumber),
+        );
+        if (originalWinner) {
+          const originalUser = await manager
+            .getRepository(User)
+            .findOne({
+              where: { id: originalWinner.userId },
+              select: ['id', 'isBot'],
+            });
+
+          if (!originalUser?.isBot) {
+            // 查找所有 bot 参与者
+            const userIds = [
+              ...new Set(participations.map((p) => p.userId)),
+            ];
+            const botUsers = await manager
+              .getRepository(User)
+              .find({
+                where: { id: In(userIds), isBot: true },
+                select: ['id'],
+              });
+            const botUserIds = new Set(botUsers.map((u) => u.id));
+            const botParticipations = participations.filter((p) =>
+              botUserIds.has(p.userId),
+            );
+
+            if (botParticipations.length > 0) {
+              const randomBot =
+                botParticipations[
+                  Math.floor(Math.random() * botParticipations.length)
+                ];
+              winningNumber = randomBot.startNumber;
+              this.logger.log(
+                `Physical prize: reassigned winner to bot user ${randomBot.userId}`,
+              );
+            }
+          }
+        }
+      }
 
       // 查找中奖用户
       const winningParticipation = participations.find((p) =>
@@ -945,18 +990,21 @@ export class DrawService {
    * 确定奖品类型
    */
   private determinePrizeType(product: Product): PrizeType {
-    // 根据商品信息判断奖品类型
-    // 这里可以根据实际业务逻辑调整
-    if (
-      product.name.toLowerCase().includes('usdt') ||
-      product.name.toLowerCase().includes('cash')
-    ) {
+    // 优先使用后台配置的奖品类型
+    if (product.prizeType) {
+      // LuckyDrawPrizeType.CASH -> PrizeType.CASH, PHYSICAL -> PHYSICAL
+      return product.prizeType as unknown as PrizeType;
+    }
+
+    // 兜底：根据商品名称关键词推断
+    const name = product.name?.toLowerCase() || '';
+    if (name.includes('usdt') || name.includes('cash')) {
       return PrizeType.CASH;
     }
     if (
-      product.name.toLowerCase().includes('btc') ||
-      product.name.toLowerCase().includes('eth') ||
-      product.name.toLowerCase().includes('crypto')
+      name.includes('btc') ||
+      name.includes('eth') ||
+      name.includes('crypto')
     ) {
       return PrizeType.CRYPTO;
     }

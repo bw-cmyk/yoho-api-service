@@ -11,6 +11,7 @@ import { Type } from 'class-transformer';
 import {
   ProductType,
   ProductStatus,
+  LuckyDrawPrizeType,
 } from '../../ecommerce/enums/ecommerce.enums';
 
 export class CreateProductDto {
@@ -82,6 +83,11 @@ export class CreateProductDto {
   @IsOptional()
   @Type(() => Number)
   purchaseLimit?: number;
+
+  @ApiPropertyOptional({ enum: LuckyDrawPrizeType, description: '一元购奖品类型（仅 LUCKY_DRAW 有效）' })
+  @IsEnum(LuckyDrawPrizeType)
+  @IsOptional()
+  prizeType?: LuckyDrawPrizeType;
 }
 
 export class UpdateProductDto {
@@ -162,6 +168,11 @@ export class UpdateProductDto {
   @IsOptional()
   @Type(() => Number)
   purchaseLimit?: number;
+
+  @ApiPropertyOptional({ enum: LuckyDrawPrizeType, description: '一元购奖品类型（仅 LUCKY_DRAW 有效）' })
+  @IsEnum(LuckyDrawPrizeType)
+  @IsOptional()
+  prizeType?: LuckyDrawPrizeType;
 }
 
 export class QueryProductDto {

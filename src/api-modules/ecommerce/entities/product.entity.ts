@@ -9,7 +9,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Decimal } from 'decimal.js';
-import { ProductType, ProductStatus } from '../enums/ecommerce.enums';
+import { ProductType, ProductStatus, LuckyDrawPrizeType } from '../enums/ecommerce.enums';
 import { ProductSpecification } from './product-specification.entity';
 import { ProductReview } from './product-review.entity';
 
@@ -25,6 +25,14 @@ export class Product {
     enum: ProductType,
   })
   type: ProductType; // INSTANT_BUY or LUCKY_DRAW
+
+  @Column({
+    type: 'enum',
+    enum: LuckyDrawPrizeType,
+    nullable: true,
+    name: 'prize_type',
+  })
+  prizeType: LuckyDrawPrizeType | null; // 一元购奖品类型: CASH / PHYSICAL，仅 LUCKY_DRAW 有效
 
   @Column({ type: 'int', default: 0 })
   priority: number; // 优先级，用于显示规则和列表排序
