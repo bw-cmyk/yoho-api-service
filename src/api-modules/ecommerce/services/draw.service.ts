@@ -1199,14 +1199,17 @@ export class DrawService {
     const quantity = 1;
     const totalAmount = new Decimal(product.salePrice).times(quantity);
 
-    // 检查用户余额
-    const userAssets = await this.assetService.getUserAssets(userId);
-    const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
-    if (!usdAsset || !usdAsset.hasEnoughBalance(totalAmount)) {
-      this.logger.warn(
-        `User ${userId} has insufficient balance for guaranteed win round`,
-      );
-      return null;
+    // 检查用户余额（价格为0时跳过）
+    const isFree = totalAmount.isZero();
+    if (!isFree) {
+      const userAssets = await this.assetService.getUserAssets(userId);
+      const usdAsset = userAssets.find((a) => a.currency === Currency.USD);
+      if (!usdAsset || !usdAsset.hasEnoughBalance(totalAmount)) {
+        this.logger.warn(
+          `User ${userId} has insufficient balance for guaranteed win round`,
+        );
+        return null;
+      }
     }
 
     const user = await this.userService.getUser(userId);
@@ -1245,21 +1248,23 @@ export class DrawService {
       });
       await manager.save(participation);
 
-      // 扣款
-      await this.assetService.bet({
-        userId,
-        currency: Currency.USD,
-        type: TransactionType.LUCKY_DRAW,
-        amount: totalAmount,
-        game_id: `LUCKY_DRAW_GUARANTEED`,
-        description: `保底中奖参与费用`,
-        metadata: {
-          drawRoundId: privateRound.id,
-          productId,
-          participationId: participation.id,
-          isGuaranteedWin: true,
-        },
-      });
+      // 扣款（价格为0时跳过）
+      if (!isFree) {
+        await this.assetService.bet({
+          userId,
+          currency: Currency.USD,
+          type: TransactionType.LUCKY_DRAW,
+          amount: totalAmount,
+          game_id: `LUCKY_DRAW_GUARANTEED`,
+          description: `保底中奖参与费用`,
+          metadata: {
+            drawRoundId: privateRound.id,
+            productId,
+            participationId: participation.id,
+            isGuaranteedWin: true,
+          },
+        });
+      }
 
       // 创建开奖结果（直接中奖，号码 = startNumber = 1）
       const drawResult = manager.create(DrawResult, {
