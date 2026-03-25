@@ -373,6 +373,8 @@ export const showcaseApi = {
     media: ShowcaseMedia[];
     productId?: number;
     prizeInfo?: string;
+    location?: string;
+    ipAddress?: string;
   }) => request.post<Showcase>('/showcases', data),
 };
 

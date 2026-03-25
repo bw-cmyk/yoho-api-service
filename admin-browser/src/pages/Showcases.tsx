@@ -61,6 +61,8 @@ export default function Showcases() {
     userAvatar: '',
     content: '',
     prizeInfo: '',
+    location: '',
+    ipAddress: '',
   })
   const [mediaList, setMediaList] = useState<ShowcaseMedia[]>([])
   const [uploading, setUploading] = useState(false)
@@ -207,6 +209,8 @@ export default function Showcases() {
         content: formData.content || undefined,
         media: mediaList,
         prizeInfo: formData.prizeInfo || undefined,
+        location: formData.location || undefined,
+        ipAddress: formData.ipAddress || undefined,
       })
       setShowAddModal(false)
       resetForm()
@@ -225,6 +229,8 @@ export default function Showcases() {
       userAvatar: '',
       content: '',
       prizeInfo: '',
+      location: '',
+      ipAddress: '',
     })
     setMediaList([])
   }
@@ -587,6 +593,29 @@ export default function Showcases() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               placeholder="如：iPhone 15 Pro Max"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">位置信息</label>
+              <input
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                placeholder="如：New York, US"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">IP 地址</label>
+              <input
+                type="text"
+                value={formData.ipAddress}
+                onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                placeholder="如：8.8.8.8"
+              />
+            </div>
           </div>
 
           {/* Media Upload */}
