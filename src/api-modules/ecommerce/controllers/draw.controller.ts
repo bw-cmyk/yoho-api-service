@@ -15,6 +15,7 @@ import {
   ApiBearerAuth,
   ApiResponse,
 } from '@nestjs/swagger';
+import * as jwt from 'jsonwebtoken';
 import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from 'src/common-modules/auth/jwt-auth.guard';
 import { DrawService } from '../services/draw.service';
@@ -82,25 +83,29 @@ export class DrawController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req: ExpressRequest,
   ) {
-    const userId = req.user ? (req.user as any).id : undefined;
+    const authorization = (req.header('Authorization') || '').replace(
+      'Bearer ',
+      '',
+    );
+    const userId = jwt.decode(authorization)?.sub as string;
     return await this.drawService.getRoundDetail(id, userId);
   }
 
-  @Get('rounds/:id/participations')
-  @ApiOperation({ summary: '获取期次参与记录' })
-  async getRoundParticipations(
-    @Param('id', ParseIntPipe) drawRoundId: number,
-    @Query() query: QueryParticipationsDto,
-  ) {
-    // 这里可以通过drawRoundId获取参与记录
-    // 暂时返回空，可以根据需要实现
-    return {
-      items: [],
-      total: 0,
-      page: query.page || 1,
-      limit: query.limit || 30,
-    };
-  }
+  // @Get('rounds/:id/participations')
+  // @ApiOperation({ summary: '获取期次参与记录' })
+  // async getRoundParticipations(
+  //   @Param('id', ParseIntPipe) drawRoundId: number,
+  //   @Query() query: QueryParticipationsDto,
+  // ) {
+  //   // 这里可以通过drawRoundId获取参与记录
+  //   // 暂时返回空，可以根据需要实现
+  //   return {
+  //     items: [],
+  //     total: 0,
+  //     page: query.page || 1,
+  //     limit: query.limit || 30,
+  //   };
+  // }
 
   @Get('participations/me')
   @UseGuards(JwtAuthGuard)

@@ -122,9 +122,7 @@ export class DrawService {
         totalSpots = latestRound?.totalSpots ?? 10;
       } else {
         const totalRevenue = prizeValue.times(1.1); // 溢价10%
-        totalSpots = Math.ceil(
-          totalRevenue.dividedBy(pricePerSpot).toNumber(),
-        );
+        totalSpots = Math.ceil(totalRevenue.dividedBy(pricePerSpot).toNumber());
       }
 
       currentRound = this.drawRoundRepository.create({
@@ -274,9 +272,7 @@ export class DrawService {
       where: { drawRoundId: drawRound.id, userId },
     });
     if (existingParticipation) {
-      throw new BadRequestException(
-        'You have already purchased in this round',
-      );
+      throw new BadRequestException('You have already purchased in this round');
     }
 
     // 检查剩余号码数
@@ -506,24 +502,18 @@ export class DrawService {
           p.containsNumber(winningNumber),
         );
         if (originalWinner) {
-          const originalUser = await manager
-            .getRepository(User)
-            .findOne({
-              where: { id: originalWinner.userId },
-              select: ['id', 'isBot'],
-            });
+          const originalUser = await manager.getRepository(User).findOne({
+            where: { id: originalWinner.userId },
+            select: ['id', 'isBot'],
+          });
 
           if (!originalUser?.isBot) {
             // 查找所有 bot 参与者
-            const userIds = [
-              ...new Set(participations.map((p) => p.userId)),
-            ];
-            const botUsers = await manager
-              .getRepository(User)
-              .find({
-                where: { id: In(userIds), isBot: true },
-                select: ['id'],
-              });
+            const userIds = [...new Set(participations.map((p) => p.userId))];
+            const botUsers = await manager.getRepository(User).find({
+              where: { id: In(userIds), isBot: true },
+              select: ['id'],
+            });
             const botUserIds = new Set(botUsers.map((u) => u.id));
             const botParticipations = participations.filter((p) =>
               botUserIds.has(p.userId),
@@ -822,6 +812,8 @@ export class DrawService {
     drawRound: DrawRound;
     participations: any[];
     result: DrawResult | null;
+    product: Product;
+    isFirstParticipation: boolean;
   }> {
     const drawRound = await this.drawRoundRepository.findOne({
       where: { id: drawRoundId },
@@ -837,15 +829,15 @@ export class DrawService {
     }
 
     // 获取参与记录
-    const participations = await this.participationRepository.find({
+    const participation = await this.participationRepository.find({
       where: { drawRoundId },
       order: { createdAt: 'DESC' },
     });
 
-    const uids = participations.map((item) => item.userId);
+    const uids = participation.map((item) => item.userId);
     const user = await this.userService.getUsersByUids(uids);
     const userMap = new Map(user.map((item) => [item.id, item]));
-    const copiedParticipations = participations.map((item) => {
+    const copiedParticipation = participation.map((item) => {
       const user = userMap.get(item.userId);
       return {
         ...item,
@@ -854,12 +846,33 @@ export class DrawService {
       };
     });
 
+    // find product
+    const product = await this.productRepository.findOne({
+      where: { id: drawRound.productId },
+    });
+
+    let isFirstParticipation = true;
+    if (userId) {
+      const participation = await this.participationRepository.findOne({
+        where: { userId, productId: product.id },
+      });
+      if (participation) {
+        isFirstParticipation = false;
+      }
+    }
+
     // 获取开奖结果
     const result = await this.drawResultRepository.findOne({
       where: { drawRoundId },
     });
 
-    return { drawRound, participations: copiedParticipations, result };
+    return {
+      drawRound,
+      participations: copiedParticipation,
+      result,
+      product,
+      isFirstParticipation,
+    };
   }
 
   /**
