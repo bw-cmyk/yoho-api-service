@@ -493,9 +493,9 @@ export class DrawService {
         targetBlock.hash,
       );
 
-      // 计算中奖号码：Winner = (Block n Hash Last 6 Digits % Total) + 1
+      // 计算中奖号码：Winner = (Block n Hash Last 6 Digits % SoldSpots) + 1
       const hashNumber = parseInt(hashLast6Digits, 10);
-      let winningNumber = (hashNumber % drawRound.totalSpots) + 1;
+      let winningNumber = (hashNumber % drawRound.soldSpots) + 1;
 
       // 实物奖品：确保 bot user 中奖
       const prizeType = this.determinePrizeType(drawRound.product);
