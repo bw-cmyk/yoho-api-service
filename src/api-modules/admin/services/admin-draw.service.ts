@@ -43,7 +43,7 @@ export class AdminDrawService {
 
   async getRounds(productId: number, page: number, limit: number) {
     const [items, total] = await this.drawRoundRepo.findAndCount({
-      where: { productId },
+      where: { productId, isPrivate: false },
       order: { roundNumber: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
