@@ -423,13 +423,14 @@ export class DrawService {
     const drawRound = await this.drawRoundRepository.findOne({
       where: { id: drawRoundId },
     });
-    drawRound.product = await this.productRepository.findOne({
-      where: { id: drawRound.productId },
-    });
 
     if (!drawRound) {
       throw new NotFoundException(`Round ${drawRoundId} not found`);
     }
+
+    drawRound.product = await this.productRepository.findOne({
+      where: { id: drawRound.productId },
+    });
 
     // if (drawRound.status !== DrawRoundStatus.COMPLETED) {
     //   throw new BadRequestException(
@@ -770,6 +771,7 @@ export class DrawService {
 
       const drawRound = await manager.findOne(DrawRound, {
         where: { id: drawResult.drawRoundId },
+        relations: ['product'],
       });
 
       if (!drawRound) {
@@ -989,7 +991,14 @@ export class DrawService {
       try {
         const drawRound = await this.drawRoundRepository.findOne({
           where: { id: result.drawRoundId },
+          relations: ['product'],
         });
+        if (!drawRound || !drawRound.product) {
+          this.logger.warn(
+            `Skipping prize distribution: drawRound or product not found for drawRoundId ${result.drawRoundId}`,
+          );
+          continue;
+        }
         await this.distributePrize(result, drawRound);
       } catch (error) {
         this.logger.error(
