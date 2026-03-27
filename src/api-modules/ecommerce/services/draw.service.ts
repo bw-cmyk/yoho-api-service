@@ -12,6 +12,7 @@ import {
   In,
   IsNull,
   Not,
+  LessThan,
 } from 'typeorm';
 import { Decimal } from 'decimal.js';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -99,7 +100,7 @@ export class DrawService {
 
       // 获取最新期次号
       const latestRound = await this.drawRoundRepository.findOne({
-        where: { productId },
+        where: { productId, isPrivate: false },
         order: { roundNumber: 'DESC' },
       });
 
