@@ -13,6 +13,7 @@ import {
   Video,
   Heart,
   Eye,
+  Pencil,
 } from 'lucide-react'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
@@ -49,6 +50,7 @@ export default function Showcases() {
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [selectedShowcase, setSelectedShowcase] = useState<Showcase | null>(null)
@@ -249,6 +251,86 @@ export default function Showcases() {
   const openDetailModal = (showcase: Showcase) => {
     setSelectedShowcase(showcase)
     setShowDetailModal(true)
+  }
+
+  // Edit form states
+  const [editFormData, setEditFormData] = useState({
+    content: '',
+    prizeInfo: '',
+    location: '',
+    ipAddress: '',
+  })
+  const [editMediaList, setEditMediaList] = useState<ShowcaseMedia[]>([])
+  const [editUploading, setEditUploading] = useState(false)
+  const editFileInputRef = useRef<HTMLInputElement>(null)
+
+  const openEditModal = (showcase: Showcase) => {
+    setSelectedShowcase(showcase)
+    setEditFormData({
+      content: showcase.content || '',
+      prizeInfo: showcase.prizeInfo || '',
+      location: showcase.location || '',
+      ipAddress: showcase.ipAddress || '',
+    })
+    setEditMediaList(showcase.media || [])
+    setShowEditModal(true)
+  }
+
+  const handleEditFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setEditUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        const result = await uploadApi.uploadMedia(file)
+        setEditMediaList((prev) => [
+          ...prev,
+          {
+            type: result.type,
+            url: result.url,
+            thumbnailUrl: result.thumbnailUrl,
+            cloudflareId: result.id,
+          },
+        ])
+      }
+    } catch (error) {
+      console.error('Failed to upload:', error)
+      alert('上传失败: ' + (error as any)?.response?.data?.message || '未知错误')
+    } finally {
+      setEditUploading(false)
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleEditRemoveMedia = (index: number) => {
+    setEditMediaList((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleUpdateShowcase = async () => {
+    if (!selectedShowcase) return
+    if (editMediaList.length === 0) {
+      alert('请至少保留一个图片或视频')
+      return
+    }
+
+    try {
+      await showcaseApi.update(selectedShowcase.id, {
+        content: editFormData.content || undefined,
+        media: editMediaList,
+        prizeInfo: editFormData.prizeInfo || undefined,
+        location: editFormData.location || undefined,
+        ipAddress: editFormData.ipAddress || undefined,
+      })
+      setShowEditModal(false)
+      setSelectedShowcase(null)
+      fetchShowcases(pagination.page)
+    } catch (error) {
+      console.error('Failed to update showcase:', error)
+      alert('保存失败')
+    }
   }
 
   const columns = [
@@ -459,6 +541,13 @@ export default function Showcases() {
                 title="查看详情"
               >
                 <Eye size={16} />
+              </button>
+              <button
+                onClick={() => openEditModal(row)}
+                className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                title="编辑"
+              >
+                <Pencil size={16} />
               </button>
               {row.status === 'PENDING' && (
                 <>
@@ -683,6 +772,138 @@ export default function Showcases() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Showcase Modal */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="编辑晒单" size="lg">
+        {selectedShowcase && (
+          <div className="space-y-5">
+            {/* User Info (read-only) */}
+            <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">
+              {selectedShowcase.userAvatar ? (
+                <img src={selectedShowcase.userAvatar} alt="" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-500 text-sm font-medium">
+                  {(selectedShowcase.userName || '匿').charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium text-gray-800">{selectedShowcase.userName || '匿名用户'}</p>
+                <p className="text-xs text-gray-400">ID: {selectedShowcase.userId}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">晒单文案</label>
+              <textarea
+                value={editFormData.content}
+                onChange={(e) => setEditFormData({ ...editFormData, content: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                rows={3}
+                placeholder="输入晒单文案内容"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">奖品信息</label>
+              <input
+                type="text"
+                value={editFormData.prizeInfo}
+                onChange={(e) => setEditFormData({ ...editFormData, prizeInfo: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                placeholder="如：iPhone 15 Pro Max"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">位置信息</label>
+                <input
+                  type="text"
+                  value={editFormData.location}
+                  onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="如：New York, US"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">IP 地址</label>
+                <input
+                  type="text"
+                  value={editFormData.ipAddress}
+                  onChange={(e) => setEditFormData({ ...editFormData, ipAddress: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="如：8.8.8.8"
+                />
+              </div>
+            </div>
+
+            {/* Media Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">图片/视频 *</label>
+              <div className="grid grid-cols-4 gap-3 mb-3">
+                {editMediaList.map((media, index) => (
+                  <div key={index} className="relative aspect-square">
+                    <img
+                      src={media.type === 'VIDEO' ? media.thumbnailUrl || media.url : media.url}
+                      alt=""
+                      className="w-full h-full object-cover rounded-xl border border-gray-200"
+                    />
+                    {media.type === 'VIDEO' && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                        <Video size={24} className="text-white" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => handleEditRemoveMedia(index)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {editMediaList.length < 9 && (
+                  <label className="aspect-square border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      onChange={handleEditFileUpload}
+                      className="hidden"
+                      disabled={editUploading}
+                    />
+                    {editUploading ? (
+                      <div className="w-6 h-6 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Upload size={24} className="text-gray-400 mb-1" />
+                        <span className="text-xs text-gray-400">上传</span>
+                      </>
+                    )}
+                  </label>
+                )}
+              </div>
+              <p className="text-xs text-gray-400">支持图片和视频，最多9个文件</p>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-5 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleUpdateShowcase}
+                className="px-5 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-sm font-medium"
+                disabled={editUploading}
+              >
+                保存修改
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Detail Modal */}

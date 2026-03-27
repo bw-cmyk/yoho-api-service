@@ -376,6 +376,14 @@ export const showcaseApi = {
     location?: string;
     ipAddress?: string;
   }) => request.post<Showcase>('/showcases', data),
+  // 编辑晒单
+  update: (id: number, data: {
+    content?: string;
+    media?: ShowcaseMedia[];
+    prizeInfo?: string;
+    location?: string;
+    ipAddress?: string;
+  }) => request.patch<Showcase>(`/showcases/${id}`, data),
 };
 
 // 货币管理 API
