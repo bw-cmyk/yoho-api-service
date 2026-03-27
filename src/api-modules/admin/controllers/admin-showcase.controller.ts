@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -137,12 +138,17 @@ export class AdminShowcaseController {
       ipAddress?: string;
     },
   ) {
+    const showcase = await this.showcaseRepo.findOne({ where: { id } });
+    if (!showcase) {
+      throw new NotFoundException(`Showcase #${id} not found`);
+    }
+
     const updateData: any = {};
-    if (data.content !== undefined) updateData.content = data.content;
+    if (data.content !== undefined) updateData.content = data.content || null;
     if (data.media !== undefined) updateData.media = data.media;
-    if (data.prizeInfo !== undefined) updateData.prizeInfo = data.prizeInfo;
-    if (data.location !== undefined) updateData.location = data.location;
-    if (data.ipAddress !== undefined) updateData.ipAddress = data.ipAddress;
+    if (data.prizeInfo !== undefined) updateData.prizeInfo = data.prizeInfo || null;
+    if (data.location !== undefined) updateData.location = data.location || null;
+    if (data.ipAddress !== undefined) updateData.ipAddress = data.ipAddress || null;
 
     await this.showcaseRepo.update(id, updateData);
     return await this.showcaseRepo.findOne({ where: { id } });

@@ -9,7 +9,6 @@ import {
   Pin,
   Trash2,
   Upload,
-  Image,
   Video,
   Heart,
   Eye,
@@ -180,7 +179,7 @@ export default function Showcases() {
       }
     } catch (error) {
       console.error('Failed to upload:', error)
-      alert('上传失败: ' + (error as any)?.response?.data?.message || '未知错误')
+      alert('上传失败: ' + ((error as any)?.response?.data?.message || '未知错误'))
     } finally {
       setUploading(false)
       if (fileInputRef.current) {
@@ -262,6 +261,7 @@ export default function Showcases() {
   })
   const [editMediaList, setEditMediaList] = useState<ShowcaseMedia[]>([])
   const [editUploading, setEditUploading] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
   const editFileInputRef = useRef<HTMLInputElement>(null)
 
   const openEditModal = (showcase: Showcase) => {
@@ -296,7 +296,7 @@ export default function Showcases() {
       }
     } catch (error) {
       console.error('Failed to upload:', error)
-      alert('上传失败: ' + (error as any)?.response?.data?.message || '未知错误')
+      alert('上传失败: ' + ((error as any)?.response?.data?.message || '未知错误'))
     } finally {
       setEditUploading(false)
       if (editFileInputRef.current) {
@@ -316,13 +316,14 @@ export default function Showcases() {
       return
     }
 
+    setEditSaving(true)
     try {
       await showcaseApi.update(selectedShowcase.id, {
-        content: editFormData.content || undefined,
+        content: editFormData.content,
         media: editMediaList,
-        prizeInfo: editFormData.prizeInfo || undefined,
-        location: editFormData.location || undefined,
-        ipAddress: editFormData.ipAddress || undefined,
+        prizeInfo: editFormData.prizeInfo,
+        location: editFormData.location,
+        ipAddress: editFormData.ipAddress,
       })
       setShowEditModal(false)
       setSelectedShowcase(null)
@@ -330,6 +331,8 @@ export default function Showcases() {
     } catch (error) {
       console.error('Failed to update showcase:', error)
       alert('保存失败')
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -897,9 +900,9 @@ export default function Showcases() {
               <button
                 onClick={handleUpdateShowcase}
                 className="px-5 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-sm font-medium"
-                disabled={editUploading}
+                disabled={editUploading || editSaving}
               >
-                保存修改
+                {editSaving ? '保存中...' : '保存修改'}
               </button>
             </div>
           </div>

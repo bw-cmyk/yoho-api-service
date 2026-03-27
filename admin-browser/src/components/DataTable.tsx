@@ -18,8 +18,8 @@ export default function DataTable<T extends { id: string | number }>({
   actions,
 }: DataTableProps<T>) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-      <table className="w-full">
+    <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+      <table className="min-w-full">
         <thead>
           <tr className="bg-gray-50 border-b border-gray-100">
             {columns.map((col) => (
