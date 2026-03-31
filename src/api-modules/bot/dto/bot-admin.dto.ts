@@ -81,7 +81,7 @@ export class UpdateLuckyDrawConfigDto {
   @IsOptional()
   @IsNumber()
   @Min(10)
-  @Max(95)
+  @Max(100)
   maxFillPercentage?: number;
 
   @IsOptional()
