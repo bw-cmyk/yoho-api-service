@@ -66,6 +66,12 @@ export class AdminAuthController {
     return { valid: true, user: payload };
   }
 
+  @Get('config')
+  @ApiOperation({ summary: '获取公共配置（无需认证）' })
+  getConfig() {
+    return { env: process.env.ADMIN_ENV ?? 'dev' };
+  }
+
   @Get('me')
   @ApiOperation({ summary: '获取当前用户信息' })
   async getCurrentUser(@Req() req: Request) {

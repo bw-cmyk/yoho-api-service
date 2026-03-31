@@ -76,6 +76,7 @@ interface UserInfo {
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
+  const [adminEnv, setAdminEnv] = useState<string>('')
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -111,6 +112,7 @@ export default function Layout() {
       localStorage.removeItem('admin_token')
       handleLogout()
     })
+    authApi.getConfig().then((cfg) => setAdminEnv(cfg.env)).catch(() => {})
   }, [])
 
   const displayName = userInfo?.nickname || userInfo?.username || userInfo?.email || 'Admin'
@@ -251,7 +253,18 @@ export default function Layout() {
       <div className={`${collapsed ? 'ml-16' : 'ml-56'} transition-all duration-300`}>
         {/* Header */}
         <header className="h-16 bg-white border-b border-gray-200 px-6 flex justify-between items-center sticky top-0 z-10">
-          <h1 className="text-lg font-medium text-gray-800">管理后台</h1>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-lg font-medium text-gray-800">管理后台</h1>
+            {adminEnv && (
+              <span className={`px-2 py-0.5 rounded text-xs font-semibold uppercase ${
+                adminEnv === 'prod'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {adminEnv}
+              </span>
+            )}
+          </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-medium">

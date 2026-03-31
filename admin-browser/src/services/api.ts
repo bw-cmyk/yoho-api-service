@@ -160,6 +160,7 @@ export interface AuthUser {
 export const authApi = {
   me: () => request.get<AuthUser>('/auth/me'),
   verify: (token: string) => request.get<{ valid: boolean; user: AuthUser }>('/auth/verify', { token }),
+  getConfig: () => request.get<{ env: string }>('/auth/config'),
 };
 
 // 上传 API
