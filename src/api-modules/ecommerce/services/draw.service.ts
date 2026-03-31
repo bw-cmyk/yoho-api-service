@@ -104,12 +104,12 @@ export class DrawService {
         order: { roundNumber: 'DESC' },
       });
 
-      // const isLocked = await this.getLock(productId);
-      // if (isLocked) {
-      //   throw new BadRequestException(
-      //     'Another instance is processing the product, please try again later',
-      //   );
-      // }
+      const isLocked = await this.acquireLock(productId);
+      if (isLocked) {
+        throw new BadRequestException(
+          'Another instance is processing the product, please try again later',
+        );
+      }
 
       const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
 
@@ -153,59 +153,70 @@ export class DrawService {
     productId: number,
     totalSpots?: number,
   ): Promise<DrawRound> {
-    const product = await this.productService.findById(productId);
-
-    if (product.type !== 'LUCKY_DRAW') {
-      throw new BadRequestException('Product type does not match');
-    }
-
-    // 检查是否已有进行中的轮次
-    const existingOngoing = await this.drawRoundRepository.findOne({
-      where: {
-        productId,
-        status: DrawRoundStatus.ONGOING,
-        isPrivate: false,
-      },
-    });
-    if (existingOngoing) {
+    const locked = await this.acquireLock(productId);
+    if (!locked) {
       throw new BadRequestException(
-        'There is already an ongoing round for this product',
+        'Another instance is processing the product, please try again later',
       );
     }
 
-    // 获取最新期次号
-    const latestRound = await this.drawRoundRepository.findOne({
-      where: { productId },
-      order: { roundNumber: 'DESC' },
-    });
+    try {
+      const product = await this.productService.findById(productId);
 
-    const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
+      if (product.type !== 'LUCKY_DRAW') {
+        throw new BadRequestException('Product type does not match');
+      }
 
-    const pricePerSpot = product.salePrice;
-    const prizeValue = product.originalPrice;
+      // 检查是否已有进行中的轮次
+      const existingOngoing = await this.drawRoundRepository.findOne({
+        where: {
+          productId,
+          status: DrawRoundStatus.ONGOING,
+          isPrivate: false,
+        },
+      });
+      if (existingOngoing) {
+        throw new BadRequestException(
+          'There is already an ongoing round for this product',
+        );
+      }
 
-    // 如果管理员指定了 totalSpots 则使用，否则按默认公式计算
-    const computedTotalSpots =
-      totalSpots ??
-      Math.ceil(prizeValue.times(1.1).dividedBy(pricePerSpot).toNumber());
+      // 获取最新期次号
+      const latestRound = await this.drawRoundRepository.findOne({
+        where: { productId },
+        order: { roundNumber: 'DESC' },
+      });
 
-    const newRound = this.drawRoundRepository.create({
-      productId,
-      roundNumber: nextRoundNumber,
-      totalSpots: computedTotalSpots,
-      soldSpots: 0,
-      pricePerSpot,
-      prizeValue,
-      status: DrawRoundStatus.ONGOING,
-      autoCreateNext: true,
-    });
+      const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
 
-    await this.drawRoundRepository.save(newRound);
-    this.logger.log(
-      `管理员创建新期次: 商品 ${productId}, 期次 ${nextRoundNumber}, 总号码数 ${computedTotalSpots}`,
-    );
+      const pricePerSpot = product.salePrice;
+      const prizeValue = product.originalPrice;
 
-    return newRound;
+      // 如果管理员指定了 totalSpots 则使用，否则按默认公式计算
+      const computedTotalSpots =
+        totalSpots ??
+        Math.ceil(prizeValue.times(1.1).dividedBy(pricePerSpot).toNumber());
+
+      const newRound = this.drawRoundRepository.create({
+        productId,
+        roundNumber: nextRoundNumber,
+        totalSpots: computedTotalSpots,
+        soldSpots: 0,
+        pricePerSpot,
+        prizeValue,
+        status: DrawRoundStatus.ONGOING,
+        autoCreateNext: true,
+      });
+
+      await this.drawRoundRepository.save(newRound);
+      this.logger.log(
+        `管理员创建新期次: 商品 ${productId}, 期次 ${nextRoundNumber}, 总号码数 ${computedTotalSpots}`,
+      );
+
+      return newRound;
+    } finally {
+      await this.releaseLock(productId);
+    }
   }
 
   /**
@@ -1329,21 +1340,27 @@ export class DrawService {
     });
   }
 
-  private async getLock(productId: number): Promise<boolean> {
+  private async acquireLock(productId: number): Promise<boolean> {
     return new Promise((resolve, reject) => {
       redisClient.set(
-        `product-draw-${productId}`,
+        `product-draw-create-round-${productId}`,
         'locked',
         'EX',
-        60 * 5,
+        60, // 锁过期时间，防止死锁
         'NX',
         (err, result) => {
           if (err) {
             reject(err);
+          } else {
+            resolve(result === 'OK');
           }
         },
       );
     });
+  }
+
+  private async releaseLock(productId: number): Promise<void> {
+    await redisClient.del(`product-draw-create-round-${productId}`);
   }
 
   /**
