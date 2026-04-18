@@ -104,43 +104,59 @@ export class DrawService {
         order: { roundNumber: 'DESC' },
       });
 
-      const isLocked = await this.acquireLock(productId);
-      if (isLocked) {
+      const lockAcquired = await this.acquireLock(productId);
+      if (!lockAcquired) {
         throw new BadRequestException(
           'Another instance is processing the product, please try again later',
         );
       }
 
-      const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
+      try {
+        // 重新检查，防止并发创建
+        const existingRound = await this.drawRoundRepository.findOne({
+          where: {
+            productId,
+            status: DrawRoundStatus.ONGOING,
+            isPrivate: false,
+          },
+        });
+        if (existingRound) {
+          return existingRound;
+        }
 
-      // 计算总号码数
-      const pricePerSpot = product.salePrice; // 每个号码价格
-      const prizeValue = product.originalPrice; // 奖品价值
+        const nextRoundNumber = latestRound ? latestRound.roundNumber + 1 : 1;
 
-      let totalSpots: number;
-      if (pricePerSpot.isZero()) {
-        // 0 元购：沿用上一轮的 totalSpots，若无上一轮则默认 10
-        totalSpots = latestRound?.totalSpots ?? 10;
-      } else {
-        const totalRevenue = prizeValue.times(1.1); // 溢价10%
-        totalSpots = Math.ceil(totalRevenue.dividedBy(pricePerSpot).toNumber());
+        // 计算总号码数
+        const pricePerSpot = product.salePrice; // 每个号码价格
+        const prizeValue = product.originalPrice; // 奖品价值
+
+        let totalSpots: number;
+        if (pricePerSpot.isZero()) {
+          // 0 元购：沿用上一轮的 totalSpots，若无上一轮则默认 10
+          totalSpots = latestRound?.totalSpots ?? 10;
+        } else {
+          const totalRevenue = prizeValue.times(1.1); // 溢价10%
+          totalSpots = Math.ceil(totalRevenue.dividedBy(pricePerSpot).toNumber());
+        }
+
+        currentRound = this.drawRoundRepository.create({
+          productId,
+          roundNumber: nextRoundNumber,
+          totalSpots,
+          soldSpots: 0,
+          pricePerSpot,
+          prizeValue,
+          status: DrawRoundStatus.ONGOING,
+          autoCreateNext: true,
+        });
+
+        await this.drawRoundRepository.save(currentRound);
+        this.logger.log(
+          `创建新期次: 商品 ${productId}, 期次 ${nextRoundNumber}, 总号码数 ${totalSpots}`,
+        );
+      } finally {
+        await this.releaseLock(productId);
       }
-
-      currentRound = this.drawRoundRepository.create({
-        productId,
-        roundNumber: nextRoundNumber,
-        totalSpots,
-        soldSpots: 0,
-        pricePerSpot,
-        prizeValue,
-        status: DrawRoundStatus.ONGOING,
-        autoCreateNext: true,
-      });
-
-      await this.drawRoundRepository.save(currentRound);
-      this.logger.log(
-        `创建新期次: 商品 ${productId}, 期次 ${nextRoundNumber}, 总号码数 ${totalSpots}`,
-      );
     }
 
     return currentRound;
