@@ -4,6 +4,7 @@ export enum PayMethod {
   APPLE_PAY = 'apple_pay',
   GOOGLE_PAY = 'google_pay',
   UPI = 'upi',
+  PROMPTPAY = 'promptpay',
 }
 
 export interface PayMethodInfo {
@@ -31,6 +32,10 @@ export const PayMethodMap: Record<PayMethod, PayMethodInfo> = {
   [PayMethod.UPI]: {
     name: 'UPI',
     code: PayMethod.UPI,
+  },
+  [PayMethod.PROMPTPAY]: {
+    name: 'PromptPay',
+    code: PayMethod.PROMPTPAY,
   },
 };
 
